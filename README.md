@@ -5,7 +5,7 @@ A Prolog-like Embedded DSL for Python 3.3.
 
 Just something I did over the holidays.
 
-It provides a way to program prolog in Python - sort of. The syntax is of course different,
+It provides a way to program Prolog in Python - sort of. The syntax is of course different,
 and at the moment there are only few system predicates implemented. It is very easy to 
 interface with Python, since it is Python. See hanoi.py for an example. It is a modified
 version of minimal_hanoi.py that comes with Python in the Lib\turtledemo directory. Instead
