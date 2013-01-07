@@ -14,7 +14,7 @@ hence the name: Horn clauses for Python via Expression Trees.
 
 The DSL is Prolog-like, as close as one could get using only Pythons operators.
 Instead of the comma I use '&', instead of ':-' I use '<<' and since hornet also
-understands (well, part of) DCG clauses, '-->' becomes '>>'.
+understands (well, part of) DCG rules, '-->' becomes '>>'.
 
 resolver.py contains the SLD Resolver. It's implementation is naive and slow. My goal was
 not to write a fast Prolog engine in Python, but to play around with new stuff that comes
