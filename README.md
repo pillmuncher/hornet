@@ -32,3 +32,6 @@ Maybe I'll replace it by a WAM-based version one day, after I finished reading A
 system.py contains system predicates like member/2, reverse/2, true/0, cut/0 and so on.
 
 util.py contains some helper functions.
+
+
+Beware: the code still needs some serious massaging.
