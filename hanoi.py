@@ -16,11 +16,19 @@ stretched to rectangles by shapesize()
  ---------------------------------------
        To exit press STOP button
  ---------------------------------------
+
+Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010,
+2011, 2012 Python Software Foundation; All Rights Reserved
 """
+
+"""
+I replaced the original algorithm by one written in hornet to demonstrate
+how to interface hornet code with python code.  -- pillmuncher@web.de
+"""
+
+
 from turtle import *
 from resolver import Database
-
-HEIGHT = 6
 
 
 class Disc(Turtle):
@@ -29,7 +37,7 @@ class Disc(Turtle):
         Turtle.__init__(self, shape="square", visible=False)
         self.pu()
         self.shapesize(1.5, n * 1.5, 2)
-        self.fillcolor(n / HEIGHT, 0, 1 - n / HEIGHT)
+        self.fillcolor(n / 6, 0, 1 - n / 6)
         self.st()
 
 
@@ -72,7 +80,7 @@ def hanoi(db, play_hanoi, move, M, N, From, With, To):
             move(1, From, To, _) &
             move(M, With, To, From),
     )
-    for subst in db |- play_hanoi(HEIGHT, 0, 1, 2):
+    for subst in db |- play_hanoi(6, 0, 1, 2):
         print('Yes.')
         break
     else:
@@ -97,7 +105,7 @@ def main():
     t3 = Tower(250)
     towers = t1, t2, t3
     # make tower of 6 discs
-    for i in range(HEIGHT, 0, -1):
+    for i in range(6, 0, -1):
         t1.push(Disc(i))
     # prepare spartanic user interface ;-)
     write("press spacebar to start game",
