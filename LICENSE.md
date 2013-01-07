@@ -1,6 +1,10 @@
 Copyright (c) 2013, Mick Krippendorf <pillmuncher@web.de>
 All rights reserved.
 
+This license applies to all files in this repository except if
+stated otherwise in the resp. files.
+
+
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
 
