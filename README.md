@@ -11,7 +11,7 @@ interface with Python, since it is Python. See hanoi.py for an example. It is a 
 version of minimal_hanoi.py that comes with Python in the Lib\turtledemo directory. Instead
 of the original version it uses hornet to compute the hanoi algorithm.
 
-parsing.py contains some DCG rules for some (about 13400, actually) meaningless german
+parsing.py contains the DCG rules for some (about 13400, actually) meaningless german
 sentences. It exists only so I can see if my DCG translation works.
 
 examples.py illustrates some more stuff that is possible with hornet.
