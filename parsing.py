@@ -2,7 +2,7 @@ from resolver import Database
 from system import *
 
 
-def syntax(db, s, np, vp, det, noun, verb, masculine, feminine, neuter,
+def grammar(db, s, np, vp, det, noun, verb, masculine, feminine, neuter,
            nominative, genitive, dative, accusative, plural, singular,
            intransitive, transitive, Gender, Number, Case, Trans,
            Rest, A, B, C, D, E, F, S):
@@ -218,4 +218,4 @@ def syntax(db, s, np, vp, det, noun, verb, masculine, feminine, neuter,
 
 
 db = Database()
-db.consult(syntax)
+db.consult(grammar)
