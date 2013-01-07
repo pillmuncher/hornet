@@ -1,7 +1,7 @@
 hornet
 ======
 
-Prolog as Embedded DSL for Python 3.3.
+Prolog-like Embedded DSL for Python 3.3.
 
 Just something I did over the holidays.
 
