@@ -30,21 +30,21 @@ def syntax(db, s, np, vp, det, noun, verb, masculine, feminine, neuter,
 
 
         vp(Gender, Number, nominative, intransitive) >>
-            verb(Gender, Number, nominative, intransitive),
+            verb(Number, nominative, intransitive),
 
         vp(Gender, Number, accusative, intransitive) >>
-            verb(Gender, Number, accusative, intransitive),
+            verb(Number, accusative, intransitive),
 
         vp(_, _, dative, transitive) >>
-            verb(Gender, Number, nominative, transitive) &
+            verb(Number, nominative, transitive) &
             np(Gender, Number, nominative),
 
         vp(Gender, Number, nominative, transitive) >>
-            verb(Gender, Number, nominative, transitive) &
+            verb(Number, nominative, transitive) &
             np(_, _, dative),
 
         vp(Gender, Number, nominative, transitive) >>
-            verb(Gender, Number, accusative, transitive) &
+            verb(Number, accusative, transitive) &
             np(_, _, accusative),
 
 
@@ -178,27 +178,27 @@ def syntax(db, s, np, vp, det, noun, verb, masculine, feminine, neuter,
         noun(feminine, plural, accusative) >> ['mauese'],
 
 
-        verb(_, singular, nominative, Trans) >> ['fehlt'],
-        verb(_, plural, nominative, Trans) >> ['fehlen'],
+        verb(singular, nominative, Trans) >> ['fehlt'],
+        verb(plural, nominative, Trans) >> ['fehlen'],
 
-        verb(_, singular, dative, transitive) >> ['fehlt'],
-        verb(_, plural, dative, transitive) >> ['fehlen'],
+        verb(singular, dative, transitive) >> ['fehlt'],
+        verb(plural, dative, transitive) >> ['fehlen'],
 
-        verb(_, singular, _, intransitive) >> ['schlaeft'],
-        verb(_, plural, _, intransitive) >> ['schlafen'],
+        verb(singular, _, intransitive) >> ['schlaeft'],
+        verb(plural, _, intransitive) >> ['schlafen'],
 
-        verb(_, singular, nominative, intransitive) >> ['frisst'],
-        verb(_, plural, nominative, intransitive) >> ['fressen'],
-        verb(_, singular, accusative, transitive) >> ['frisst'],
-        verb(_, plural, accusative, transitive) >> ['fressen'],
+        verb(singular, nominative, intransitive) >> ['frisst'],
+        verb(plural, nominative, intransitive) >> ['fressen'],
+        verb(singular, accusative, transitive) >> ['frisst'],
+        verb(plural, accusative, transitive) >> ['fressen'],
 
-        verb(_, singular, nominative, intransitive) >> ['jagt'],
-        verb(_, plural, nominative, intransitive) >> ['jagen'],
-        verb(_, singular, accusative, transitive) >> ['jagt'],
-        verb(_, plural, accusative, transitive) >> ['jagen'],
+        verb(singular, nominative, intransitive) >> ['jagt'],
+        verb(plural, nominative, intransitive) >> ['jagen'],
+        verb(singular, accusative, transitive) >> ['jagt'],
+        verb(plural, accusative, transitive) >> ['jagen'],
 
-        verb(_, singular, _, intransitive) >> ['spielt'],
-        verb(_, plural, _, intransitive) >> ['spielen'],
+        verb(singular, _, intransitive) >> ['spielt'],
+        verb(plural, _, intransitive) >> ['spielen'],
 
     )
 
