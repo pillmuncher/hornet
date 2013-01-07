@@ -20,7 +20,7 @@ resolver.py contains the SLD Resolver. It's implementation is naive and slow. My
 not to write a fast Prolog engine in Python, but to play around with new stuff that comes
 with Python 3.3, and also to find out if it'd be possible to create an Embedded DSL like that.
 
-Maybe I replace it by a WAM-based version one day, after I finished reading Ait-Kaci's book.
+Maybe I'll replace it by a WAM-based version one day, after I finished reading Ait-Kaci's book.
 
 system.py contains system predicates like member/2, reverse/2 and so on.
 
