@@ -14,11 +14,11 @@ def grammar(db, s, np, vp, det, noun, verb, masculine, feminine, neuter,
 
         s >>
             np(Gender, Number, nominative) &
-            vp(Gender, Number, nominative, intransitive),
+            vp(Number, nominative, intransitive),
 
         s >>
             np(Gender, Number, Case) &
-            vp(Gender, Number, Case, transitive),
+            vp(Number, Case, transitive),
 
 
         np(Gender, plural, Case) >>
@@ -29,21 +29,21 @@ def grammar(db, s, np, vp, det, noun, verb, masculine, feminine, neuter,
             noun(Gender, Number, Case),
 
 
-        vp(Gender, Number, nominative, intransitive) >>
+        vp(Number, nominative, intransitive) >>
             verb(Number, nominative, intransitive),
 
-        vp(Gender, Number, accusative, intransitive) >>
+        vp(Number, accusative, intransitive) >>
             verb(Number, accusative, intransitive),
 
         vp(_, _, dative, transitive) >>
             verb(Number, nominative, transitive) &
             np(Gender, Number, nominative),
 
-        vp(Gender, Number, nominative, transitive) >>
+        vp(Number, nominative, transitive) >>
             verb(Number, nominative, transitive) &
             np(_, _, dative),
 
-        vp(Gender, Number, nominative, transitive) >>
+        vp(Number, nominative, transitive) >>
             verb(Number, accusative, transitive) &
             np(_, _, accusative),
 
@@ -205,14 +205,15 @@ def grammar(db, s, np, vp, det, noun, verb, masculine, feminine, neuter,
     #for subst in db |- equal(A, [B, 'hunde', 'jagen', C, 'katzen']) & s(A):
         #print(subst[A])
     #print()
-    #for subst in db |- equal(A, ['manche', B, C]) & s(A):
-        #print(subst[A])
-    #print()
-    for subst in db |- equal(A, [B, C, D, 'die', F]) & s(A):
+    for subst in db |- equal(A, ['manche', B, C]) & s(A):
         print(subst[A])
+    #print()
+    #for subst in db |- equal(A, [B, C, D, 'den', F]) & s(A):
+        #print(subst[A])
     #for subst in db |- equal(A, [B, C, 'jagt', D, E]) & s(A):
         #print(subst[A])
     #for i, subst in enumerate(db |- s(A)):
+        #pass
         #print(subst[A])
     #print(i)
 
