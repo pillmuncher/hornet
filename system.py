@@ -1,14 +1,14 @@
 from copy import deepcopy
 from functools import reduce
 from resolver import unify, UnificationFailed
-from expressions import unit, new_list, Nil, wrap, Atom
+from expressions import unit, wrap, new_list, Nil, nil
 from util import flip
 from pprint import pprint
 
 
 __all__ = [
     '_', 'cut', 'fail', 'true', 'not_', 'member', 'findall', 'greater', 'write',
-    'writeln', 'nl', 'equal', 'nil', 'reverse', 'call', 'listing', 'let', 'X', 'L'
+    'writeln', 'nl', 'equal', 'reverse', 'call', 'listing', 'let', 'X', 'L'
 ]
 
 globals().update((each, unit(each)) for each in __all__)
@@ -65,7 +65,7 @@ def predicates(db,
 
         let(X, Y)[_let],
 
-        Atom("'C'")([X|L], X, L),
+        unit("'C'")([X|L], X, L),
 
     )
 
@@ -100,7 +100,7 @@ def _writeln(term, env, db, trail):
 
 def _findall_3(term, env, db, trail):
     results = [deepcopy(env.Object) for each in db |- env.Goal]
-    unify(env.List, make_list(db, results, Nil()), trail)
+    unify(env.List, make_list(db, results, nil), trail)
 
 
 def _findall_4(term, env, db, trail):
@@ -135,7 +135,7 @@ def _listing(indicator, clauses):
 
 
 def _greater(term, env, db, trail):
-    if env.X() <= env.Y():
+    if not env.X() > env.Y():
         raise UnificationFailed
 
 

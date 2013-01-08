@@ -4,7 +4,7 @@ from inspect import signature
 import expressions
 from util import (noop, identity, as_method, is_var_name, params_format,
                   body_format, amp_separated, comma_separated, next_suffix,
-                  first_param, second_param, first_goal, second_goal)
+                  first_param, second_param)
 
 
 class UnificationFailed(Exception):
@@ -222,7 +222,7 @@ def unify(left, right, trail):
 
 class Environment(dict):
 
-    def Variable(self, name, *, Type=None, params=(), goals=(), actions=()):
+    def Variable(self, name, **kwargs):
         return self[name]
 
     Atom = as_method(NonVariable, expressions.Atom)

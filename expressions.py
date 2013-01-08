@@ -2,7 +2,7 @@ from functools import wraps, reduce
 from operator import xor
 from util import (params_format, body_format, comma_separated, amp_separated,
                   is_var_name, flip, identity, compose, next_suffix, as_method,
-                  first_param, second_param, first_goal, second_goal)
+                  first_param, second_param)
 
 
 def invoke(fn, Type=type):
@@ -235,10 +235,6 @@ class List(BinaryOperator):
     tail = BinaryOperator.right
 
     _name = '.'
-
-    def __iter__(self):
-        for each in self.params:
-            yield from each
 
     def __str__(self):
         acc = []
