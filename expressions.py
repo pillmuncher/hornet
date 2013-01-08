@@ -108,11 +108,11 @@ def add_dcg_goal(NewType, goal):
 
 
 def make_conjunction(left, right):
-    return Conjunction(goals=(left, right))
+    return Conjunction(params=(left, right))
 
 
 def make_subtraction(left, right):
-    return Subtraction(goals=(left, right))
+    return Subtraction(params=(left, right))
 
 
 def make_list(head, tail):
@@ -150,6 +150,7 @@ class Term:
     __or__ = make_tail_pair
     __ror__ = flip(make_tail_pair)
     __sub__ = make_subtraction
+    __rsub__ = flip(make_subtraction)
     __neg__ = as_method(Consequence)
     __getitem__ = invoke(add_action)
 
@@ -229,15 +230,15 @@ class DCGRule(Term):
 
 class BinaryOperator(Term):
 
-    left = property(first_goal)
-    right = property(second_goal)
+    left = property(first_param)
+    right = property(second_param)
 
     def __iter__(self):
-        for each in self.goals:
+        for each in self.params:
             yield from each
 
     def __str__(self):
-        return ' {} '.format(self.name).join(map(str, self.goals))
+        return ' {} '.format(self.name).join(map(str, self.params))
 
 
 class Conjunction(BinaryOperator):
@@ -416,7 +417,7 @@ if __name__ == '__main__':
             test(a(b), 'a', [b], [], [], Relation)
             test(a << b, 'a', [], [b], [], Rule)
             test(a(b) << c, 'a', [b], [c], [], Rule)
-            test(a & b, '&', [], [a, b], [], Conjunction)
+            test(a & b, '&', [a, b], [], [], Conjunction)
             test(a << b & c, 'a', [], [b, c], [], Rule)
             test(a(b) << c & d, 'a', [b], [c, d], [], Rule)
             test(a[foo], 'a', [], [], [foo], Atom)
@@ -429,8 +430,8 @@ if __name__ == '__main__':
             test((a(b) << c)[foo], 'a', [b], [c], [foo], Rule)
             test((a(b)[foo] << c)[bar], 'a', [b], [c], [foo, bar], Rule)
             test((a[foo](b) << c)[bar], 'a', [b], [c], [foo, bar], Rule)
-            test((a & b)[foo], '&', [], [a, b], [foo], Conjunction)
-            test((a[foo] & b)[bar], '&', [], [a, b], [bar], Conjunction)
+            test((a & b)[foo], '&', [a, b], [], [foo], Conjunction)
+            test((a[foo] & b)[bar], '&', [a, b], [], [bar], Conjunction)
             test((a << b & c)[foo], 'a', [], [b, c], [foo], Rule)
             test((a(b) << c & d)[foo], 'a', [b], [c, d], [foo], Rule)
             test(a[foo] << b, 'a', [], [b], [foo], Rule)

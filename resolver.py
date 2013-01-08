@@ -167,11 +167,11 @@ class NonVariable(Term):
 
 
 class BinaryOperator(NonVariable):
-    left = property(first_goal)
-    right = property(second_goal)
+    left = property(first_param)
+    right = property(second_param)
 
     def __str__(self):
-        return ' {} '.format(self.name).join(map(str, self.goals))
+        return ' {} '.format(self.name).join(map(str, self.params))
 
 
 class Conjunction(BinaryOperator):
@@ -179,7 +179,7 @@ class Conjunction(BinaryOperator):
     __slots__ = ()
 
     def __iter__(self):
-        for each in self.goals:
+        for each in self.params:
             yield from each
 
 

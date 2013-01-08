@@ -54,14 +54,18 @@ def stdtypes(db, X):
 
 
 def difflist(db, appenddl, diff, A, B, C, U, V, W, X):
+    #db.assertz(
+        #appenddl(diff(A, B),
+                 #diff(B, C),
+                 #diff(A, C))
+    #)
+    #q = appenddl(diff([1, 2 | U], U),
+                 #diff([3, 4 | V], V),
+                 #diff(W, [5, 6 | X]))
     db.assertz(
-        appenddl(diff(A, B),
-                 diff(B, C),
-                 diff(A, C))
+        appenddl(A - B, B - C, A - C),
     )
-    q = appenddl(diff([1, 2 | U], U),
-                 diff([3, 4 | V], V),
-                 diff(W, [5, 6 | X]))
+    q = appenddl([1, 2 | U] - U, [3, 4 | V] - V, W - [5, 6 | X])
     for subst in db |- q:
         for k, v in sorted(subst.items()):
             print(k, ':', v)
