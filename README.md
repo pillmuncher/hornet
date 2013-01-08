@@ -11,13 +11,13 @@ interface with Python, since it is Python. See hanoi.py for an example. It is a 
 version of minimal_hanoi.py that comes with Python in the Lib\turtledemo directory. Instead
 of the original version it uses hornet to compute the hanoi algorithm.
 
-parsing.py contains the DCG rules for some (about 13400, actually) meaningless german
-sentences. It exists only so I can see if my DCG translation works.
+parsing.py contains the DCG rules for some (about 9500, actually) meaningless but grammatically 
+correct german sentences. It exists only so I can see if my DCG translation works.
 
 examples.py illustrates some more stuff that is possible with hornet.
 
-expressions.py contains some kind of monadic expression tree combinators,
-hence the name: Horn clauses via Expression Trees.
+expressions.py contains some kind of monadic expression tree combinators, hence the name:
+Horn clauses via Expression Trees.
 
 The DSL is Prolog-like, as close as one could get using only Pythons operators.
 Instead of the comma to seperate goals in a clause's body, I use '&', instead of ':-' I use
