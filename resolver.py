@@ -259,13 +259,6 @@ class Environment(dict):
     def __deepcopy__(self, memo):
         return Environment()
 
-    def __call__(self, name, Type, params, goals, actions):
-        return getattr(self, Type.__name__)(
-            name=name,
-            Type=Type,
-            params=params,
-            goals=goals,
-            actions=actions)
 
 class Cut(Exception):
 

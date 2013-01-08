@@ -12,98 +12,64 @@ def invoke(fn, Type=type):
     return wrapper
 
 
-def unit(name, *, Type=None, params=(), goals=(), actions=()):
+def unit(name, *, Type=None, **kwargs):
     if Type:
-        NewType = Type
+        return Type(name, Type=Type, **kwargs)
     elif is_var_name(name):
-        NewType = Variable
+        return Variable(name, **kwargs)
     else:
-        NewType = Atom
-    return NewType(
-        name=name,
-        Type=Type,
-        params=params,
-        goals=goals,
-        actions=actions)
+        return Atom(name, **kwargs)
 
 
 def add_params(NewType, *newparams):
     if not newparams:
         raise ValueError
-    def new(name, Type, params, goals, actions):
-        return NewType(
-            name=name,
-            Type=Type,
-            params=params + list(map(wrap, newparams)),
-            goals=goals,
-            actions=actions)
+    def new(params, **kwargs):
+        return NewType(params=params + list(map(wrap, newparams)), **kwargs)
     return new
 
 
 def add_goal(NewType, goal):
-    def new(name, Type, params, goals, actions):
-        return NewType(
-            name=name,
-            Type=Type,
-            params=params,
-            goals=goals + [goal],
-            actions=actions)
+    def new(goals, **kwargs):
+        return NewType(goals=goals + [goal], **kwargs)
     return new
 
 
 def add_action(NewType, action):
-    def new(name, Type, params, goals, actions):
-        return NewType(
-            name=name,
-            Type=Type,
-            params=params,
-            goals=goals,
-            actions=actions + [action])
+    def new(actions, **kwargs):
+        return NewType(actions=actions + [action], **kwargs)
     return new
 
 
 def add_dcg_params(NewType, goal):
-    def new(name, Type, params, goals, actions):
+    def new(params, **kwargs):
         v = Variable(next_suffix())
-        return NewType(
-            name=name,
-            Type=Type,
-            params=params + [v, v],
-            goals=goals,
-            actions=actions).bind(add_dcg_goal(DCGRule, goal))
+        return NewType(params=params + [v, v], **kwargs
+                      ).bind(add_dcg_goal(NewType, goal))
     return new
 
 
 def add_dcg_goal(NewType, goal):
     if isinstance(goal, ExplicitDCGGoal):
-        def new(name, Type, params, goals, actions):
-            return NewType(
-                name=name,
-                Type=Type,
-                params=params,
-                goals=goals + list(goal.params),
-                actions=actions)
+        def new(goals, **kwargs):
+            return NewType(goals=goals + list(goal.params), **kwargs)
     elif isinstance(goal, List):
-        def new(name, Type, params, goals, actions):
+        def new(params, goals, **kwargs):
             for each in goal:
                 v1 = params[-1]
                 v2 = params[-1] = Variable(next_suffix())
             return NewType(
-                name=name,
-                Type=Type,
                 params=params,
                 goals=goals + [_C_(v1, each, v2)],
-                actions=actions)
+                **kwargs)
     else:
-        def new(name, Type, params, goals, actions):
+        def new(params, goals, **kwargs):
             v1 = params[-1]
             v2 = params[-1] = Variable(next_suffix())
             return NewType(
-                name=name,
-                Type=Type,
                 params=params,
                 goals=goals + [goal.bind(add_params(Relation, v1, v2))],
-                actions=actions)
+                **kwargs)
     return new
 
 
@@ -233,6 +199,11 @@ class BinaryOperator(Term):
     left = property(first_param)
     right = property(second_param)
 
+    _name = ''
+
+    def __init__(self, name=None, **kwargs):
+        super().__init__(name=self._name, **kwargs)
+
     def __iter__(self):
         for each in self.params:
             yield from each
@@ -242,15 +213,7 @@ class BinaryOperator(Term):
 
 
 class Conjunction(BinaryOperator):
-
-    def __init__(self, name='&', Type=None, params=(), goals=(), actions=()):
-        super().__init__(
-            name=name,
-            Type=Type,
-            params=params,
-            goals=goals,
-            actions=actions)
-
+    _name = '&'
     __and__ = invoke(add_params)
 
 
@@ -263,28 +226,15 @@ class Float(Atom):
 
 
 class Subtraction(BinaryOperator):
-
-    def __init__(self, name='-', Type=None, params=(), goals=(), actions=()):
-        super().__init__(
-            name=name,
-            Type=Type,
-            params=params,
-            goals=goals,
-            actions=actions)
+    _name = '-'
 
 
-class List(Term):
+class List(BinaryOperator):
 
-    head = property(first_param)
-    tail = property(second_param)
+    head = BinaryOperator.left
+    tail = BinaryOperator.right
 
-    def __init__(self, name='.', Type=None, params=(), goals=(), actions=()):
-        super().__init__(
-            name=name,
-            Type=Type,
-            params=params,
-            goals=goals,
-            actions=actions)
+    _name = '.'
 
     def __iter__(self):
         for each in self.params:

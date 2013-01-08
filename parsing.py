@@ -205,6 +205,12 @@ def grammar(db, s, np, vp, det, noun, verb, masculine, feminine, neuter,
     #for subst in db |- equal(A, [B, 'hunde', 'jagen', C, 'katzen']) & s(A):
         #print(subst[A])
     #print()
+    #for subst in db |- s(A) & member('jagen', A):
+        #print(subst[A])
+    for subst in db |- equal(A, 'manche mauese jagen viele katzen'.split()) & s(A):
+        print(subst[A])
+    #for subst in db |- equal(A, [B, C, 'jagen']) & s(A):
+        #print(subst[A])
     #for subst in db |- equal(A, ['manche', B, C]) & s(A):
         #print(subst[A])
     #print()
@@ -212,10 +218,10 @@ def grammar(db, s, np, vp, det, noun, verb, masculine, feminine, neuter,
         #print(subst[A])
     #for subst in db |- equal(A, [B, C, 'jagt', D, E]) & s(A):
         #print(subst[A])
-    for i, subst in enumerate(db |- s(A)):
-        pass
+    #for i, subst in enumerate(db |- s(A)):
+        #pass
         #print(subst[A])
-    print(i)
+    #print(i)
 
 
 db = Database()

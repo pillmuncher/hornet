@@ -53,15 +53,7 @@ def stdtypes(db, X):
     print()
 
 
-def difflist(db, appenddl, diff, A, B, C, U, V, W, X):
-    #db.assertz(
-        #appenddl(diff(A, B),
-                 #diff(B, C),
-                 #diff(A, C))
-    #)
-    #q = appenddl(diff([1, 2 | U], U),
-                 #diff([3, 4 | V], V),
-                 #diff(W, [5, 6 | X]))
+def difflist(db, appenddl, A, B, C, U, V, W, X):
     db.assertz(
         appenddl(A - B, B - C, A - C),
     )
