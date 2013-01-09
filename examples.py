@@ -1,5 +1,5 @@
 from expressions import wrap
-from resolver import Database
+from resolver import Database, UnificationFailed
 from system import *
 
 
@@ -20,6 +20,35 @@ def varunify(db, X, Y, Z):
     print(db.compile(equal(X, Z) & equal(Y, Z)))
     for subst in db |- equal(X, Z) & equal(Y, Z):
         print(sorted(subst.items()))
+    print()
+
+
+def pyfunc_test(db, X, Y):
+    def unequal(X, Y):
+        if X == Y:
+            raise UnificationFailed
+    db.assertz(unequal)
+
+
+def pyfunc(db, unequal, X, Y):
+    db.consult(pyfunc_test)
+    for subst in db |- unequal('holla', 'hallo'):
+        print('Yes.')
+        break
+    else:
+        print('No.')
+    for subst in db |- unequal(1, 1):
+        print('Yes.')
+        break
+    else:
+        print('No.')
+    print()
+
+
+def subtraction(db, A, B, C, D):
+    q = equal(A, 5) & equal(B, 2) & equal(C, 1) & let(D, A - B - C)
+    for subst in db |- q:
+        print(subst[A], '-', subst[B], '-', subst[C], '==', subst[D])
     print()
 
 
@@ -207,6 +236,8 @@ def genealogy(db, joe, bob, dan, lee, descendant, ancestor, related, tribe, A,
 db = Database()
 db.consult(barbara)
 db.consult(varunify)
+db.consult(pyfunc)
+db.consult(subtraction)
 db.consult(stdtypes)
 db.consult(difflist)
 db.consult(genealogy)

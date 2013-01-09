@@ -1,4 +1,5 @@
 from functools import wraps, reduce
+from inspect import signature
 from operator import xor
 from util import (params_format, body_format, comma_separated, amp_separated,
                   is_var_name, flip, identity, compose, next_suffix, as_method,
@@ -8,7 +9,7 @@ from util import (params_format, body_format, comma_separated, amp_separated,
 def invoke(fn, Type=type):
     @wraps(fn)
     def wrapper(term, *args):
-        return term.bind(fn(Type(term), *list(map(wrap, args))))
+        return term.bind(fn(Type(term), *args))
     return wrapper
 
 
@@ -25,7 +26,7 @@ def add_params(NewType, *newparams):
     if not newparams:
         raise ValueError
     def new(params, **kwargs):
-        return NewType(params=params + list(map(wrap, newparams)), **kwargs)
+        return NewType(params=params + list(newparams), **kwargs)
     return new
 
 
@@ -45,7 +46,7 @@ def add_dcg_params(NewType, goal):
     def new(params, **kwargs):
         v = Variable(next_suffix())
         return NewType(params=params + [v, v], **kwargs
-                      ).bind(add_dcg_goal(NewType, goal))
+                      ).bind(add_dcg_goal(NewType, wrap(goal)))
     return new
 
 
@@ -101,7 +102,11 @@ class Consequence(object):
         return db.resolve(db.compile(self.term))
 
 
-class Term:
+class BaseTerm:
+    pass
+
+
+class Term(BaseTerm):
 
     def __init__(self, name, *, Type=None, params=(), goals=(), actions=()):
         self.name = name
@@ -109,8 +114,28 @@ class Term:
         self.goals = tuple(map(wrap, goals))
         self.actions = tuple(actions)
 
-    def __iter__(self):
-        yield self
+    @property
+    def arity(self):
+        return len(self.params)
+
+    @property
+    def indicator(self):
+        return self.name, self.arity
+
+    def bind(self, fn):
+        return fn(
+            name=self.name,
+            Type=type(self),
+            params=list(self.params),
+            goals=list(self.goals),
+            actions=list(self.actions))
+
+    def direct(self, compiler):
+        return getattr(compiler, type(self).__name__)(
+            self.name,
+            params=[term.direct(compiler) for term in self.params],
+            goals=[term.direct(compiler) for term in self.goals],
+            actions=list(self.actions))
 
     __and__ = make_conjunction
     __or__ = make_tail_pair
@@ -120,15 +145,8 @@ class Term:
     __neg__ = as_method(Consequence)
     __getitem__ = invoke(add_action)
 
-    def __repr__(self):
-        return str(self)
-
-    def __str__(self):
-        return ''.join((
-            str(self.name),
-            params_format(map(str, self.params)),
-            body_format(map(str, self.goals)),
-            '[{}]'.format(comma_separated(self.actions)) if self.actions else ''))
+    def __iter__(self):
+        yield self
 
     def __eq__(self, other):
         return (
@@ -142,37 +160,24 @@ class Term:
             reduce(xor, map(hash, self.params), hash(type(self))) ^
             reduce(xor, map(hash, self.goals), hash(self.name)))
 
-    def bind(self, fn):
-        return fn(
-            name=self.name,
-            Type=type(self),
-            params=list(self.params),
-            goals=list(self.goals),
-            actions=list(self.actions))
+    def __repr__(self):
+        return str(self)
 
-    @property
-    def arity(self):
-        return len(self.params)
-
-    @property
-    def indicator(self):
-        return self.name, self.arity
-
-    def direct(self, compiler):
-        return getattr(compiler, type(self).__name__)(
-            self.name,
-            params=[term.direct(compiler) for term in self.params],
-            goals=[term.direct(compiler) for term in self.goals],
-            actions=list(self.actions))
+    def __str__(self):
+        return ''.join((
+            str(self.name),
+            params_format(map(str, self.params)),
+            body_format(map(str, self.goals)),
+            '[{}]'.format(comma_separated(self.actions)) if self.actions else ''))
 
 
 class Variable(Term):
 
-    def __hash__(self):
-        return hash(str(self))
-
     def __eq__(self, other):
         return str(self) == str(other)
+
+    def __hash__(self):
+        return hash(str(self))
 
 
 class Atom(Term):
@@ -194,12 +199,17 @@ class DCGRule(Term):
     __and__ = invoke(add_dcg_goal)
 
 
+class ExplicitDCGGoal(Term):
+    def __init__(self, name='unused', **kwargs):
+        super().__init__('.explicit.', **kwargs)
+
+
 class BinaryOperator(Term):
+
+    _name = ''
 
     left = property(first_param)
     right = property(second_param)
-
-    _name = ''
 
     def __init__(self, name=None, **kwargs):
         super().__init__(name=self._name, **kwargs)
@@ -217,24 +227,18 @@ class Conjunction(BinaryOperator):
     __and__ = invoke(add_params)
 
 
-class Int(Atom):
-    pass
-
-
-class Float(Atom):
-    pass
-
-
 class Subtraction(BinaryOperator):
     _name = '-'
+    __sub__ = make_subtraction
+    __rsub__ = flip(make_subtraction)
 
 
 class List(BinaryOperator):
 
+    _name = '.'
+
     head = BinaryOperator.left
     tail = BinaryOperator.right
-
-    _name = '.'
 
     def __str__(self):
         acc = []
@@ -283,6 +287,14 @@ def new_list(alist, tail=None):
     return reduce(flip(make_list), reversed(alist), tail)
 
 
+class Int(Atom):
+    pass
+
+
+class Float(Atom):
+    pass
+
+
 def byte_array(astring):
     return new_list(map(ord, astring))
 
@@ -291,11 +303,6 @@ def explicit_dcg_goal(aset):
     if len(aset) != 1:
         raise ValueError
     return ExplicitDCGGoal(params=list(aset))
-
-
-class ExplicitDCGGoal(Term):
-    def __init__(self, **kwargs):
-        super().__init__('.explicit.', **kwargs)
 
 
 def raiser(error):
@@ -316,7 +323,19 @@ typemap = {
 }
 
 
-wrap = lambda item: typemap.get(type(item), identity)(item)
+def wrap(item):
+    if not isinstance(item, BaseTerm) and callable(item):
+        return make_pyfunc(item)
+    return typemap.get(type(item), identity)(item)
+
+
+def make_pyfunc(fn):
+    def caller(term, env, db, trail):
+        fn(*(each.deref() for each in term.params))
+    return (Atom(fn.__name__)
+            .bind(add_params(Atom, *(Variable(next_suffix())
+                                        for each in signature(fn).parameters)))
+            .bind(add_action(Atom, caller)))
 
 
 nil = Nil()

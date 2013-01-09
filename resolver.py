@@ -11,7 +11,7 @@ class UnificationFailed(Exception):
     pass
 
 
-class Term:
+class Term(expressions.BaseTerm):
 
     __slots__ = 'env', 'name'
 
@@ -65,12 +65,12 @@ class Variable(Term):
                 break
         else:
             raise ValueError('Couldn\'t create new unique name for Variable.')
-        if isinstance(self.deref, NonVariable):
+        if isinstance(self.deref, Structure):
             new.ref = deepcopy(self.deref)
         return new
 
-    def __call__(self):
-        raise TypeError('Unbound Variables can\'t be evaluated.')
+    #def __call__(self):
+        #raise TypeError('Unbound Variables can\'t be evaluated.')
 
     def unify(self, other, trail):
         other.unify_variable(self, trail)
@@ -114,7 +114,7 @@ class AnonymousVariable(Term):
     unify_nonvariable = noop
 
 
-class NonVariable(Term):
+class Structure(Term):
 
     __slots__ = 'params', 'goals', 'actions'
 
@@ -136,7 +136,7 @@ class NonVariable(Term):
         return expressions.Consequence(self)
 
     def __deepcopy__(self, memo):
-        return NonVariable(
+        return Structure(
             deepcopy(self.env, memo),
             self.name,
             params=tuple(deepcopy(param, memo) for param in self.params),
@@ -166,7 +166,7 @@ class NonVariable(Term):
             body_format(self.goals)))
 
 
-class BinaryOperator(NonVariable):
+class BinaryOperator(Structure):
     left = property(first_param)
     right = property(second_param)
 
@@ -191,7 +191,7 @@ class Subtraction(BinaryOperator):
         return self.left.deref() - self.right.deref()
 
 
-class List(NonVariable):
+class List(Structure):
 
     head = property(first_param)
     tail = property(second_param)
@@ -208,7 +208,7 @@ class List(NonVariable):
         return '[{}|{}]'.format(comma_separated(acc), self)
 
 
-class Nil(NonVariable):
+class Nil(Structure):
 
     __slots__ = ()
 
@@ -225,9 +225,9 @@ class Environment(dict):
     def Variable(self, name, **kwargs):
         return self[name]
 
-    Atom = as_method(NonVariable, expressions.Atom)
-    Relation = as_method(NonVariable, expressions.Relation)
-    Rule = as_method(NonVariable, expressions.Rule)
+    Atom = as_method(Structure, expressions.Atom)
+    Relation = as_method(Structure, expressions.Relation)
+    Rule = as_method(Structure, expressions.Rule)
     Conjunction = as_method(Conjunction)
     Subtraction = as_method(Subtraction)
     List = as_method(List)
@@ -283,7 +283,11 @@ class Trail(list):
         self[-1].append(item)
 
 
-Assertable = expressions.Atom, expressions.Relation, expressions.Rule, expressions.DCGRule
+Assertable = (expressions.Atom,
+              expressions.Relation,
+              expressions.Rule,
+              expressions.DCGRule,
+             )
 
 
 class Database(OrderedDict):
@@ -299,8 +303,11 @@ class Database(OrderedDict):
         return predicate
 
     def assertz(self, *clauses):
-        for clause in clauses:
-            if not isinstance(clause, Assertable):
+        clauses = list(clauses)
+        for i, clause in enumerate(clauses):
+            if callable(clause) and not isinstance(clause, expressions.BaseTerm):
+                clauses[i] = expressions.make_pyfunc(clause)
+            elif not isinstance(clause, Assertable):
                 raise TypeError('{} objects can\'t be asserted.'.format(
                     type(clause).__name__))
         for clause in clauses:

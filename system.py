@@ -1,7 +1,7 @@
 from copy import deepcopy
 from functools import reduce
 from resolver import unify, UnificationFailed
-from expressions import unit, wrap, new_list, Nil, nil
+from expressions import unit, wrap, new_list, Nil, nil, _C_
 from util import flip
 from pprint import pprint
 
@@ -65,7 +65,7 @@ def predicates(db,
 
         let(X, Y)[_let],
 
-        unit("'C'")([X|L], X, L),
+        _C_([X|L], X, L),
 
     )
 
