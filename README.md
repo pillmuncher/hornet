@@ -3,15 +3,19 @@ hornet
 
 A Prolog-like Embedded DSL for Python 3.3.
 
-Just something I did over the holidays.
+Just something I did over the holidays. It is only a proof of concept and not intended to
+be used straight away. You can, of course, do so, but please don't hold me responsible if
+your computer explodes while you use it.
 
-It provides a way to program Prolog in Python - sort of. The syntax is of course different,
-and at the moment there are only few system predicates implemented. It is very easy to 
+What it does:
+
+It provides a way to program Prolog in Python - sort of. The syntax is different, naturally,
+and at the moment there are only few system predicates implemented. It is very easy to
 interface with Python, since it is Python. See hanoi.py for an example. It is a modified
 version of minimal_hanoi.py that comes with Python in the Lib\turtledemo directory. Instead
 of the original version it uses hornet to compute the hanoi algorithm.
 
-parsing.py contains the DCG rules for some (about 9500, actually) meaningless but grammatically 
+parsing.py contains the DCG rules for some (about 9500, actually) meaningless but grammatically
 correct german sentences. It exists only so I can see if my DCG translation works.
 
 examples.py illustrates some more stuff that is possible with hornet.
@@ -34,4 +38,8 @@ system.py contains system predicates like member/2, reverse/2, true/0, cut/0 and
 util.py contains some helper functions.
 
 
-Beware: the code still needs some serious massaging.
+Beware: the code still needs some serious massaging. In fact, it is hideously complicated in
+some places. By that I mean expression.py, which I intend to replace with something sane in the
+near future. Stay tuned.
+
+Also, there are insufficient tests and no comments.
