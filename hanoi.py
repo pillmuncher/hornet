@@ -29,6 +29,7 @@ how to interface hornet code with python code.  -- pillmuncher@web.de
 
 from turtle import *
 from resolver import Database
+from expressions import pyfunc
 
 
 class Disc(Turtle):
@@ -64,8 +65,12 @@ def hanoi(db, play_hanoi, move, M, N, From, With, To):
 
     from system import _, greater, let, cut
 
-    def _move(term, env, db, trail):
-        towers[env.To()].push(towers[env.From()].pop())
+    #def show_move(term, env, db, trail):
+        #towers[env.To()].push(towers[env.From()].pop())
+
+    @pyfunc
+    def show_move(n, from_, to_, with_):
+        towers[to_].push(towers[from_].pop())
 
     db.assertz(
 
@@ -73,14 +78,14 @@ def hanoi(db, play_hanoi, move, M, N, From, With, To):
             greater(N, 0) &
             move(N, From, To, With),
 
-        move(1, From, To, _)[_move] << cut,
+        move(1, From, To, _)[show_move] << cut,
         move(N, From, To, With) <<
             let(M, N - 1) &
             move(M, From, With, To) &
             move(1, From, To, _) &
             move(M, With, To, From),
     )
-    for subst in db |- play_hanoi(6, 0, 1, 2):
+    for subst in db.query(play_hanoi(6, 0, 1, 2)):
         print('Yes.')
         break
     else:

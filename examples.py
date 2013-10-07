@@ -3,6 +3,14 @@ from resolver import Database, UnificationFailed
 from system import *
 
 
+def eqtest(db, X, a):
+    for subst in db.query(equal(a, X)):
+        print(subst[X])
+        for a, b in subst.items():
+            print(type(a), ':', type(b))
+    print()
+
+
 def barbara(db, socrates, plato, aristotle, man, mortal, Who, X):
     db.assertz(
         man(socrates),
@@ -11,14 +19,14 @@ def barbara(db, socrates, plato, aristotle, man, mortal, Who, X):
         mortal(X) <<
             man(X),
     )
-    for subst in db |- mortal(Who):
+    for subst in db.query(mortal(Who)):
         print(subst[Who])
     print()
 
 
 def varunify(db, X, Y, Z):
     print(db.compile(equal(X, Z) & equal(Y, Z)))
-    for subst in db |- equal(X, Z) & equal(Y, Z):
+    for subst in db.query(equal(X, Z) & equal(Y, Z)):
         print(sorted(subst.items()))
     print()
 
@@ -32,12 +40,12 @@ def pyfunc_test(db, X, Y):
 
 def pyfunc(db, unequal, X, Y):
     db.consult(pyfunc_test)
-    for subst in db |- unequal('holla', 'hallo'):
+    for subst in db.query(unequal('holla', 'hallo')):
         print('Yes.')
         break
     else:
         print('No.')
-    for subst in db |- unequal(1, 1):
+    for subst in db.query(unequal(1, 1)):
         print('Yes.')
         break
     else:
@@ -47,34 +55,34 @@ def pyfunc(db, unequal, X, Y):
 
 def subtraction(db, A, B, C, D):
     q = equal(A, 5) & equal(B, 2) & equal(C, 1) & let(D, A - B - C)
-    for subst in db |- q:
+    for subst in db.query(q):
         print(subst[A], '-', subst[B], '-', subst[C], '==', subst[D])
     print()
 
 
 def stdtypes(db, X):
-    for subst in db |- equal(10, X) & equal(X, 10):
+    for subst in db.query(equal(10, X) & equal(X, 10)):
         print(sorted(subst.items()))
 
-    for subst in db |- equal('hallo', X) & equal(X, 'hallo'):
+    for subst in db.query(equal('hallo', X) & equal(X, 'hallo')):
         print(sorted(subst.items()))
 
-    for subst in db |- equal([], X) & equal(X, []):
+    for subst in db.query(equal([], X) & equal(X, [])):
         print(sorted(subst.items()))
 
-    for subst in db |- equal([1], X) & equal(X, [1]):
+    for subst in db.query(equal([1], X) & equal(X, [1])):
         print(sorted(subst.items()))
 
-    for subst in db |- equal([1 | wrap(2)], X) & equal(X, [wrap(1) | 2]):
+    for subst in db.query(equal([1 | wrap(2)], X) & equal(X, [wrap(1) | 2])):
         print(sorted(subst.items()))
 
-    for subst in db |- equal([1, 2], X) & equal(X, [1, 2]):
+    for subst in db.query(equal([1, 2], X) & equal(X, [1, 2])):
         print(sorted(subst.items()))
 
-    for subst in db |- equal([1, wrap(2) | 3], X) & equal(X, [1, 2 | wrap(3)]):
+    for subst in db.query(equal([1, wrap(2) | 3], X) & equal(X, [1, 2 | wrap(3)])):
         print(sorted(subst.items()))
 
-    for subst in db |- equal([1, wrap(2), 3], X) & equal(X, [1, 2 | wrap(3)]):
+    for subst in db.query(equal([1, wrap(2), 3], X) & equal(X, [1, 2 | wrap(3)])):
         print('Yes.')
         break
     else:
@@ -87,11 +95,11 @@ def difflist(db, appenddl, A, B, C, U, V, W, X):
         appenddl(A - B, B - C, A - C),
     )
     q = appenddl([1, 2 | U] - U, [3, 4 | V] - V, W - [5, 6 | X])
-    for subst in db |- q:
+    for subst in db.query(q):
         for k, v in sorted(subst.items()):
             print(k, ':', v)
     print()
-    for subst in db |- q & equal(X, [7]):
+    for subst in db.query(q & equal(X, [7])):
         for k, v in sorted(subst.items()):
             print(k, ':', v)
     print()
@@ -161,42 +169,42 @@ def genealogy(db, joe, bob, dan, lee, descendant, ancestor, related, tribe, A,
     db.consult(tribes)
 
     print('who is an ancestor of who?')
-    for subst in db |- ancestor(A, B):
+    for subst in db.query(ancestor(A, B)):
         print(subst[A], 'of', subst[B])
     print()
 
     print('who are joe\'s descendants?')
-    for subst in db |- descendant(A, joe):
+    for subst in db.query(descendant(A, joe)):
         print(subst[A])
     print()
 
     print('who are dan\'s ancestors?')
-    for subst in db |- ancestor(A, dan):
+    for subst in db.query(ancestor(A, dan)):
         print(subst[A])
     print()
 
     print('who is bob related to?')
-    for subst in db |- related(bob, A):
+    for subst in db.query(related(bob, A)):
         print(subst[A])
     print()
 
     print('who is related to bob?')
-    for subst in db |- related(A, bob):
+    for subst in db.query(related(A, bob)):
         print(subst[A])
     print()
 
     print('who is lee related to?')
-    for subst in db |- related(lee, A):
+    for subst in db.query(related(lee, A)):
         print(subst[A])
     print()
 
     print('who is related to lee?')
-    for subst in db |- related(A, lee):
+    for subst in db.query(related(A, lee)):
         print(subst[A])
     print()
 
     print('is lee related to joe?')
-    for subst in db |- related(lee, joe):
+    for subst in db.query(related(lee, joe)):
         print('Yes.')
         break
     else:
@@ -204,7 +212,7 @@ def genealogy(db, joe, bob, dan, lee, descendant, ancestor, related, tribe, A,
     print()
 
     print('is lee related to bob?')
-    for subst in db |- related(lee, bob):
+    for subst in db.query(related(lee, bob)):
         print('Yes.')
         break
     else:
@@ -212,7 +220,7 @@ def genealogy(db, joe, bob, dan, lee, descendant, ancestor, related, tribe, A,
     print()
 
     print('one is not a relative of oneself. true?')
-    for subst in db |- not_(related(A, A)):
+    for subst in db.query(not_(related(A, A))):
         print('Yes.')
         break
     else:
@@ -220,12 +228,12 @@ def genealogy(db, joe, bob, dan, lee, descendant, ancestor, related, tribe, A,
     print()
 
     print('who belongs to joe\'s tribe?')
-    for subst in db |- tribe(joe, A):
+    for subst in db.query(tribe(joe, A)):
         print(subst[A])
     print()
 
     print('what clauses does the predicate descendant/2 consist of?')
-    for subst in db |- listing(descendant, 2):
+    for subst in db.query(listing(descendant, 2)):
         print('Yes.')
         break
     else:
@@ -234,6 +242,7 @@ def genealogy(db, joe, bob, dan, lee, descendant, ancestor, related, tribe, A,
 
 
 db = Database()
+#db.consult(eqtest)
 db.consult(barbara)
 db.consult(varunify)
 db.consult(pyfunc)

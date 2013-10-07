@@ -1,4 +1,5 @@
-from resolver import Database
+from expressions import pyfunc
+from resolver import Database, UnificationFailed
 from system import *
 
 
@@ -202,31 +203,161 @@ def grammar(db, s, np, vp, det, noun, verb, masculine, feminine, neuter,
 
     )
 
-    #for subst in db |- equal(A, [B, 'hunde', 'jagen', C, 'katzen']) & s(A):
+    #for subst in db.query(equal(A, [B, 'hunde', 'jagen', C, 'katzen']) & s(A)):
         #print(subst[A])
     #print()
-    #for subst in db |- s(A) & member('jagen', A):
+    #for subst in db.query(s(A) & member('jagen', A)):
         #print(subst[A])
-    #for subst in db |- equal(A, ['manche', 'mauese', 'jagen' | B]) & s(A):
-        #print(subst[A])
-    #for subst in db |- equal(A, [D, 'kater', 'jagen' | B]) & s(A):
-        #print(subst[A])
-    #for subst in db |- equal(A, 'manche mauese jagen viele katzen'.split()) & s(A):
-        #print(subst[A])
-    #for subst in db |- equal(A, [B, C, 'jagen']) & s(A):
-        #print(subst[A])
-    for subst in db |- equal(A, ['manche', B, C]) & s(A):
+    for subst in db.query(equal(A, ['manche', 'mauese', 'jagen' | B]) & s(A)):
         print(subst[A])
+    #for subst in db.query(equal(A, [D, 'kater', 'jagen' | B]) & s(A)):
+        #print(subst[A])
+    #for subst in db.query(equal(A, 'manche mauese jagen viele katzen'.split()) & s(A)):
+        #print(subst[A])
+    #for subst in db.query(equal(A, [B, C, 'jagen']) & s(A)):
+        #print(subst[A])
+    #for subst in db.query(equal(A, ['manche', B, C]) & s(A)):
+        #print(subst[A])
     #print()
-    #for subst in db |- equal(A, [B, C, D, 'den', F]) & s(A):
+    #for subst in db.query(equal(A, [B, C, D, 'den', F]) & s(A)):
         #print(subst[A])
-    #for subst in db |- equal(A, [B, C, 'jagt', D, E]) & s(A):
+    #for subst in db.query(equal(A, [B, C, 'jagt', D, E]) & s(A)):
         #print(subst[A])
-    #for i, subst in enumerate(db |- s(A)):
+    #for i, subst in enumerate(db.query(s(A))):
         #pass
         #print(subst[A])
     #print(i)
 
 
+def mudlang(db, has, use, using, take, sourcerer, dwarf, priest, knight, sword,
+            chalice, axe, wand, Who, Weapon, Action, X):
+    db.assertz(
+        has(sourcerer, wand),
+        has(dwarf, axe),
+        has(priest, chalice),
+        has(knight, sword),
+        use(Who, using(Who, Weapon)) >>
+            [use] & {has(Who, Weapon)} & take(Weapon),
+        take(sword) >> [sword],
+        take(axe) >> [axe],
+        take(wand) >> [wand],
+        take(chalice) >> [chalice],
+
+    )
+    # has(Who, Weapon) &
+    for subst in db.query(use(Who, using(_, 'wand'), X, [])):
+    #for subst in db.query(listing(use)):
+        print(subst[Who])
+        #pass
+
+
+def grammar2(db, s, np, vp, det, noun, verb, masculine, feminine, neuter, adj,
+             nominative, genitive, dative, accusative, plural, singular,
+             intransitive, transitive, Gender, Number, Case, Trans, Rest,
+             T, A, B, C, D, E, F, S, X, Y, Z, NP, VP, Det, Adj, Noun, Verb):
+
+    db.assertz(
+
+        s(S, T) << s(T, S, []),
+
+
+        s(s(NP, VP)) >>
+            np(NP, Number, nominative) &
+            vp(VP, Number, nominative, intransitive),
+
+
+        np(np(Det, Noun, [Gender, Number]), Number, Case) >>
+            det(Det, Gender, Number, Case) &
+            noun(Noun, Gender, Number, Case),
+
+        np(np(Det, Adj, Noun, [Gender, Number]), Number, Case) >>
+            det(Det, Gender, Number, Case) &
+            adj(Adj, Gender, Number, Case) &
+            noun(Noun, Gender, Number, Case),
+
+
+        vp(vp(Verb, NP), Number, nominative, intransitive) >>
+            verb(Verb, Number, nominative, intransitive) &
+            np(NP, Number, nominative),
+
+
+        det(det('der'), masculine, singular, nominative) >> ['der'],
+        det(det('die'), feminine, singular, nominative) >> ['die'],
+        det(det('das'), neuter, singular, nominative) >> ['das'],
+
+        det(det('ein'), masculine, singular, nominative) >> ['ein'],
+        det(det('eine'), feminine, singular, nominative) >> ['eine'],
+
+        det(det('kein'), masculine, singular, nominative) >> ['kein'],
+        det(det('keine'), feminine, singular, nominative) >> ['keine'],
+
+        det(det('jeder'), masculine, singular, nominative) >> ['jeder'],
+        det(det('jede'), feminine, singular, nominative) >> ['jede'],
+
+
+        adj(adj('betretbarer'), masculine, singular, nominative) >>
+            ['betretbarer'],
+
+
+        noun(noun('raum'), masculine, singular, nominative) >>
+            ['raum'] & {cut},
+
+
+        verb(verb('ist'), singular, nominative, intransitive) >>
+            ['ist'] & {cut},
+
+    )
+
+
+"""
+    Die Kabine ist ein Raum. "Kabinen an Bord eines Raumschiffs..."
+    Das Bad ist östlich von der Kabine. Die Beschreibung ist "Wie eine Kabine, ist auch das Bad..."
+    Die Broschüre ist in der Kabine. "Sie beschreibt die Herrlichkeit..."
+    Das Bett ist in der Kabine.
+    Das Bett ist ein betretbarer Raum.
+    Setze "Möbel" mit Bett gleich.
+    Der Spiegel ist Kulisse im Bad.
+    Die Dusche ist hier. Sie ist unbeweglich.
+"""
+
+
+def mudlang2(db, s, np, vp, noun, verb, feminine, singular, nominative, det,
+             transitive, intransitive, Number, np_unknown, noun_unknown,
+             Gender, Case, A, B, C, D, E, S, T, X, Y):
+
+    from copy import deepcopy
+
+    nouns = {}
+
+    def test(term, env, db, trail):
+        print('>>>', term)
+        nouns[env.X.name] = deepcopy((
+                                env.X,
+                                env.Gender,
+                                env.Number,
+                                env.Case
+                            ))
+
+    db.consult(grammar2)
+
+    db.assertz(
+
+        noun(noun(X), Gender, Number, Case, [X|Y], Y)[test],
+
+    )
+
+    L = ['die', 'kabine', 'ist', 'ein', 'betretbarer', 'raum']
+    #S = ['die', 'kabine', 'ist', 'ein', 'raum']
+    for subst in db.query(equal(L, S) & s(S, T)):
+        print(subst[S])
+        print(subst[T])
+    print(nouns)
+    #for subst in db.query(equal(A, cut) & call(A)):
+        #print(subst[A])
+    #for subst in db.query(listing('test')):
+        #pass
+
+
 db = Database()
 db.consult(grammar)
+#db.consult(mudlang2)
