@@ -1,45 +1,4 @@
 hornet
 ======
 
-A Prolog-like Embedded DSL for Python 3.3.
-
-Just something I did over the holidays. It is only a proof of concept and not intended to
-be used straight away. You can, of course, do so, but please don't hold me responsible if
-your computer explodes while you use it.
-
-What it does:
-
-It provides a way to program Prolog in Python - sort of. The syntax is different, naturally,
-and at the moment there are only few system predicates implemented. It is very easy to
-interface with Python, since it is Python. See hanoi.py for an example. It is a modified
-version of minimal_hanoi.py that comes with Python in the Lib\turtledemo directory. Instead
-of the original version it uses hornet to compute the hanoi algorithm.
-
-parsing.py contains the DCG rules for some (about 9500, actually) meaningless but grammatically
-correct german sentences. It exists only so I can see if my DCG translation works.
-
-examples.py illustrates some more stuff that is possible with hornet.
-
-expressions.py contains some kind of monadic expression tree combinators, hence the name:
-Horn clauses via Expression Trees.
-
-The DSL is Prolog-like, as close as one could get using only Pythons operators.
-Instead of the comma to seperate goals in a clause's body, I use '&', instead of ':-' I use
-'<<', and since hornet also understands (well, part of) DCG rules, '-->' becomes '>>'.
-
-resolver.py contains the SLD Resolver. It's implementation is semi-naive and slow. My goal was
-not to write a fast Prolog engine in Python, but to play around with new stuff that comes
-with Python 3.3, and also to find out if it'd be possible to create an Embedded DSL like that.
-
-Maybe I'll replace it by a WAM-based version one day, after I finished reading Ait-Kaci's book.
-
-system.py contains system predicates like member/2, reverse/2, true/0, cut/0 and so on.
-
-util.py contains some helper functions.
-
-
-Beware: the code still needs some serious massaging. In fact, it is hideously complicated in
-some places. By that I mean expression.py, which I intend to replace with something sane in the
-near future. Stay tuned.
-
-Also, there are insufficient tests and no comments.
+Horn clauses via Expression Trees, a Prolog-like Embedded DSL for Python 3.4.
