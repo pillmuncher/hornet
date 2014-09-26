@@ -1,0 +1,3 @@
+#!/bin/sh
+
+/c/Programme/Python/3.4/python -m hornet.examples."$1"
