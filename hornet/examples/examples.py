@@ -271,19 +271,27 @@ def genealogy(db):
     print()
 
 
-def bup(db):
+def backwards(db):
 
-    for subst in db.query(member(A, [a, b, c])):
-        print(subst[A])
+    #for subst in db.query(member(X, [a, b, c])):
+        #print(subst[X])
+        #print('Yes')
+        #break
+    #else:
+        #print('No.')
 
-    #for subst in db.query(member(a, [X, Y, Z])):
-        #print('>>>',subst)
+    #for subst in db.query(equal(W, [X, Y, Z]) & member(a, W) & member(b, W)):
+    #for subst in db.query(equal(W, [X, Y, Z]) & member(a, W)):
+        #print(subst[W])
 
-    for subst in db.query(append(X, Y, [a, b, c, d, e])):
-        print(subst[X], subst[Y])
+    for subst in db.query(append([a, b], [c, d, e], X)):
+        print(subst[X])
 
-    for subst in db.query(ignore(true) & ignore(fail)):
-        print('Yes, ignored.')
+    #for subst in db.query(append(X, Y, [a, b, c, d, e])):
+        #print(subst[X], subst[Y])
+
+    #for subst in db.query(ignore(true) & ignore(fail)):
+        #print('Yes, ignored.')
 
 
 
@@ -347,16 +355,23 @@ def univ_test(db):
         #print('No.')
 
 
+#def rec(db):
+    #for subst in db.query(equal(X, a(X))):
+        #print(subst[X])
+    #print()
+
+
 db = Database()
-xor_test(db)
-eqtest(db)
-barbara(db)
-varunify(db)
-subtraction(db)
-stdtypes(db)
-difflist(db)
-genealogy(db)
-unify_test(db)
-bup(db)
-univ_test(db)
-show_db(db)
+#xor_test(db)
+#eqtest(db)
+#barbara(db)
+#varunify(db)
+#subtraction(db)
+#stdtypes(db)
+#difflist(db)
+#genealogy(db)
+#unify_test(db)
+backwards(db)
+#univ_test(db)
+#rec(db)
+#show_db(db)
