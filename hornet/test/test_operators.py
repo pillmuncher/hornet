@@ -3,8 +3,8 @@
 #
 # Copyright (C) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
-__version__ = '0.0.2a'
-__date__ = '2014-08-20'
+__version__ = '0.2.3a'
+__date__ = '2014-09-27'
 __author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
 __license__ = 'MIT'
 
