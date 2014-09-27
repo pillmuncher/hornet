@@ -21,8 +21,8 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-__version__ = '0.0.2a'
-__date__ = '2014-08-20'
+__version__ = '0.2.3a'
+__date__ = '2014-09-27'
 __author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
 __license__ = 'MIT'
 
