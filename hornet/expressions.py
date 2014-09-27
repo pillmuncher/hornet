@@ -12,12 +12,12 @@ __license__ = 'MIT'
 import codegen
 
 import ast
-import copy as copy_
 import functools
 import numbers
+import operator
 import weakref
 
-from .util import identity, flip, qualname, compose, foldl
+from .util import identity, flip, foldl, qualname, compose2 as compose
 
 
 __all__ = [
@@ -34,7 +34,6 @@ __all__ = [
     'copy',
     # helper functions:
     'promote',
-    'extract',
     'astify',
     # Expression factory functions:
     'Name',
@@ -47,7 +46,6 @@ __all__ = [
     'Dict',
     'Wrapper',
     # Expression factory operators:
-    'Attribute',
     'Subscript',
     'Call',
     'USub',
@@ -68,25 +66,6 @@ __all__ = [
 ]
 
 
-# _astreg is a registry that maps Expression objects to ASTs.
-# _insert(Expression, AST) and extract(Expression) --> AST are two convenience
-# functions for storing and retrieving ASTs given an Expression object.
-#
-# ASTs cannot be stored in Expression objects themselves, because that had to
-# be done under an attribute name, and all names should be usable with
-# Expression.__getattr__.  If, OTOH, ASTs were stored in an simple global dict,
-# someone better had to take care of removing them for us, if the Expression
-# object is no longer referenced by any other code.  While it would be possible
-# to use Expression.__del__(), that is no viable alternative at all, because it
-# comes with too many warts.  But luckily Python is kind to us and provides us
-# with a weak key dictionary, that has entries removed by the GC if their keys
-# are no longer referenced by any non-weak references.
-
-_astreg = weakref.WeakKeyDictionary()
-_insert = _astreg.__setitem__
-extract = _astreg.__getitem__
-
-
 # The Expression class is a wrapper for ASTs. These aren't held by Expression
 # objects directly because of the reasons and by the means mentioned above.
 #
@@ -95,23 +74,17 @@ extract = _astreg.__getitem__
 
 class Expression:
 
-    # Since Expression objects don't have any user defined attributes beyond
-    # some special methods that are there anyway, we can define __slots__ so no
-    # __dict__ gets created. Since that also would inhibit the use of
-    # __weakref__ we need to define it in __slots__. See the Python docs for
-    # how the slots machinery works.
-
-    __slots__ = '__weakref__'
+    __slots__ = 'node'
 
     def __init__(self, node):
         "Initialize an Expression object with an AST node."
-        _insert(self, node)
+        self.node = node
 
     def __repr__(self):
-        return ast.dump(extract(self))
+        return ast.dump(self.node)
 
     def __str__(self):
-        return codegen.to_source(extract(self))
+        return codegen.to_source(self.node)
 
 
 # In the Monad, unit is the same as Expression:
@@ -125,7 +98,7 @@ unit = Expression
 # returns whatever mfunc returns.
 
 def bind(expr, mfunc):
-    return mfunc(extract(expr))
+    return mfunc(expr.node)
 
 
 # The function lift(func:T --> AST) --> (T --> Expression) "lifts" a normal
@@ -136,32 +109,18 @@ def lift(func):
     return compose(func, unit)
 
 
-#def liftm(func):
-    #return lambda *args: func(*[unit(arg) for arg in args])
-
-
-#mliftm = compose(liftm, lift)
-
-
 # Turn a monadic function mf:AST --> Expression into one that can be called
 # directly on an Expression object. The resulting function therefor has the
 # signature Expression --> Expression.
 
 def mapply(mfunc):
-    return compose(extract, mfunc)
+    return lambda expr: mfunc(expr.node)
 
 
 # Make monadic functions mf:AST --> Expression composable:
 
 def mcompose(*mfuncs):
     return compose(unit, functools.partial(foldl, bind, mfuncs))
-
-
-copy = lift(copy_.deepcopy)
-
-
-class AstWrapper(ast.AST):
-    pass
 
 
 # Here come the Expression factory functions.
@@ -227,6 +186,10 @@ def Dict(dict_):
 # above.
 
 
+class AstWrapper(ast.AST):
+    pass
+
+
 @lift
 def Wrapper(wrapped):
     return AstWrapper(wrapped=wrapped)
@@ -287,16 +250,6 @@ def Wrapper(wrapped):
 
 # we rely on the priority and associativity rules that Python imposes on us.
 # Then this expression is the same as ((x - (y * z)) + 1).
-
-@qualname('Expression.__getattr__')
-@lift
-def Attribute(value, attr):
-    return ast.Attribute(
-        value=astify(value),
-        attr=attr,
-        ctx=ast.Load(),
-    )
-
 
 @qualname('Expression.__getitem__')
 @lift
@@ -359,7 +312,6 @@ BitOr = _binary_op(ast.BitOr, 'Expression.__or__')
 # Here the Expression factory operator functions get finally bound to the
 # Expression class:
 
-Expression.__getattr__ = Attribute
 Expression.__getitem__ = Subscript
 Expression.__call__ = Call
 Expression.__neg__ = USub
@@ -415,4 +367,4 @@ def promote(item):
 # Given any Python object 'item', return its AST (and create it if necessary):
 
 def astify(item):
-    return extract(promote(item))
+    return promote(item).node

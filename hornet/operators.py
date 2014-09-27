@@ -16,7 +16,7 @@ import functools
 import operator
 
 from .util import rpartial, pairwise, method_of, compose2 as compose
-from .expressions import lift, extract, promote, AstWrapper
+from .expressions import lift, promote, AstWrapper
 
 
 class ParseError(Exception):
@@ -231,7 +231,7 @@ class ASTFlattener(ast.NodeVisitor):
         if node.n >= 0:
             self.append(node)
         else:
-            self.visit(extract(-promote(-node.n)))
+            self.visit((-promote(-node.n)).node)
 
     def visit_Tuple(self, node):
         self.append(
@@ -257,9 +257,6 @@ class ASTFlattener(ast.NodeVisitor):
 
     def visit_AstWrapper(self, node):
         self.append(node)
-
-    def visit_Attribute(self, node):
-        raise ValueError('Attributes not allowed!')
 
     def visit_Subscript(self, node):
         if is_tuple(node.slice.value):

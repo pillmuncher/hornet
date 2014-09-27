@@ -27,7 +27,7 @@ def show_db(db):
 def xor_test(db):
     for each in fail ^ true, true ^ fail, fail ^ fail, true ^ true:
         for subst in db.query(equal(each, X) & call(X)):
-            print(subst[X])
+           print(subst[X])
     print()
 
 

@@ -67,7 +67,7 @@ import copy
 import numbers
 import pprint
 
-from .expressions import unit, bind, lift, mapply, mcompose, extract, promote
+from .expressions import unit, bind, lift, mapply, mcompose, promote
 from .expressions import Name
 from .dcg import _C_
 from .terms import UnificationFailed, make_list, is_atomic, Num, Indicator, Cut
@@ -121,7 +121,6 @@ __all__ = [
     'lift',
     'mapply',
     'mcompose',
-    'extract',
     'promote'
 ] + system_names
 
@@ -165,12 +164,12 @@ def _writeln(term, env, db, trail):
 
 def _findall_3(term, env, db, trail):
     results = [copy.deepcopy(env.Object.deref) for _ in db.resolve(env.Goal)]
-    unify(env.List, make_list(env(), results), trail)
+    unify(env.List, make_list(env, results), trail)
 
 
 def _findall_4(term, env, db, trail):
     results = [copy.deepcopy(env.Object.deref) for _ in db.resolve(env.Goal)]
-    unify(env.List, make_list(env(), results, env.Rest), trail)
+    unify(env.List, make_list(env, results, env.Rest), trail)
 
 
 def _listing_0(term, env, db, trail):
@@ -270,11 +269,11 @@ def _univ(term, env, db, trail):
 
     if isinstance(env.T, Relation):
         params = make_list(env, env.T.params)
-        result = make_list(env, [Atom(env=env(), name=env.T.name)], params)
+        result = make_list(env, [Atom(env=env, name=env.T.name)], params)
         unify(env.L, result, trail)
 
     elif isinstance(env.T, Atom):
-        result = make_list(env, [Atom(env=env(), name=env.T.name)])
+        result = make_list(env, [Atom(env=env, name=env.T.name)])
         unify(env.L, result, trail)
 
     elif isinstance(env.L, List):
@@ -284,10 +283,10 @@ def _univ(term, env, db, trail):
         if params:
             if isinstance(params[-1], Adjunction):
                 raise TypeError('List expected, found {}'.format(env.L))
-            result = Relation(env=env(), name=functor.name, params=params)
+            result = Relation(env=env, name=functor.name, params=params)
             unify(env.T, result, trail)
         else:
-            unify(env.T, Atom(env=env(), name=functor.name), trail)
+            unify(env.T, Atom(env=env, name=functor.name), trail)
 
     else:
         raise UnificationFailed

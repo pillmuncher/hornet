@@ -91,11 +91,11 @@ def test_expression_factories():
 def test_expression_operators():
     "Test all Expression factory functions that are called as operators."
 
-    from hornet.expressions import unit, extract, Num
+    from hornet.expressions import unit, Num
     from hornet.symbols import x, y
 
-    x_name = extract(x)
-    y_name = extract(y)
+    x_name = x.node
+    y_name = y.node
     name = 'joe'
     num = 123
     items = [Num(1), Num(2), Num(3)]

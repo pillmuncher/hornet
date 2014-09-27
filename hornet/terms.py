@@ -17,12 +17,11 @@ import functools
 import operator
 import string
 
-from .expressions import _insert, extract, mcompose, mapply
-from .operators import f, fx, fy, xfx, xfy, yfx, make_token, is_bitor
-from .operators import rearrange
-from .dcg import dcg_expand
 from .util import noop, const, foldr, compose2 as compose, method_of
 from .util import first_arg as get_self, rpartial
+from .expressions import mcompose, mapply
+from .operators import fy, xfx, xfy, yfx, make_token, is_bitor, rearrange
+from .dcg import dcg_expand
 
 
 def get_name(self):
@@ -45,7 +44,7 @@ comma_separated = compose(functools.partial(map, str), ', '.join)
 
 def action_str(term):
     if term.actions:
-        return '[{}]'.format(', '.join(f.__name__ for f in term.actions))
+        return '[{}]'.format(', '.join(a.__name__ for a in term.actions))
     else:
         return ''
 
@@ -105,14 +104,14 @@ class Variable(collections.Counter):
     __hash__ = object.__hash__
 
     def __deepcopy__(self, memo, deepcopy=copy.deepcopy):
-        var = deepcopy(self.env, memo)[self.name]
+        var = deepcopy(self.env, memo)(self.name)
         if self and not var:
             memo[id(self)] = var
             var.update((deepcopy(k, memo), v) for k, v in self.items())
         return var
 
     def fresh(self, env):
-        return env[self.name]
+        return env(self.name)
 
     @property
     def deref(self):
@@ -190,9 +189,8 @@ class Structure:
             actions=self.actions)
 
     def action(self, *args, **kwargs):
-        env_proxy = self.env.proxy
         for each_action in self.actions:
-            each_action(self, env_proxy, *args, **kwargs)
+            each_action(self, self.env, *args, **kwargs)
 
     def unify(self, other, trail):
         other.unify_structure(self, trail)
@@ -558,26 +556,17 @@ def trailing():
 
 class Environment(dict):
 
-    def __getitem__(self, name, dict_getitem=dict.__getitem__):
+    def __call__(self, name, dict_getitem=dict.__getitem__, str=str):
+        try:
+            return dict_getitem(self, str(name))
+        except KeyError:
+            var = self[name] = Variable(env=self, name=name)
+            return var
+
+    def __getitem__(self, name, dict_getitem=dict.__getitem__, str=str):
         return dict_getitem(self, str(name))
 
-    def __missing__(self, name, Variable=Variable):
-        var = self[name] = Variable(env=self, name=name)
-        return var
-
-    @property
-    class proxy:
-
-        __slots__ = '__weakref__'
-
-        def __init__(self, env):
-            _insert(self, env)
-
-        def __getattr__(self, name):
-            return extract(self).get(name)
-
-        def __call__(self):
-            return extract(self)
+    __getattr__ = __getitem__
 
 
 def visit_op(op_class, op_name):
@@ -618,7 +607,7 @@ class Builder(ast.NodeVisitor):
         if is_wildcard_name(node.id):
             self.append(WILDCARD)
         elif is_variable_name(node.id):
-            self.append(self.env[node.id])
+            self.append(self.env(node.id))
         else:
             self.append(Atom(env=self.env, name=node.id))
 
@@ -671,12 +660,6 @@ class Builder(ast.NodeVisitor):
         raise ValueError
 
     def visit_AstWrapper(self, node):
-        raise ValueError
-
-    def visit_Attribute(self, node):
-        raise ValueError
-
-    def visit_Attribute(self, node):
         raise ValueError
 
     def visit_Subscript(self, node):

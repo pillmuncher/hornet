@@ -14,7 +14,7 @@ import copy
 import itertools
 
 from .util import identity, foldr, pairwise, receive_missing_args
-from .expressions import unit, extract, Name
+from .expressions import unit, Name
 from .operators import is_rshift, is_bitand, is_name, is_list, is_set, is_call
 from .operators import is_str
 
@@ -47,7 +47,7 @@ def conjunction(left, right):
 def numbered_vars(prefix):
 
     for n in itertools.count():
-        yield extract(Name(prefix + str(n)))
+        yield Name(prefix + str(n)).node
 
 
 
@@ -92,15 +92,15 @@ class NodeTagger:
         del self.right_side
 
     def as_goal(self, call):
-        self.left_side.append(goal_setter(extract(call)))
+        self.left_side.append(goal_setter(call.node))
         return call
 
     def as_terminal(self, call):
-        self.left_side.append(terminal_setter(extract(call)))
+        self.left_side.append(terminal_setter(call.node))
         return call
 
     def as_pushback(self, call):
-        self.right_side.appendleft(pushback_setter(extract(call)))
+        self.right_side.appendleft(pushback_setter(call.node))
         return call
 
 
