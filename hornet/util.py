@@ -1,10 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-#
-# Copyright (C) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
-
-__version__ = '0.2.3a'
-__date__ = '2014-09-27'
 __author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
 __license__ = 'MIT'
 
@@ -19,7 +12,7 @@ wrap = lambda f: wraps(f)(lambda *a, **k: f(*a, **k))
 flip = lambda f: wraps(f)(lambda *a: f(*reversed(a)))
 
 identity = lambda x: x          # AKA: the I combinator
-const = lambda x: lambda _: x   # AKA: the K combinator (with currying)
+const = lambda x: lambda _: x   # AKA: the K combinator
 
 first_arg = lambda x, *a, **k: x
 
