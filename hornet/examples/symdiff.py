@@ -268,12 +268,6 @@ def diff_test(db):
     for subst in db.query(d(F, x, G) & simp(G, H)):
         print(subst[G])
         print(subst[H])
-    #for subst in db.query(listing(d)):
-        #print('Yes.')
-        #break
-    #else:
-        #print('No.')
-    #print()
 
 
 def main():

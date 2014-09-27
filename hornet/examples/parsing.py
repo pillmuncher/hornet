@@ -329,13 +329,6 @@ def mudlang2(db):
         print(subst[S])
         print(subst[T])
     print(nouns)
-    #for subst in db.query(equal(A, cut) & call(A)):
-        #print(subst[A])
-    #for subst in db.query(listing('test')):
-        #pass
-
-
-
 
 db = Database()
 #grammar(db)

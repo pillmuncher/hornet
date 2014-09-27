@@ -60,28 +60,6 @@ def varunify(db):
     print()
 
 
-#def pyfunc_test(db):
-    #def nonequal(X, Y):
-        #if X == Y:
-            #raise UnificationFailed
-    #db.assertz(nonequal)
-
-
-#def pyfunc(db):
-    #pyfunc_test(db)
-    #for subst in db.query(nonequal('holla', 'hallo')):
-        #print('Yes.')
-        #break
-    #else:
-        #print('No.')
-    #for subst in db.query(nonequal(1, 1)):
-        #print('Yes.')
-        #break
-    #else:
-        #print('No.')
-    #print()
-
-
 def subtraction(db):
     q = equal(A, 5) & equal(B, 2) & equal(C, 1) & let(D, A - B - C)
     for subst in db.query(q):
@@ -198,10 +176,10 @@ def tribes(db):
 
         tribe(X, [Z | Tribe]) <<
             patriarch(Z, X) &
-            #findall(Y, descendant(Y, Z), Tribe),
-            #findall(test(Y, U), descendant(Y, Z), Tribe, U) & equal(U, [patriarch]),
-            findall(test(Y, U, test(U)), descendant(Y, Z), Tribe) &
-            equal(W, bob) & equal(Tribe, [test(_, V, _) | _]) & equal(W, V),
+            findall(Y, descendant(Y, Z), Tribe),
+            findall(test(Y, U), descendant(Y, Z), Tribe, U) & equal(U, [patriarch]),
+            #findall(test(Y, U, test(U)), descendant(Y, Z), Tribe) &
+            #equal(W, bob) & equal(Tribe, [test(_, V, _) | _]) & equal(W, V),
             #findall(test(Y, U), descendant(Y, Z) & equal(Y, U), Tribe),
 
     )
@@ -370,7 +348,6 @@ def univ_test(db):
 
 
 db = Database()
-#pyfunc(db)
 xor_test(db)
 eqtest(db)
 barbara(db)

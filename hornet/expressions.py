@@ -36,7 +36,6 @@ __all__ = [
     'promote',
     'extract',
     'astify',
-    #'expr_eval',
     # Expression factory functions:
     'Name',
     'Bytes',
@@ -417,31 +416,3 @@ def promote(item):
 
 def astify(item):
     return extract(promote(item))
-
-
-# TODO: write something useful.
-
-class ExpressionTransformer(ast.NodeTransformer):
-
-    @lift
-    def __call__(self, node):
-        return self.visit(copy_.deepcopy(node))
-
-
-class ExpressionVisitor(ast.NodeVisitor):
-
-    def __call__(self, expr):
-        self.visit(extract(expr))
-        return self.value()
-
-    def value(self):
-        pass
-
-
-# Evaluate the AST of Expression object expr in an execution environment given
-# by globals and locals:
-
-#def expr_eval(expr, globals, locals):
-    #expr_ast = bind(expr, ast.Expression)
-    #ast.fix_missing_locations(expr_ast)
-    #return eval(compile(expr_ast, '<ast>', 'eval'), globals, locals)
