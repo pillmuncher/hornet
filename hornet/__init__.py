@@ -57,28 +57,6 @@ def __init__():
 
     sys.meta_path.insert(0, SymbolsImporter())
 
-    #from .util import identity
-
-    #STRINGS_NAME = 'hornet.strings'
-
-    #class StringsFactory(types.ModuleType):
-        #__getattr__ = staticmethod(lru_cache()(identity))
-
-    #class StringsImporter(MetaPathFinder, Loader):
-
-        #def find_spec(self, fullname, path=None, target=None):
-            #if fullname == STRINGS_NAME:
-                #return ModuleSpec(fullname, self)
-
-        #def create_module(self, spec):
-            #return sys.modules.setdefault(spec.name, StringsFactory(spec.name))
-
-        #def exec_module(self, module):
-            #pass
-
-    #sys.meta_path.insert(0, StringsImporter())
-
-
 __init__()
 
 del __init__

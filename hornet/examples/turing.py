@@ -1,3 +1,14 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
+
+__version__ = '0.0.2a'
+__date__ = '2014-08-20'
+__author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
+__license__ = 'MIT'
+
+
 from hornet import *
 
 from hornet.symbols import Action, L, Ls, Ls0, Ls1, NewSym, Q0, Q1, Rs, Rs0

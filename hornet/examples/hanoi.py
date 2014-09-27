@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 """       turtle-example-suite:
 
          tdemo_minimal_hanoi.py
