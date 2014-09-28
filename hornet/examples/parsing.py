@@ -331,5 +331,5 @@ def mudlang2(db):
     print(nouns)
 
 db = Database()
-#grammar(db)
-mudlang2(db)
+grammar(db)
+#mudlang2(db)

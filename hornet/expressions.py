@@ -14,24 +14,19 @@ import codegen
 import ast
 import functools
 import numbers
-import operator
-import weakref
 
 from .util import identity, flip, foldl, qualname, compose2 as compose
 
 
 __all__ = [
-    # classes:
+    # monad class:
     'Expression',
-    'ExpressionTransformer',
-    'ExpressionVisitor',
     # monadic functions:
     'unit',
     'bind',
     'lift',
     'mapply',
     'mcompose',
-    'copy',
     # helper functions:
     'promote',
     'astify',
@@ -43,7 +38,6 @@ __all__ = [
     'Tuple',
     'List',
     'Set',
-    'Dict',
     'Wrapper',
     # Expression factory operators:
     'Subscript',
@@ -169,15 +163,6 @@ def List(list_):
 @lift
 def Set(set_):
     return ast.Set(elts=[astify(each) for each in set_])
-
-
-@lift
-def Dict(dict_):
-    keys, values = zip(*dict_.items())
-    return ast.Dict(
-        keys=[astify(key) for key in keys],
-        values=[astify(value) for value in values]
-    )
 
 
 # Although the following functions do not represent AST node types, they are
@@ -353,7 +338,6 @@ _promotions = [
     (tuple, Tuple),
     (list, List),
     (set, Set),
-    (dict, Dict),
     (object, Wrapper),
 ]
 
