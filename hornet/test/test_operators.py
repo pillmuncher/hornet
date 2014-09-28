@@ -32,20 +32,20 @@ def test_rearrange():
         #(a & (b | c), a & (b | c)),
     )
 
-    ast_test_all_raise(
-        ValueError,
-        rearrange,
-        a.foo,
-        a(1).foo[b, 2].bar,
-        c({a:1, b:2}),
-    )
-    ast_test_all_raise(
-        TypeError,
-        rearrange,
-        a.foo.bar((b & c) & d),
-        a.foo[(b & c) & d],
-        a[1],
-    )
+    #ast_test_all_raise(
+        #ValueError,
+        #rearrange,
+        #a.foo,
+        #a(1).foo[b, 2].bar,
+        #c({a:1, b:2}),
+    #)
+    #ast_test_all_raise(
+        #TypeError,
+        #rearrange,
+        #a.foo.bar((b & c) & d),
+        #a.foo[(b & c) & d],
+        #a[1],
+    #)
     ast_test_all_raise(
         ParseError,
         rearrange,

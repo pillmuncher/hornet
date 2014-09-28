@@ -66,14 +66,13 @@ __all__ = [
 ]
 
 
-# The Expression class is a wrapper for ASTs. These aren't held by Expression
-# objects directly because of the reasons and by the means mentioned above.
-#
-# Together, Expression and the bind function below constitute a Monad.
-# See also .test.test_expresion.test_monad_laws()
-
 class Expression:
 
+    """
+    An Expression object wraps around an AST node.
+    """
+
+    # See also .test.test_expresion.test_monad_laws()
     __slots__ = 'node'
 
     def __init__(self, node):

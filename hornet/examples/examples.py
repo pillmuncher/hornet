@@ -275,17 +275,13 @@ def backwards(db):
 
     #for subst in db.query(member(X, [a, b, c])):
         #print(subst[X])
-        #print('Yes')
-        #break
-    #else:
-        #print('No.')
 
-    #for subst in db.query(equal(W, [X, Y, Z]) & member(a, W) & member(b, W)):
+    for subst in db.query(equal(W, [X, Y, Z]) & member(a, W) & member(b, W)):
     #for subst in db.query(equal(W, [X, Y, Z]) & member(a, W)):
-        #print(subst[W])
+        print(subst[W])
 
-    for subst in db.query(append([a, b], [c, d, e], X)):
-        print(subst[X])
+    #for subst in db.query(append([a, b], [c, d, e], X)):
+        #print(subst[X])
 
     #for subst in db.query(append(X, Y, [a, b, c, d, e])):
         #print(subst[X], subst[Y])
@@ -362,16 +358,16 @@ def univ_test(db):
 
 
 db = Database()
-#xor_test(db)
-#eqtest(db)
-#barbara(db)
-#varunify(db)
-#subtraction(db)
-#stdtypes(db)
-#difflist(db)
-#genealogy(db)
-#unify_test(db)
+show_db(db)
+xor_test(db)
+eqtest(db)
+barbara(db)
+varunify(db)
+subtraction(db)
+stdtypes(db)
+difflist(db)
+genealogy(db)
+unify_test(db)
 backwards(db)
-#univ_test(db)
+univ_test(db)
 #rec(db)
-#show_db(db)

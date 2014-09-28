@@ -101,13 +101,12 @@ def test_expression_operators():
     items = [Num(1), Num(2), Num(3)]
 
     pairs = (
-        [x.foo, ast.Attribute(value=x_name, attr='foo', ctx=load)],
         [x[y], ast.Subscript(value=x_name, slice=ast.Index(y_name), ctx=load)],
-        [x(1, 2, 3, joe=y),
+        [x(1, 2, 3),
          ast.Call(
             func=x_name,
             args=items,
-            keywords=[ast.keyword(arg=name, value=y_name)],
+            keywords=[],
             starargs=None,
             kwargs=None,
         )],
