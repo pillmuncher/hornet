@@ -1,5 +1,7 @@
-import os
+import ez_setup
+ez_setup.use_setuptools()
 from setuptools import setup
+import os
 
 def read(fname):
     with open(os.path.join(os.path.dirname(__file__), fname)) as f:
