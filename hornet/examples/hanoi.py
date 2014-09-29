@@ -72,7 +72,7 @@ def hanoi():
 
     db = Database()
 
-    db.assertz(
+    db.tell(
 
         play_hanoi(N, From, To, With) <<
             greater(N, 0) &
@@ -86,7 +86,7 @@ def hanoi():
             move(M, With, To, From),
     )
 
-    for subst in db.query(play_hanoi(6, 0, 1, 2)):
+    for subst in db.ask(play_hanoi(6, 0, 1, 2)):
         print('Yes.')
         break
     else:

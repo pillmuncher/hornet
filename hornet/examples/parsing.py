@@ -11,18 +11,18 @@ __license__ = 'MIT'
 
 from hornet import *
 
-from hornet.symbols import A, Adj, B, C, Case, D, Det, E, F, Gender, NP, Noun
-from hornet.symbols import Number, L, Rest, S, T, Trans, VP, Verb, X, Y, Z
-from hornet.symbols import accusative, adj, dative, det, feminine, genitive
-from hornet.symbols import intransitive, masculine, neuter, nominative, noun
-from hornet.symbols import noun_unknown, np, np_unknown, W, plural, s, singular
-from hornet.symbols import transitive, verb, vp, a, b, c, d, e
+from hornet.symbols import (
+    A, Adj, B, C, Case, D, Det, E, F, Gender, L, NP, Noun, Number, Rest, S, T,
+    Trans, VP, Verb, W, X, Y, Z, accusative, adj, dative, det, feminine,
+    genitive, intransitive, masculine, neuter, nominative, noun, noun_unknown,
+    np, np_unknown, plural, s, singular, transitive, verb, vp,
+)
 
 
 
 def grammar(db):
 
-    db.assertz(
+    db.tell(
 
         s(S) << s(S, []),
 
@@ -217,7 +217,7 @@ def grammar(db):
 
     )
 
-    #for subst in db.query(s(A) & member('jagen', A)):
+    #for subst in db.ask(s(A) & member('jagen', A)):
 
     #words = [B, 'hunde', 'jagen', C, 'katzen']
     #words = ['manche', 'mauese', 'jagen' | B]
@@ -228,8 +228,8 @@ def grammar(db):
     words = [B, C, D, 'die', F]
     #words = [B, C, 'jagt', D, E]
 
-    for subst in db.query(equal(words, W) & s(W) & join(W, S, ' ')):
-    #for i, subst in enumerate(db.query(s(W) & join(W, S, ' '))):
+    for subst in db.ask(equal(words, W) & s(W) & join(W, S, ' ')):
+    #for i, subst in enumerate(db.ask(s(W) & join(W, S, ' '))):
         print(subst[S]())
         #print(repr(subst[S]))
     #print(i)
@@ -237,7 +237,7 @@ def grammar(db):
 
 def grammar2(db):
 
-    db.assertz(
+    db.tell(
 
         s(S, T) << s(T, S, []),
 
@@ -316,7 +316,7 @@ def mudlang2(db):
 
     grammar2(db)
 
-    db.assertz(
+    db.tell(
 
         #noun(noun(X), Gender, Number, Case, [X|Y], Y)
         noun(noun(X), Gender, Number, Case, [X|Y], Y)[test],
@@ -325,7 +325,7 @@ def mudlang2(db):
 
     L = ['die', 'kabine', 'ist', 'ein', 'betretbarer', 'raum']
     #S = ['die', 'kabine', 'ist', 'ein', 'raum']
-    for subst in db.query(equal(L, S) & s(S, T)):
+    for subst in db.ask(equal(L, S) & s(S, T)):
         print(subst[S])
         print(subst[T])
     print(nouns)

@@ -46,7 +46,7 @@ def test_resolver():
     from hornet.symbols import _, f, g, h, a, b, c, d, e, X, Y, Z, U, V, W
 
     db = Database()
-    db.assertz(
+    db.tell(
         a,
         f(a, b, c),
         f(a, a, a),
@@ -57,17 +57,17 @@ def test_resolver():
     )
     pprint(db)
 
-    for subst in db.query(g(a, Z, Z)):
+    for subst in db.ask(g(a, Z, Z)):
         pprint(subst)
 
-    for subst in db.query(g([a, b | c], Z, Z)):
+    for subst in db.ask(g([a, b | c], Z, Z)):
         pprint(subst)
 
-    for subst in db.query(f(X, Y, Z)):
+    for subst in db.ask(f(X, Y, Z)):
         pprint(subst)
 
-    for subst in db.query(h(X)):
+    for subst in db.ask(h(X)):
         pprint(subst)
 
-    for subst in db.query(~g(a, b, Y)):
+    for subst in db.ask(~g(a, b, Y)):
         print(subst)

@@ -247,12 +247,11 @@ def Subscript(target, subscript):
 
 @qualname('Expression.__call__')
 @lift
-def Call(target, *args, **kwargs):
+def Call(target, *args):
     return ast.Call(
         func=astify(target),
         args=[astify(each) for each in args],
-        keywords=[ast.keyword(arg=arg, value=astify(value))
-                    for arg, value in kwargs.items()],
+        keywords=[],
         starargs=None,
         kwargs=None,
     )

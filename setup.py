@@ -1,3 +1,9 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
+
+
 import ez_setup
 ez_setup.use_setuptools()
 from setuptools import setup

@@ -2,24 +2,7 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
-#
-# Permission is hereby granted, free of charge, to any person obtaining a
-# copy of this software and associated documentation files (the "Software"),
-# to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense,
-# and/or sell copies of the Software, and to permit persons to whom the
-# Software is furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included
-# in all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-# OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-# IN THE SOFTWARE.
+
 
 __version__ = '0.2.3a'
 __date__ = '2014-09-27'
@@ -73,7 +56,7 @@ from .dcg import _C_
 from .terms import UnificationFailed, make_list, is_atomic, Num, Indicator, Cut
 from .terms import unify, build_term, expand_term, is_assertable, cut_parent
 from .terms import Variable, List, Atom, Relation, Nil, NIL, Adjunction
-from .terms import Environment
+from .terms import Environment, Implication
 
 
 system_names = [
@@ -296,6 +279,50 @@ def _throw(term, env, db, trail):
     raise Exception
 
 
+class Clause(collections.namedtuple('BaseClause', 'head body term')):
+
+    __slots__ = ()
+
+    def fresh(self, env):
+        return type(self)(self.term.fresh(env))
+
+    @property
+    def name(self):
+        return self.head.name
+
+    @property
+    def indicator(self):
+        return self.head.indicator
+
+    def __str__(self):
+        return str(self.term)
+
+    def __repr__(self):
+        return repr(self.term)
+
+
+class Fact(Clause):
+
+    __slots__ = ()
+
+    def __new__(cls, term):
+        return Clause.__new__(cls, head=term, body=None, term=term)
+
+
+class Rule(Clause):
+
+    __slots__ = ()
+
+    def __new__(cls, term):
+        return Clause.__new__(cls, head=term.left, body=term.right, term=term)
+
+
+def make_clause(term):
+    if isinstance(term, Implication):
+        return Rule(term)
+    else:
+        return Fact(term)
+
 class ClauseDict(collections.OrderedDict):
 
     def __missing__(self, key):
@@ -405,7 +432,7 @@ def _bootstrap():
     indicators = collections.defaultdict(set)
 
     for expression in exprs:
-        clause = build_term(expression)
+        clause = make_clause(build_term(expression))
         db[clause.indicator].append(clause)
         indicators[clause.name].add(clause.indicator)
 
@@ -421,31 +448,30 @@ _system_db, _indicators = _bootstrap()
 class Database(ClauseDict):
 
     def __init__(self):
-        super().__init__(_system_db)
+        collections.OrderedDict.__init__(self, _system_db)
         self.indicators = collections.defaultdict(set, _indicators)
 
-    def assertz(self, *exprs):
+    def tell(self, *exprs):
         clauses = []
         for expression in exprs:
-            clause = expand_term(expression)
-            if is_assertable(clause):
+            clause = make_clause(expand_term(expression))
+            if is_assertable(clause.head):
                 clauses.append(clause)
             else:
-                raise TypeError('Clause {} cannot be asserted into database.'
+                raise TypeError('clause {} cannot be asserted into database.'
                                 .format(clause))
         for clause in clauses:
             self[clause.indicator].append(clause)
             self.indicators[clause.name].add(clause.indicator)
 
     def find_all(self, indicator):
-        for clause in self.get(indicator, ()):
-            #yield copy.deepcopy(clause)
-            yield clause.fresh(Environment())
+        for rule in self.get(indicator, ()):
+            yield rule.fresh(Environment())[:2]
 
     def resolve(self, goal):
         with cut_parent():
             for _ in goal.resolve(self):
                 yield goal.env
 
-    def query(self, expression):
+    def ask(self, expression):
         return self.resolve(build_term(expression))

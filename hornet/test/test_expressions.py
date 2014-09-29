@@ -58,8 +58,8 @@ def test_monad_laws():
 def test_expression_factories():
     "Test all Expression factory functions that are called directly."
 
-    from hornet.expressions import (unit, Name, Str, Bytes, Num, Tuple, List, Set,
-        Dict, Wrapper, AstWrapper
+    from hornet.expressions import (
+        unit, Name, Str, Bytes, Num, Tuple, List, Set, Wrapper, AstWrapper
     )
 
     class Callable:
@@ -69,10 +69,8 @@ def test_expression_factories():
     obj = object()
     name = 'joe'
     num = 123
-    func = lambda:None
     keys = [Str('a'), Str('b'), Str('c')]
     values = [Num(1), Num(2), Num(3)]
-    odict = collections.OrderedDict(zip(keys, values))
     pairs = (
         [Name(name), ast.Name(id=name, ctx=load)],
         [Str(name), ast.Str(s=name)],
@@ -81,7 +79,6 @@ def test_expression_factories():
         [Tuple(keys), ast.Tuple(elts=keys, ctx=load)],
         [List(keys), ast.List(elts=keys, ctx=load)],
         [Set(keys), ast.Set(elts=keys)],
-        [Dict(odict), ast.Dict(keys=keys, values=values)],
         [Wrapper(obj), AstWrapper(wrapped=obj)],
     )
     for expr, node in pairs:

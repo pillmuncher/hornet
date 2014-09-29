@@ -11,15 +11,16 @@ __license__ = 'MIT'
 
 from hornet import *
 
-from hornet.symbols import fizzbuzz, word, show, divisible, W, Ws, N, N1, Max
-from hornet.symbols import D, S
+from hornet.symbols import (
+    fizzbuzz, word, show, divisible, W, Ws, N, N1, Max, D, S,
+)
 
 
 def main():
 
     db = Database()
 
-    db.assertz(
+    db.tell(
 
         fizzbuzz(N, Max) <<
             ~greater(N, Max) &
@@ -40,7 +41,7 @@ def main():
     )
 
     try:
-        for subst in db.query(fizzbuzz(1, 1000)):
+        for subst in db.ask(fizzbuzz(1, 1000)):
             break
     except RuntimeError:
         print('oops!')

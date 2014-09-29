@@ -17,7 +17,7 @@ import functools
 import operator
 import string
 
-from .util import noop, const, foldr, compose2 as compose, method_of
+from .util import identity, noop, const, foldr, compose2 as compose, method_of
 from .util import first_arg as get_self, rpartial
 from .expressions import mcompose, mapply
 from .operators import fy, xfx, xfy, yfx, make_token, is_bitor, rearrange
@@ -70,11 +70,11 @@ class Wildcard:
     __slots__ = ()
 
     __call__ = noop
-    __str__ = const('_')
+    __str__ = '_'.__str__
     __repr__ = __str__
     __deepcopy__ = get_self
 
-    deref = property(get_self)
+    deref = property(identity)
     fresh = get_self
 
     unify = noop
@@ -121,6 +121,11 @@ class Variable(collections.Counter):
     def ref(self, target):
         self.env[self.name] = target
 
+    def keep_positive(self):
+        non_positive = [k for k, v in self.items() if v <= 0]
+        for each in non_positive:
+            del self[each]
+
     def unify(self, other, trail):
         other.unify_variable(self, trail)
 
@@ -140,9 +145,10 @@ class Variable(collections.Counter):
         todo = {self}
         while todo:
             variable = todo.pop()
+            variable.keep_positive()
             variable.ref = other
             seen.add(variable)
-            todo |= (+variable).keys() - seen
+            todo |= variable.keys() - seen
             variables.appendleft(variable)
         @trail
         def rollback(variables=variables):
@@ -154,8 +160,7 @@ class Structure:
 
     __slots__ = 'env', 'name', 'params', 'actions'
 
-    deref = property(get_self)
-    head = property(get_self)
+    deref = property(identity)
 
     @property
     def arity(self):
@@ -209,16 +214,15 @@ class Structure:
 
     def resolve(self, db):
         with cut_parent(self):
-            for clause in db.find_all(self.indicator):
+            for head, body in db.find_all(self.indicator):
                 with trailing() as trail:
-                    head = clause.head
                     self.unify(head, trail)
                     self.action(db, trail)
                     head.action(db, trail)
-                    if not isinstance(clause, Rule):
+                    if body is None:
                         yield
                         continue
-                    body = clause.body.deref
+                    body = body.deref
                     if not isinstance(body, Conjunction):
                         yield from body.resolve(db)
                         continue
@@ -238,39 +242,6 @@ class Structure:
                         stack.append((running, waiting))
                         running = descent.left.deref.resolve(db)
                         waiting = descent.right
-
-
-class Rule(Structure):
-
-    __slots__ = '_head', 'body'
-
-    __call__ = get_name
-
-    @property
-    def head(self):
-        return self._head
-
-    def __init__(self, *, name=None, params, **kwargs):
-        self._head, self.body = params
-        super().__init__(
-            name=self._head.name,
-            params=self._head.params,
-            **kwargs)
-
-    def __deepcopy__(self, memo, deepcopy=copy.deepcopy):
-        return Rule(
-            env=deepcopy(self.env, memo),
-            params=[deepcopy(self._head, memo), deepcopy(self.body, memo)],
-            actions=self.actions)
-
-    def fresh(self, env):
-        return Rule(
-            env=env,
-            params=[self._head.fresh(env), self.body.fresh(env)],
-            actions=self.actions)
-
-    def __str__(self):
-        return '{} << {}{}'.format(self.head, self.body, action_str(self))
 
 
 class Relation(Structure):
@@ -320,62 +291,6 @@ class Num(Structure):
     __deepcopy__ = get_self
 
     fresh = get_self
-
-
-class List(Structure):
-
-    __slots__ = ()
-
-    car = property(first_param)
-    cdr = property(second_param)
-
-    def __init__(self, **kwargs):
-        super().__init__(name='.', **kwargs)
-
-    def __deepcopy__(self, memo, deepcopy=copy.deepcopy):
-        return List(
-            env=deepcopy(self.env, memo),
-            params=[deepcopy(each, memo) for each in self.params],
-            actions=self.actions)
-
-    def fresh(self, env):
-        return List(
-            env=env,
-            params=[each.fresh(env) for each in self.params],
-            actions=self.actions)
-
-    def __call__(self):
-        acc = []
-        while isinstance(self, List):
-            acc.append(self.car.deref())
-            self = self.cdr.deref
-        return acc if self == NIL else acc + [self]
-
-    def __str__(self):
-        acc = []
-        while isinstance(self, List):
-            acc.append(self.car.deref)
-            self = self.cdr.deref
-        if self == NIL:
-            return '[{}]'.format(comma_separated(acc))
-        return '[{}|{}]'.format(comma_separated(acc), self)
-
-
-class Nil(Structure):
-
-    __slots__ = ()
-
-    def __init__(self):
-        super().__init__(env={}, name='[]')
-
-    __call__ = const([])
-    __str__ = const('[]')
-    __deepcopy__ = get_self
-
-    fresh = get_self
-
-
-NIL = Nil()
 
 
 class PrefixOperator(Structure):
@@ -434,6 +349,62 @@ class InfixOperator(Structure):
         return '{} {} {}'.format(left_str(left), self.name, right_str(right))
 
 
+class List(InfixOperator):
+
+    __slots__ = ()
+
+    car = InfixOperator.left
+    cdr = InfixOperator.right
+
+    def __init__(self, **kwargs):
+        Structure.__init__(self, name='.', **kwargs)
+
+    def __deepcopy__(self, memo, deepcopy=copy.deepcopy):
+        return List(
+            env=deepcopy(self.env, memo),
+            params=[deepcopy(each, memo) for each in self.params],
+            actions=self.actions)
+
+    def fresh(self, env):
+        return List(
+            env=env,
+            params=[each.fresh(env) for each in self.params],
+            actions=self.actions)
+
+    def __call__(self):
+        acc = []
+        while isinstance(self, List):
+            acc.append(self.car.deref())
+            self = self.cdr.deref
+        return acc if self == NIL else acc + [self]
+
+    def __str__(self):
+        acc = []
+        while isinstance(self, List):
+            acc.append(self.car.deref)
+            self = self.cdr.deref
+        if self == NIL:
+            return '[{}]'.format(comma_separated(acc))
+        return '[{}|{}]'.format(comma_separated(acc), self)
+
+
+class Nil(Structure):
+
+    __slots__ = ()
+
+    def __init__(self):
+        Structure.__init__(self, env={}, name='[]')
+
+    __call__ = const([])
+    __str__ = '[]'.__str__
+    __deepcopy__ = get_self
+
+    fresh = get_self
+
+
+NIL = Nil()
+
+
 class Conjunction(InfixOperator):
 
     __slots__ = ()
@@ -459,57 +430,61 @@ class Conjunction(InfixOperator):
             waiting = descent.right
 
 
+class Implication(InfixOperator):
+    __slots__ = ()
+    op = lambda left, right: left or not right  # reverse implication: l << r
+
 class Disjunction(InfixOperator):
     __slots__ = ()
-    op=operator.xor
+    op = operator.xor
 
 class Adjunction(InfixOperator):
     __slots__ = ()
-    op=operator.or_
+    op = operator.or_
 
 class Conditional(InfixOperator):
     __slots__ = ()
-    op=operator.rshift
+    op = operator.rshift
 
 class Addition(InfixOperator):
     __slots__ = ()
-    op=operator.add
+    op = operator.add
 
 class Subtraction(InfixOperator):
     __slots__ = ()
-    op=operator.sub
+    op = operator.sub
 
 class Multiplication(InfixOperator):
     __slots__ = ()
-    op=operator.mul
+    op = operator.mul
 
 class Division(InfixOperator):
     __slots__ = ()
-    op=operator.truediv
+    op = operator.truediv
 
 class FloorDivision(InfixOperator):
     __slots__ = ()
-    op=operator.floordiv
+    op = operator.floordiv
 
 class Remainder(InfixOperator):
     __slots__ = ()
-    op=operator.mod
+    op = operator.mod
 
 class Exponentiation(InfixOperator):
     __slots__ = ()
-    op=operator.pow
+    op = operator.pow
 
 class Negation(PrefixOperator):
     __slots__ = ()
-    op=operator.invert
+    op = operator.invert
 
 class Positive(PrefixOperator):
     __slots__ = ()
-    op=operator.pos
+    op = operator.pos
 
 class Negative(PrefixOperator):
     __slots__ = ()
-    op=operator.neg
+    op = operator.neg
 
 
 
@@ -517,7 +492,7 @@ operator_fixities = {
     Adjunction: xfy(10),
     Disjunction: xfy(20),
     Conjunction: xfy(30),
-    Rule: xfx(4),
+    Implication: xfx(4),
     Conditional: xfx(7),
     Addition: yfx(50),
     Subtraction: yfx(50),
@@ -698,7 +673,7 @@ class Builder(ast.NodeVisitor):
     visit_Mod = visit_op(Remainder, '%')
     visit_Pow = visit_op(Exponentiation, '**')
     visit_RShift = visit_op(Conditional, '>>')
-    visit_LShift = visit_op(Rule, '<<')
+    visit_LShift = visit_op(Implication, '<<')
     visit_BitAnd = visit_op(Conjunction, '&')
     visit_BitXor = visit_op(Disjunction, '^')
     visit_BitOr = visit_op(Adjunction, '|')
@@ -722,7 +697,7 @@ def build(node):
 
 is_atomic = rpartial(isinstance, (Atom, String, Num))
 is_assertable = rpartial(isinstance,
-        (Atom, Relation, Rule, InfixOperator, PrefixOperator, Nil, List))
+    (Atom, Relation, Implication, InfixOperator, PrefixOperator, Nil, List))
 
 
 expand_term = mapply(mcompose(rearrange, dcg_expand, build))

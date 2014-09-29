@@ -11,13 +11,14 @@ __license__ = 'MIT'
 
 from hornet import *
 
-from hornet.symbols import A, B, C, C1, G, H, Q, U, V, W, X, Y, Z, cos, d, exp
-from hornet.symbols import log, simp, sin, x, y, z
+from hornet.symbols import (
+    A, B, C, C1, G, H, Q, U, V, W, X, Y, Z, cos, d, exp, log, simp, sin, x, y,
+)
 
 
 def diff_rules(db):
 
-    db.assertz(
+    db.tell(
 
         d(X, X, 1) << cut,
 
@@ -75,7 +76,7 @@ def diff_rules(db):
 
 def simp_rules(db):
 
-    db.assertz(
+    db.tell(
 
         simp(X, X) <<
             atomic(X) & cut,
@@ -265,7 +266,7 @@ def diff_test(db):
     #F = (x * y) * (x + 3)
     print(build_term(F))
 
-    for subst in db.query(d(F, x, G) & simp(G, H)):
+    for subst in db.ask(d(F, x, G) & simp(G, H)):
         print(subst[G])
         print(subst[H])
 

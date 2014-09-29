@@ -11,15 +11,17 @@ __license__ = 'MIT'
 
 from hornet import *
 
-from hornet.symbols import Action, L, Ls, Ls0, Ls1, NewSym, Q0, Q1, Rs, Rs0
-from hornet.symbols import Rs1, RsRest, Sym, Tape, Tape0, action, b, left, Ts
-from hornet.symbols import perform, q0, qf, right, rule, stay, symbol, turing
+from hornet.symbols import (
+    Action, L, Ls, Ls0, Ls1, NewSym, Q0, Q1, Rs, Rs0, Rs1, RsRest, Sym, Tape,
+    Tape0, Ts, action, b, left, perform, q0, qf, right, rule, stay, symbol,
+    turing,
+)
 
 def main():
 
     db = Database()
 
-    db.assertz(
+    db.tell(
 
         turing(Tape0, Tape) <<
             perform(q0, [], Ls, Tape0, Rs) &
@@ -45,12 +47,12 @@ def main():
 
     )
 
-    db.assertz(
+    db.tell(
         rule(q0, 1, q0, 1, right),
         rule(q0, b, qf, 1, stay),
     )
 
-    for subst in db.query(turing([1, 1, 1], Ts)):
+    for subst in db.ask(turing([1, 1, 1], Ts)):
         print(subst[Ts])
 
 

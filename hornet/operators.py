@@ -62,7 +62,7 @@ class Prefix(Token):
     __slots__ = ()
 
     def __new__(cls, lbp, rbp, node):
-        return super().__new__(cls, 0, rbp, node)
+        return Token.__new__(cls, 0, rbp, node)
 
     def nud(self, parse, table):
         operand = parse(self.rbp)
