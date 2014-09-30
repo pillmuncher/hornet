@@ -146,12 +146,12 @@ def _writeln(term, env, db, trail):
 
 
 def _findall_3(term, env, db, trail):
-    results = [copy.deepcopy(env.Object.deref) for _ in db.resolve(env.Goal)]
+    results = [copy.deepcopy(env.Object.deref) for _ in env.Goal.resolve(db)]
     unify(env.List, make_list(env, results), trail)
 
 
 def _findall_4(term, env, db, trail):
-    results = [copy.deepcopy(env.Object.deref) for _ in db.resolve(env.Goal)]
+    results = [copy.deepcopy(env.Object.deref) for _ in env.Goal.resolve(db)]
     unify(env.List, make_list(env, results, env.Rest), trail)
 
 
@@ -451,17 +451,11 @@ class Database(ClauseDict):
         collections.OrderedDict.__init__(self, _system_db)
         self.indicators = collections.defaultdict(set, _indicators)
 
-    def resolve(self, goal):
-        with cut_parent():
-            for _ in goal.resolve(self):
-                yield goal.env
-
     def ask(self, expression):
-        #return self.resolve(build_term(expression))
         term = build_term(expression)
         goal = Relation(env=term.env, name='call', params=[term])
-        return self.resolve(goal)
-
+        for _ in goal.resolve(self):
+            yield goal.env
 
     def tell(self, *exprs):
         clauses = []
