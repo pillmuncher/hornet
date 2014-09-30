@@ -15,7 +15,7 @@ from hornet.symbols import (
     A, B, C, D, Seen, Tribe, U, V, W, Who, X, Y, Z, ancestor, appenddl,
     aristotle, bob, dan, descendant, directly_related, patriarch, hal, jim,
     joe, lee, man, mortal, plato, related, related_, sam, socrates, son, test,
-    tom, tribe, nonequal, lwriteln, a, b, c, d, e,
+    tom, tribe, nonequal, lwriteln, a, b, c, d, e, blub,
 )
 
 
@@ -337,6 +337,16 @@ def univ_test(db):
 
     for subst in db.ask(equal(a(B, C), X) & equal([a, B, C], Y) & univ(X, Y)):
         print(subst[X], ':', subst[Y])
+        print('Yes.')
+        break
+    else:
+        print('No.')
+
+    db.tell(
+        blub(A << A)
+    )
+    for subst in db.ask(blub(X) & equal(a << Y, X)):
+        print(subst[X])
         print('Yes.')
         break
     else:

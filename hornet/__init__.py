@@ -55,7 +55,7 @@ from .expressions import unit, bind, lift, bind_compose, mcompose, promote
 from .expressions import Name
 from .dcg import _C_
 from .terms import UnificationFailed, make_list, is_atomic, Num, Indicator, Cut
-from .terms import unify, build_term, expand_term, is_assertable
+from .terms import unify, build_term, expand_term, not_assertable
 from .terms import Variable, List, Atom, Relation, Nil, NIL, String, Adjunction
 from .terms import Environment, Implication, Conjunction
 
@@ -472,57 +472,62 @@ class Database(ClauseDict):
         collections.OrderedDict.__init__(self, _system_db)
         self.indicators = collections.defaultdict(set, _indicators)
 
-    def resolve(self, goal):
-        with cut_parent(goal):
-            for head, body in self.find_all(goal.indicator):
-                with trailing() as trail:
-                    goal.unify(head, trail)
-                    goal.action(self, trail)
-                    head.action(self, trail)
-                    if body is None:
-                        yield
-                        continue
-                    body = body.deref
-                    if not isinstance(body, Conjunction):
-                        yield from self.resolve(body)
-                        continue
-                    stack = [(None, None)]
-                    running = self.resolve(body.left.deref)
-                    waiting = body.right
-                    while running:
-                        for _ in running:
-                            break
-                        else:
-                            running, waiting = stack.pop()
-                            continue
-                        descent = waiting.deref
-                        if not isinstance(descent, Conjunction):
-                            yield from self.resolve(descent)
-                            continue
-                        stack.append((running, waiting))
-                        running = self.resolve(descent.left.deref)
-                        waiting = descent.right
-
-    def ask(self, expression):
-        goal = build_term(expression)
-        if isinstance(goal, Conjunction):
-            goal = Relation(env=goal.env, name='call', params=[goal])
-        for _ in self.resolve(goal):
-            yield goal.env
-
     def tell(self, *exprs):
         clauses = []
         for expression in exprs:
             clause = make_clause(expand_term(expression))
-            if is_assertable(clause.head):
-                clauses.append(clause)
-            else:
-                raise TypeError('clause {} cannot be asserted into database.'
+            if not_assertable(clause.head):
+                raise TypeError("Clause '{}' cannot be asserted into database."
                                 .format(clause))
+            clauses.append(clause)
         for clause in clauses:
             self[clause.indicator].append(clause)
             self.indicators[clause.name].add(clause.indicator)
 
+    def ask(self, expression):
+        term = build_term(expression)
+        for _ in self.resolve(term):
+            yield term.env
+
     def find_all(self, indicator):
         for clause in self.get(indicator, ()):
             yield clause.fresh(Environment())[:2]
+
+    def resolve(self, goal):
+
+        def _resolve(goal, self=self, find_all=self.find_all):
+            with cut_parent(goal):
+                for head, body in find_all(goal.indicator):
+                    with trailing() as trail:
+                        goal.unify(head, trail)
+                        goal.action(self, trail)
+                        head.action(self, trail)
+                        if body is None:
+                            yield
+                            continue
+                        body = body.deref
+                        if not isinstance(body, Conjunction):
+                            yield from _resolve(body)
+                            continue
+                        stack = [(None, None)]
+                        running = _resolve(body.left.deref)
+                        waiting = body.right
+                        while running:
+                            for _ in running:
+                                break
+                            else:
+                                running, waiting = stack.pop()
+                                continue
+                            descent = waiting.deref
+                            if not isinstance(descent, Conjunction):
+                                yield from _resolve(descent)
+                                continue
+                            stack.append((running, waiting))
+                            running = _resolve(descent.left.deref)
+                            waiting = descent.right
+
+        if isinstance(goal, Conjunction):
+            goal = Relation(env=goal.env, name='call', params=[goal])
+        elif isinstance(goal, Implication):
+            raise TypeError("Term '{}' is not a valid goal.".format(goal))
+        return _resolve(goal)

@@ -621,8 +621,8 @@ def build(node):
 
 
 is_atomic = rpartial(isinstance, (Atom, String, Num))
-is_assertable = rpartial(isinstance,
-    (Atom, Relation, Implication, InfixOperator, PrefixOperator, Nil, List))
+not_assertable = rpartial(isinstance,
+        (String, Num, Conjunction, Variable, Wildcard))
 
 
 expand_term = bind_compose(rearrange, dcg_expand, build)
