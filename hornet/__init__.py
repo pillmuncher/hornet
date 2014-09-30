@@ -98,6 +98,7 @@ __all__ = [
     'pyfunc',
     'UnificationFailed',
     '_C_',
+    'promote',
 ] + system_names
 
 
