@@ -379,7 +379,7 @@ class Implication(InfixOperator):
 
 class Conjunction(InfixOperator):
     __slots__ = ()
-    op=operator.and_
+    op = operator.and_
 
 class Disjunction(InfixOperator):
     __slots__ = ()
