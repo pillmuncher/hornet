@@ -24,14 +24,13 @@ def main():
 
         queens(S) <<
             equal([1, 2, 3, 4, 5, 6, 7, 8], Nums) &
-            solution(Nums, Nums, [], Qs) &
-            reverse(Qs, S),
+            solution(Nums, Nums, [], S),
 
-        solution([X|Xs], Ys, Qs, S) <<
+        solution([X|Xs], Ys, Qs, [X/Y|S]) <<
             select(Y, Ys, Y1s) &
             noattack(X/Y, Qs) &
             solution(Xs, Y1s, [X/Y|Qs], S),
-        solution([], [], S, S),
+        solution([], _, _, []),
 
         noattack(X/Y, [X1/Y1|Rest]) <<
             arithemtic_not_equal(Y, Y1) &
@@ -44,7 +43,7 @@ def main():
 
     for subst in db.ask(queens(S)):
         print(subst[S])
-        #if not input('more?').lower().strip().startswith('y'):
+        #if not input('more? ').lower().strip().startswith('y'):
             #break
 
 

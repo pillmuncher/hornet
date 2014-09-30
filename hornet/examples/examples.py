@@ -54,7 +54,7 @@ def barbara(db):
 
 
 def varunify(db):
-    for subst in db.ask(equal(X, Z) & equal(Y, Z)):
+    for subst in db.ask(equal(X, Z) & equal(Y, Z) & (equal(man, Z) | true)):
         for k, v in sorted(subst.items()):
             print(k, '=', v, '=', v())
     print()
