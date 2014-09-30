@@ -10,6 +10,7 @@ __license__ = 'MIT'
 
 
 from hornet import *
+from hornet.expressions import promote
 
 from hornet.symbols import (
     A, B, C, D, Seen, Tribe, U, V, W, Who, X, Y, Z, ancestor, appenddl,
