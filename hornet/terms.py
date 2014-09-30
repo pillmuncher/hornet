@@ -138,8 +138,6 @@ class Variable(collections.Counter):
                 variable.keep_positive()
                 seen.add(variable)
                 todo |= variable.keys() - seen
-                # In case you're wondering about the next line, please see:
-                # https://docs.python.org/3.4/reference/expressions.html#not-in
                 if name > variable.name in self.env:
                     name = variable.name
             return name
