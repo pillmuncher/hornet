@@ -332,4 +332,4 @@ def mudlang2(db):
 
 db = Database()
 grammar(db)
-#mudlang2(db)
+mudlang2(db)

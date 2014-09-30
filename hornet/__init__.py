@@ -46,6 +46,7 @@ del __init__
 
 
 import collections
+import contextlib
 import copy
 import numbers
 import pprint
@@ -54,9 +55,9 @@ from .expressions import unit, bind, lift, mapply, mcompose, promote
 from .expressions import Name
 from .dcg import _C_
 from .terms import UnificationFailed, make_list, is_atomic, Num, Indicator, Cut
-from .terms import unify, build_term, expand_term, is_assertable, cut_parent
-from .terms import Variable, List, Atom, Relation, Nil, NIL, Adjunction
-from .terms import Environment, Implication
+from .terms import unify, build_term, expand_term, is_assertable
+from .terms import Variable, List, Atom, Relation, Nil, NIL, String, Adjunction
+from .terms import Environment, Implication, Conjunction
 
 
 system_names = [
@@ -146,12 +147,12 @@ def _writeln(term, env, db, trail):
 
 
 def _findall_3(term, env, db, trail):
-    results = [copy.deepcopy(env.Object.deref) for _ in env.Goal.resolve(db)]
+    results = [copy.deepcopy(env.Object.deref) for _ in db.resolve(env.Goal)]
     unify(env.List, make_list(env, results), trail)
 
 
 def _findall_4(term, env, db, trail):
-    results = [copy.deepcopy(env.Object.deref) for _ in env.Goal.resolve(db)]
+    results = [copy.deepcopy(env.Object.deref) for _ in db.resolve(env.Goal)]
     unify(env.List, make_list(env, results, env.Rest), trail)
 
 
@@ -318,10 +319,8 @@ class Rule(Clause):
 
 
 def make_clause(term):
-    if isinstance(term, Implication):
-        return Rule(term)
-    else:
-        return Fact(term)
+    return Rule(term) if isinstance(term, Implication) else Fact(term)
+
 
 class ClauseDict(collections.OrderedDict):
 
@@ -445,16 +444,69 @@ def _bootstrap():
 _system_db, _indicators = _bootstrap()
 
 
+@contextlib.contextmanager
+def cut_parent(term=NIL):
+    try:
+        yield
+    except Cut as cut:
+        pass
+    if not isinstance(term, String) and term.name == 'cut':
+        raise Cut()
+
+
+@contextlib.contextmanager
+def trailing():
+    rollback_funcs = collections.deque()
+    try:
+        yield rollback_funcs.appendleft
+    except UnificationFailed:
+        pass
+    finally:
+        for rollback in rollback_funcs:
+            rollback()
+
+
 class Database(ClauseDict):
 
     def __init__(self):
         collections.OrderedDict.__init__(self, _system_db)
         self.indicators = collections.defaultdict(set, _indicators)
 
+    def resolve(self, goal):
+        with cut_parent(goal):
+            for head, body in self.find_all(goal.indicator):
+                with trailing() as trail:
+                    goal.unify(head, trail)
+                    goal.action(self, trail)
+                    head.action(self, trail)
+                    if body is None:
+                        yield
+                        continue
+                    body = body.deref
+                    if not isinstance(body, Conjunction):
+                        yield from self.resolve(body)
+                        continue
+                    stack = [(None, None)]
+                    running = self.resolve(body.left.deref)
+                    waiting = body.right
+                    while running:
+                        for _ in running:
+                            break
+                        else:
+                            running, waiting = stack.pop()
+                            continue
+                        descent = waiting.deref
+                        if not isinstance(descent, Conjunction):
+                            yield from self.resolve(descent)
+                            continue
+                        stack.append((running, waiting))
+                        running = self.resolve(descent.left.deref)
+                        waiting = descent.right
+
     def ask(self, expression):
         term = build_term(expression)
         goal = Relation(env=term.env, name='call', params=[term])
-        for _ in goal.resolve(self):
+        for _ in self.resolve(goal):
             yield goal.env
 
     def tell(self, *exprs):
@@ -471,5 +523,5 @@ class Database(ClauseDict):
             self.indicators[clause.name].add(clause.indicator)
 
     def find_all(self, indicator):
-        for rule in self.get(indicator, ()):
-            yield rule.fresh(Environment())[:2]
+        for clause in self.get(indicator, ()):
+            yield clause.fresh(Environment())[:2]

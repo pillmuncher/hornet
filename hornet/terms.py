@@ -11,7 +11,6 @@ __license__ = 'MIT'
 
 import ast
 import collections
-import contextlib
 import copy
 import functools
 import operator
@@ -211,37 +210,6 @@ class Structure:
         elif self.params:
             for this, that in zip(self.params, other.params):
                 this.deref.unify(that.deref, trail)
-
-    def resolve(self, db):
-        with cut_parent(self):
-            for head, body in db.find_all(self.indicator):
-                with trailing() as trail:
-                    self.unify(head, trail)
-                    self.action(db, trail)
-                    head.action(db, trail)
-                    if body is None:
-                        yield
-                        continue
-                    body = body.deref
-                    if not isinstance(body, Conjunction):
-                        yield from body.resolve(db)
-                        continue
-                    stack = [(None, None)]
-                    running = body.left.deref.resolve(db)
-                    waiting = body.right
-                    while running:
-                        for _ in running:
-                            break
-                        else:
-                            running, waiting = stack.pop()
-                            continue
-                        descent = waiting.deref
-                        if not isinstance(descent, Conjunction):
-                            yield from descent.resolve(db)
-                            continue
-                        stack.append((running, waiting))
-                        running = descent.left.deref.resolve(db)
-                        waiting = descent.right
 
 
 class Relation(Structure):
@@ -484,28 +452,6 @@ operator_fixities = {
     Negation: fy(70),
     Exponentiation: xfy(80),
 }
-
-
-@contextlib.contextmanager
-def cut_parent(term=NIL):
-    try:
-        yield
-    except Cut as cut:
-        pass
-    if not isinstance(term, String) and term.name == 'cut':
-        raise Cut()
-
-
-@contextlib.contextmanager
-def trailing():
-    rollback_funcs = collections.deque()
-    try:
-        yield rollback_funcs.appendleft
-    except UnificationFailed:
-        pass
-    finally:
-        for rollback in rollback_funcs:
-            rollback()
 
 
 class Environment(dict):
