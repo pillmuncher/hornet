@@ -18,7 +18,7 @@ import string
 
 from .util import identity, noop, const, foldr, compose2 as compose, method_of
 from .util import first_arg as get_self, rpartial
-from .expressions import mcompose, mapply
+from .expressions import bind_compose
 from .operators import fy, xfx, xfy, yfx, make_token, is_bitor, rearrange
 from .dcg import dcg_expand
 
@@ -625,5 +625,5 @@ is_assertable = rpartial(isinstance,
     (Atom, Relation, Implication, InfixOperator, PrefixOperator, Nil, List))
 
 
-expand_term = mapply(mcompose(rearrange, dcg_expand, build))
-build_term = mapply(mcompose(rearrange, build))
+expand_term = bind_compose(rearrange, dcg_expand, build)
+build_term = bind_compose(rearrange, build)

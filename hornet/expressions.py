@@ -25,7 +25,7 @@ __all__ = [
     'unit',
     'bind',
     'lift',
-    'mapply',
+    'bind_compose',
     'mcompose',
     # helper functions:
     'promote',
@@ -102,18 +102,13 @@ def lift(func):
     return compose(func, unit)
 
 
-# Turn a monadic function mf:AST --> Expression into one that can be called
-# directly on an Expression object. The resulting function therefor has the
-# signature Expression --> Expression.
-
-def mapply(mfunc):
-    return lambda expr: mfunc(expr.node)
-
+def bind_compose(*mfuncs):
+    return functools.partial(foldl, bind, mfuncs)
 
 # Make monadic functions mf:AST --> Expression composable:
 
 def mcompose(*mfuncs):
-    return compose(unit, functools.partial(foldl, bind, mfuncs))
+    return compose(unit, bind_compose(*mfuncs))
 
 
 # Here come the Expression factory functions.

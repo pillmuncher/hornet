@@ -51,7 +51,7 @@ import copy
 import numbers
 import pprint
 
-from .expressions import unit, bind, lift, mapply, mcompose, promote
+from .expressions import unit, bind, lift, bind_compose, mcompose, promote
 from .expressions import Name
 from .dcg import _C_
 from .terms import UnificationFailed, make_list, is_atomic, Num, Indicator, Cut
@@ -103,9 +103,9 @@ __all__ = [
     'unit',
     'bind',
     'lift',
-    'mapply',
+    'bind_compose',
     'mcompose',
-    'promote'
+    'promote',
 ] + system_names
 
 
@@ -504,8 +504,9 @@ class Database(ClauseDict):
                         waiting = descent.right
 
     def ask(self, expression):
-        term = build_term(expression)
-        goal = Relation(env=term.env, name='call', params=[term])
+        goal = build_term(expression)
+        if isinstance(goal, Conjunction):
+            goal = Relation(env=goal.env, name='call', params=[goal])
         for _ in self.resolve(goal):
             yield goal.env
 
