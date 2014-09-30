@@ -51,13 +51,11 @@ import copy
 import numbers
 import pprint
 
-from .expressions import unit, bind, lift, bind_compose, mcompose, promote
-from .expressions import Name
-from .dcg import _C_
-from .terms import UnificationFailed, make_list, is_atomic, Num, Indicator, Cut
-from .terms import unify, build_term, expand_term, not_assertable
-from .terms import Variable, List, Atom, Relation, Nil, NIL, String, Adjunction
-from .terms import Environment, Implication, Conjunction
+from .util import rpartial, foldr
+from .expressions import bind_compose, promote, Name
+from .operators import rearrange
+from .dcg import _C_, dcg_expand
+from .terms import *
 
 
 system_names = [
@@ -100,16 +98,99 @@ __all__ = [
     'pyfunc',
     'UnificationFailed',
     '_C_',
-    'unit',
-    'bind',
-    'lift',
-    'bind_compose',
-    'mcompose',
-    'promote',
 ] + system_names
 
 
 globals().update((each, Name(each)) for each in system_names)
+
+
+def build(node):
+    return Builder(Environment()).build(node)
+
+
+def make_list(env, items, tail=NIL):
+
+    def cons(*params):
+        return List(env=env, params=params)
+
+    return foldr(cons, items, tail)
+
+
+def unify(left, right, trail):
+    left.deref.unify(right.deref, trail)
+
+
+is_atomic = rpartial(isinstance, (Atom, String, Num))
+not_assertable = rpartial(isinstance,
+        (String, Num, Conjunction, Variable, Wildcard))
+
+
+expand_term = bind_compose(rearrange, dcg_expand, build)
+build_term = bind_compose(rearrange, build)
+
+
+class Environment(dict):
+
+    def __call__(self, name, dict_getitem=dict.__getitem__, str=str):
+        try:
+            return dict_getitem(self, str(name))
+        except KeyError:
+            var = self[name] = Variable(env=self, name=name)
+            return var
+
+    def __getitem__(self, name, dict_getitem=dict.__getitem__, str=str):
+        return dict_getitem(self, str(name))
+
+    __getattr__ = __getitem__
+
+
+class Clause(collections.namedtuple('BaseClause', 'head body term')):
+
+    __slots__ = ()
+
+    def fresh(self, env):
+        return type(self)(self.term.fresh(env))
+
+    @property
+    def name(self):
+        return self.head.name
+
+    @property
+    def indicator(self):
+        return self.head.indicator
+
+    def __str__(self):
+        return str(self.term)
+
+    def __repr__(self):
+        return repr(self.term)
+
+
+class Fact(Clause):
+
+    __slots__ = ()
+
+    def __new__(cls, term):
+        return Clause.__new__(cls, head=term, body=None, term=term)
+
+
+class Rule(Clause):
+
+    __slots__ = ()
+
+    def __new__(cls, term):
+        return Clause.__new__(cls, head=term.left, body=term.right, term=term)
+
+
+def make_clause(term):
+    return Rule(term) if isinstance(term, Implication) else Fact(term)
+
+
+class ClauseDict(collections.OrderedDict):
+
+    def __missing__(self, key):
+        value = self[key] = []
+        return value
 
 
 def pyfunc(fn):
@@ -278,55 +359,6 @@ def _univ(term, env, db, trail):
 
 def _throw(term, env, db, trail):
     raise Exception
-
-
-class Clause(collections.namedtuple('BaseClause', 'head body term')):
-
-    __slots__ = ()
-
-    def fresh(self, env):
-        return type(self)(self.term.fresh(env))
-
-    @property
-    def name(self):
-        return self.head.name
-
-    @property
-    def indicator(self):
-        return self.head.indicator
-
-    def __str__(self):
-        return str(self.term)
-
-    def __repr__(self):
-        return repr(self.term)
-
-
-class Fact(Clause):
-
-    __slots__ = ()
-
-    def __new__(cls, term):
-        return Clause.__new__(cls, head=term, body=None, term=term)
-
-
-class Rule(Clause):
-
-    __slots__ = ()
-
-    def __new__(cls, term):
-        return Clause.__new__(cls, head=term.left, body=term.right, term=term)
-
-
-def make_clause(term):
-    return Rule(term) if isinstance(term, Implication) else Fact(term)
-
-
-class ClauseDict(collections.OrderedDict):
-
-    def __missing__(self, key):
-        value = self[key] = []
-        return value
 
 
 def _bootstrap():

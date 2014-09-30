@@ -17,10 +17,43 @@ import operator
 import string
 
 from .util import identity, noop, const, foldr, compose2 as compose, method_of
-from .util import first_arg as get_self, rpartial
-from .expressions import bind_compose
-from .operators import fy, xfx, xfy, yfx, make_token, is_bitor, rearrange
-from .dcg import dcg_expand
+from .util import first_arg as get_self
+from .operators import fy, xfx, xfy, yfx, make_token, is_bitor
+
+
+__all__ = [
+    'Indicator',
+    'UnificationFailed',
+    'Cut',
+    'Wildcard',
+    'Variable',
+    'Relation',
+    'Atom',
+    'String',
+    'Num',
+    'List',
+    'Nil',
+    'NIL',
+    'Implication',
+    'Conjunction',
+    'Disjunction',
+    'Adjunction',
+    'Conditional',
+    'Addition',
+    'Subtraction',
+    'Multiplication',
+    'Division',
+    'FloorDivision',
+    'Remainder',
+    'Exponentiation',
+    'Negation',
+    'Positive',
+    'Negative',
+    'Builder',
+]
+
+
+
 
 
 def get_name(self):
@@ -454,21 +487,6 @@ operator_fixities = {
 }
 
 
-class Environment(dict):
-
-    def __call__(self, name, dict_getitem=dict.__getitem__, str=str):
-        try:
-            return dict_getitem(self, str(name))
-        except KeyError:
-            var = self[name] = Variable(env=self, name=name)
-            return var
-
-    def __getitem__(self, name, dict_getitem=dict.__getitem__, str=str):
-        return dict_getitem(self, str(name))
-
-    __getattr__ = __getitem__
-
-
 def visit_op(op_class, op_name):
     def visit(self, node):
         self.append(op_class(env=self.env, name=op_name, params=self.pop()))
@@ -604,26 +622,3 @@ class Builder(ast.NodeVisitor):
     visit_BitOr = visit_op(Adjunction, '|')
 
 
-def make_list(env, items, tail=NIL):
-
-    def cons(*params):
-        return List(env=env, params=params)
-
-    return foldr(cons, items, tail)
-
-
-def unify(left, right, trail):
-    left.deref.unify(right.deref, trail)
-
-
-def build(node):
-    return Builder(Environment()).build(node)
-
-
-is_atomic = rpartial(isinstance, (Atom, String, Num))
-not_assertable = rpartial(isinstance,
-        (String, Num, Conjunction, Variable, Wildcard))
-
-
-expand_term = bind_compose(rearrange, dcg_expand, build)
-build_term = bind_compose(rearrange, build)
