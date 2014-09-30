@@ -61,6 +61,7 @@ from .terms import *
 system_names = [
     '_',
     'append',
+    'arithemtic_not_equal',
     'atomic',
     'call',
     'cut',
@@ -80,6 +81,7 @@ system_names = [
     'once',
     'real',
     'reverse',
+    'select',
     'smaller',
     'throw',
     'true',
@@ -425,6 +427,10 @@ def _bootstrap():
         reverse([X|P], Q, Y) <<
             reverse(P, [X|Q], Y),
 
+        select(X, [X|T], T),
+        select(X, [H|T], [H|Rest]) <<
+            select(X, T, Rest),
+
         write(X)[_write],
 
         writeln(X)[_writeln],
@@ -457,6 +463,12 @@ def _bootstrap():
         var(X)[_var],
 
         univ(T, L)[_univ],
+
+        arithemtic_not_equal(X, Y) <<
+            let(Z, X) &
+            let(Z, Y) & cut[_fail],
+
+        arithemtic_not_equal(_, _),
 
     )
 
