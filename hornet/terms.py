@@ -349,6 +349,23 @@ class InfixOperator(Structure):
         return '{} {} {}'.format(left_str(left), self.name, right_str(right))
 
 
+class Nil(Structure):
+
+    __slots__ = ()
+
+    def __init__(self):
+        Structure.__init__(self, env={}, name='[]')
+
+    __call__ = const([])
+    __str__ = '[]'.__str__
+    __deepcopy__ = get_self
+
+    fresh = get_self
+
+
+NIL = Nil()
+
+
 class List(InfixOperator):
 
     __slots__ = ()
@@ -388,51 +405,13 @@ class List(InfixOperator):
         return '[{}|{}]'.format(comma_separated(acc), self)
 
 
-class Nil(Structure):
-
-    __slots__ = ()
-
-    def __init__(self):
-        Structure.__init__(self, env={}, name='[]')
-
-    __call__ = const([])
-    __str__ = '[]'.__str__
-    __deepcopy__ = get_self
-
-    fresh = get_self
-
-
-NIL = Nil()
-
-
-class Conjunction(InfixOperator):
-
-    __slots__ = ()
-
-    op=operator.and_
-
-    def resolve(self, db):
-        stack = [(None, None)]
-        running = self.left.deref.resolve(db)
-        waiting = self.right
-        while running:
-            for _ in running:
-                break
-            else:
-                running, waiting = stack.pop()
-                continue
-            descent = waiting.deref
-            if not isinstance(descent, Conjunction):
-                yield from descent.resolve(db)
-                continue
-            stack.append((running, waiting))
-            running = descent.left.deref.resolve(db)
-            waiting = descent.right
-
-
 class Implication(InfixOperator):
     __slots__ = ()
     op = lambda left, right: left or not right  # reverse implication: l << r
+
+class Conjunction(InfixOperator):
+    __slots__ = ()
+    op=operator.and_
 
 class Disjunction(InfixOperator):
     __slots__ = ()
@@ -513,7 +492,7 @@ def cut_parent(term=NIL):
         yield
     except Cut as cut:
         pass
-    if term.name == 'cut':
+    if not isinstance(term, String) and term.name == 'cut':
         raise Cut()
 
 

@@ -451,6 +451,18 @@ class Database(ClauseDict):
         collections.OrderedDict.__init__(self, _system_db)
         self.indicators = collections.defaultdict(set, _indicators)
 
+    def resolve(self, goal):
+        with cut_parent():
+            for _ in goal.resolve(self):
+                yield goal.env
+
+    def ask(self, expression):
+        #return self.resolve(build_term(expression))
+        term = build_term(expression)
+        goal = Relation(env=term.env, name='call', params=[term])
+        return self.resolve(goal)
+
+
     def tell(self, *exprs):
         clauses = []
         for expression in exprs:
@@ -467,11 +479,3 @@ class Database(ClauseDict):
     def find_all(self, indicator):
         for rule in self.get(indicator, ()):
             yield rule.fresh(Environment())[:2]
-
-    def resolve(self, goal):
-        with cut_parent():
-            for _ in goal.resolve(self):
-                yield goal.env
-
-    def ask(self, expression):
-        return self.resolve(build_term(expression))
