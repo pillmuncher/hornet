@@ -10,7 +10,7 @@ __author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
 __license__ = 'MIT'
 
 
-def __init__():
+def make_symbols_module():
 
     import sys
     import types
@@ -40,9 +40,8 @@ def __init__():
 
     sys.meta_path.insert(0, SymbolsImporter())
 
-__init__()
 
-del __init__
+make_symbols_module()
 
 
 import collections

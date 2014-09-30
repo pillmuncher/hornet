@@ -129,7 +129,22 @@ class Variable(collections.Counter):
         return None if self.deref is self else self.deref()
 
     def __str__(self):
-        return self.name if self.deref is self else str(self.deref)
+        if self.deref is self:
+            name = self.name
+            seen = set()
+            todo = {self}
+            while todo:
+                variable = todo.pop()
+                variable.keep_positive()
+                seen.add(variable)
+                todo |= variable.keys() - seen
+                # In case you're wondering about the next line, please see:
+                # https://docs.python.org/3.4/reference/expressions.html#not-in
+                if name > variable.name in self.env:
+                    name = variable.name
+            return name
+        else:
+            return str(self.deref)
 
     __repr__ = __str__
     __eq__ = object.__eq__
@@ -166,28 +181,24 @@ class Variable(collections.Counter):
         def rollback(self=self, other=other, ref=other.deref):
             self[other] -= 1
             other[self] -= 1
-            other.ref = ref
         self[other] += 1
         other[self] += 1
-        other.ref = self
 
-    def unify_structure(self, other, trail):
+    def unify_structure(self, structure, trail):
         variables = collections.deque()
         seen = set()
         todo = {self}
-        refs = {}
         while todo:
             variable = todo.pop()
             variable.keep_positive()
-            refs[variable] = variable.ref
-            variable.ref = other
+            variable.ref = structure
             seen.add(variable)
             todo |= variable.keys() - seen
             variables.appendleft(variable)
         @trail
-        def rollback(variables=variables, refs=refs):
+        def rollback(variables=variables):
             for variable in variables:
-                variable.ref = refs[variable]
+                variable.ref = variable
 
 
 class Structure:
