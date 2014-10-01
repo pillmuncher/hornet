@@ -12,7 +12,7 @@ __license__ = 'MIT'
 from hornet import *
 
 from hornet.symbols import (
-    A, B, C, C1, G, H, Q, U, V, W, X, Y, Z, cos, d, exp, log, simp, sin, x, y,
+    A, B, C, C1, F, G, H, Q, U, V, W, X, Y, Z, cos, d, exp, log, simp, sin, x, y,
 )
 
 
@@ -262,13 +262,24 @@ def simp_rules(db):
 
 def diff_test(db):
     F = x ** -3 + 2 * x ** 2 + 7 * (x + 9)
-    #F = (2 + x) ** 3
-    #F = (x * y) * (x + 3)
+    #f = (2 + x) ** 3
+    #f = (x * y) * (x + 3)
     print(build_term(F))
 
     for subst in db.ask(d(F, x, G) & simp(G, H)):
         print(subst[G])
         print(subst[H])
+        #env = dict(globals())
+        #for i in range(1, 11):
+            #env['x'] = i
+            #print(expr_eval(F, env), '-->', eval(str(subst[H]), env))
+
+
+def expr_eval(expr, globals):
+    import ast
+    expr_ast = ast.Expression(expr.node)
+    ast.fix_missing_locations(expr_ast)
+    return eval(compile(expr_ast, '<ast>', 'eval'), globals)
 
 
 def main():
