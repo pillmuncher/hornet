@@ -64,8 +64,10 @@ is_variable_name = compose(
     set(string.ascii_uppercase + '_').__contains__)
 
 
-first_param = compose(operator.attrgetter('params'), operator.itemgetter(0))
-second_param = compose(operator.attrgetter('params'), operator.itemgetter(1))
+first_param = property(compose(
+    operator.attrgetter('params'), operator.itemgetter(0)))
+second_param = property(compose(
+    operator.attrgetter('params'), operator.itemgetter(1)))
 
 
 parenthesized = '({})'.format
@@ -128,7 +130,6 @@ class Variable(collections.Counter):
 
     def __str__(self):
         if self.deref is self:
-            here = self.env.get
             seen = {self}
             todo = self.keys() - seen
             name = self.name
@@ -136,7 +137,7 @@ class Variable(collections.Counter):
                 variable = todo.pop()
                 seen.add(variable)
                 todo |= variable.keys() - seen
-                if name > variable.name and variable is here(variable.name):
+                if variable.env is self.env and name > variable.name:
                     name = variable.name
             return name
         else:
@@ -300,85 +301,12 @@ class Num(Structure):
     fresh = get_self
 
 
-class PrefixOperator(Structure):
+class List(Structure):
 
     __slots__ = ()
 
-    operand = property(first_param)
-
-    def __call__(self):
-        return self.op(self.operand.deref())
-
-    def __str__(self):
-
-        operand = self.operand.deref
-
-        op_fixity = make_token(operator_fixities, self)
-        operand_fixity = make_token(operator_fixities, operand)
-
-        if operand_fixity.lbp and op_fixity >= operand_fixity:
-            operand_str = parenthesized
-        else:
-            operand_str = str
-
-        return '{}{}'.format(self.name, operand_str(operand))
-
-
-class InfixOperator(Structure):
-
-    __slots__ = ()
-
-    left = property(first_param)
-    right = property(second_param)
-
-    def __call__(self):
-        return self.op(self.left.deref(), self.right.deref())
-
-    def __str__(self):
-
-        left = self.left.deref
-        right = self.right.deref
-
-        op_fixity = make_token(operator_fixities, self)
-        left_fixity = make_token(operator_fixities, left)
-        right_fixity = make_token(operator_fixities, right)
-
-        if left_fixity.rbp and left_fixity < op_fixity:
-            left_str = parenthesized
-        else:
-            left_str = str
-
-        if right_fixity.lbp and op_fixity > right_fixity:
-            right_str = parenthesized
-        else:
-            right_str = str
-
-        return '{} {} {}'.format(left_str(left), self.name, right_str(right))
-
-
-class Nil(Structure):
-
-    __slots__ = ()
-
-    def __init__(self):
-        Structure.__init__(self, env={}, name='[]')
-
-    __call__ = const([])
-    __str__ = '[]'.__str__
-    __deepcopy__ = get_self
-
-    fresh = get_self
-
-
-NIL = Nil()
-
-
-class List(InfixOperator):
-
-    __slots__ = ()
-
-    car = InfixOperator.left
-    cdr = InfixOperator.right
+    car = first_param
+    cdr = second_param
 
     def __init__(self, **kwargs):
         Structure.__init__(self, name='.', **kwargs)
@@ -410,6 +338,79 @@ class List(InfixOperator):
         if self == NIL:
             return '[{}]'.format(comma_separated(acc))
         return '[{}|{}]'.format(comma_separated(acc), self)
+
+
+class Nil(Structure):
+
+    __slots__ = ()
+
+    def __init__(self):
+        Structure.__init__(self, env={}, name='[]')
+
+    __call__ = const([])
+    __str__ = '[]'.__str__
+    __deepcopy__ = get_self
+
+    fresh = get_self
+
+
+NIL = Nil()
+
+
+class PrefixOperator(Structure):
+
+    __slots__ = ()
+
+    operand = first_param
+
+    def __call__(self):
+        return self.op(self.operand.deref())
+
+    def __str__(self):
+
+        operand = self.operand.deref
+
+        op_fixity = make_token(operator_fixities, self)
+        operand_fixity = make_token(operator_fixities, operand)
+
+        if operand_fixity.lbp and op_fixity >= operand_fixity:
+            operand_str = parenthesized
+        else:
+            operand_str = str
+
+        return '{}{}'.format(self.name, operand_str(operand))
+
+
+class InfixOperator(Structure):
+
+    __slots__ = ()
+
+    left = first_param
+    right = second_param
+
+    def __call__(self):
+        return self.op(self.left.deref(), self.right.deref())
+
+    def __str__(self):
+
+        left = self.left.deref
+        right = self.right.deref
+
+        op_fixity = make_token(operator_fixities, self)
+        left_fixity = make_token(operator_fixities, left)
+        right_fixity = make_token(operator_fixities, right)
+
+        if left_fixity.rbp and left_fixity < op_fixity:
+            left_str = parenthesized
+        else:
+            left_str = str
+
+        if right_fixity.lbp and op_fixity > right_fixity:
+            right_str = parenthesized
+        else:
+            right_str = str
+
+        return '{} {} {}'.format(left_str(left), self.name, right_str(right))
 
 
 class Implication(InfixOperator):
