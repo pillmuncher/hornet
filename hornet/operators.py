@@ -15,8 +15,9 @@ import enum
 import functools
 import operator
 
-from .util import rpartial, pairwise, method_of, compose2 as compose
-from .expressions import lift, promote, AstWrapper
+from .util import pairwise, method_of, compose2 as compose
+from .expressions import lift, promote, AstWrapper, is_tuple, is_astwrapper
+from .expressions import is_name, is_operator
 
 
 class ParseError(Exception):
@@ -191,25 +192,6 @@ def pratt_parse(nodes, table):
 
 unaryop_fields = operator.attrgetter('op', 'operand')
 binop_fields = operator.attrgetter('left', 'op', 'right')
-
-
-def is_binop(node, op):
-    return isinstance(node, ast.BinOp) and isinstance(node.op, op)
-
-
-is_lshift = rpartial(is_binop, ast.LShift)
-is_rshift = rpartial(is_binop, ast.RShift)
-is_bitand = rpartial(is_binop, ast.BitAnd)
-is_bitor = rpartial(is_binop, ast.BitOr)
-
-is_name = rpartial(isinstance, ast.Name)
-is_str = rpartial(isinstance, ast.Str)
-is_call = rpartial(isinstance, ast.Call)
-is_list = rpartial(isinstance, ast.List)
-is_set = rpartial(isinstance, ast.Set)
-is_tuple = rpartial(isinstance, ast.Tuple)
-is_astwrapper = rpartial(isinstance, AstWrapper)
-is_operator = rpartial(isinstance, (ast.BinOp, ast.UnaryOp))
 
 
 class ASTFlattener(ast.NodeVisitor):

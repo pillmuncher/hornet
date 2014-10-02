@@ -18,7 +18,8 @@ import string
 
 from .util import identity, noop, const, foldr, compose2 as compose, method_of
 from .util import first_arg as get_self
-from .operators import fy, xfx, xfy, yfx, make_token, is_bitor
+from .expressions import is_bitor
+from .operators import fy, xfx, xfy, yfx, make_token
 
 
 __all__ = [
@@ -127,9 +128,9 @@ class Variable(collections.Counter):
 
     def __str__(self):
         if self.deref is self:
+            name = self.name
             seen = {self}
             todo = self.keys() - seen
-            name = self.name
             while todo:
                 variable = todo.pop()
                 seen.add(variable)
@@ -170,23 +171,24 @@ class Variable(collections.Counter):
         other[self] += 1
         @trail
         def rollback(self=self, other=other):
-            if self[other] == 1:
-                del self[other]
-                del other[self]
-            else:
+            if self[other] > 1:
                 self[other] -= 1
                 other[self] -= 1
+            else:
+                del self[other]
+                del other[self]
 
     def unify_structure(self, structure, trail):
-        variables = collections.deque()
-        seen = set()
-        todo = {self}
+        variables = [self]
+        self.ref = structure
+        seen = {self}
+        todo = self.keys() - seen
         while todo:
             variable = todo.pop()
             variable.ref = structure
             seen.add(variable)
             todo |= variable.keys() - seen
-            variables.appendleft(variable)
+            variables.append(variable)
         @trail
         def rollback(variables=variables):
             for variable in variables:

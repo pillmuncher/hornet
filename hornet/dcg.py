@@ -14,9 +14,8 @@ import copy
 import itertools
 
 from .util import identity, foldr, pairwise, receive_missing_args
-from .expressions import unit, Name
-from .operators import is_rshift, is_bitand, is_name, is_list, is_set, is_call
-from .operators import is_str
+from .expressions import unit, Name, is_rshift, is_bitand, is_name, is_list
+from .expressions import is_set, is_call, is_str
 
 
 

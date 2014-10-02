@@ -573,8 +573,8 @@ class Database(ClauseDict):
                         else:
                             yield from _resolve(body)
 
-        if isinstance(goal, Conjunction):
-            goal = Relation(env=goal.env, name='call', params=[goal])
-        elif isinstance(goal, Implication):
+        if isinstance(goal, Implication):
             raise TypeError("Term '{}' is not a valid goal.".format(goal))
+        elif isinstance(goal, Conjunction):
+            goal = Relation(env=goal.env, name='call', params=[goal])
         return _resolve(goal)

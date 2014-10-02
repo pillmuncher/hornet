@@ -15,7 +15,8 @@ import ast
 import functools
 import numbers
 
-from .util import identity, flip, foldl, qualname, compose2 as compose
+from .util import identity, flip, foldl, rpartial, qualname
+from .util import compose2 as compose
 
 
 __all__ = [
@@ -57,6 +58,19 @@ __all__ = [
     'BitAnd',
     'BitXor',
     'BitOr',
+    'is_binop',
+    'is_lshift',
+    'is_rshift',
+    'is_bitand',
+    'is_bitor',
+    'is_name',
+    'is_str',
+    'is_call',
+    'is_list',
+    'is_set',
+    'is_tuple',
+    'is_astwrapper',
+    'is_operator',
 ]
 
 
@@ -345,3 +359,22 @@ def promote(item):
 
 def astify(item):
     return promote(item).node
+
+
+def is_binop(node, op):
+    return isinstance(node, ast.BinOp) and isinstance(node.op, op)
+
+
+is_lshift = rpartial(is_binop, ast.LShift)
+is_rshift = rpartial(is_binop, ast.RShift)
+is_bitand = rpartial(is_binop, ast.BitAnd)
+is_bitor = rpartial(is_binop, ast.BitOr)
+
+is_name = rpartial(isinstance, ast.Name)
+is_str = rpartial(isinstance, ast.Str)
+is_call = rpartial(isinstance, ast.Call)
+is_list = rpartial(isinstance, ast.List)
+is_set = rpartial(isinstance, ast.Set)
+is_tuple = rpartial(isinstance, ast.Tuple)
+is_astwrapper = rpartial(isinstance, AstWrapper)
+is_operator = rpartial(isinstance, (ast.BinOp, ast.UnaryOp))
