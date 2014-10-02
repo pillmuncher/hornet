@@ -166,16 +166,16 @@ class Variable(collections.Counter):
         other.unify_variable(self, trail)
 
     def unify_variable(self, other, trail):
+        self[other] += 1
+        other[self] += 1
         @trail
-        def rollback(self=self, other=other, ref=other.deref):
+        def rollback(self=self, other=other):
             if self[other] == 1:
                 del self[other]
                 del other[self]
             else:
                 self[other] -= 1
                 other[self] -= 1
-        self[other] += 1
-        other[self] += 1
 
     def unify_structure(self, structure, trail):
         variables = collections.deque()
