@@ -128,16 +128,13 @@ class Variable(collections.Counter):
 
     def __str__(self):
         if self.deref is self:
-            name = self.name
             seen = {self}
             todo = self.keys() - seen
             while todo:
                 variable = todo.pop()
                 seen.add(variable)
                 todo |= variable.keys() - seen
-                if name > variable.name in self.env:
-                    name = variable.name
-            return name
+            return min(each.name for each in seen if each.name in self.env)
         else:
             return str(self.deref)
 
@@ -179,19 +176,17 @@ class Variable(collections.Counter):
                 del other[self]
 
     def unify_structure(self, structure, trail):
-        self.ref = structure
-        variables = [self]
         seen = {self}
         todo = self.keys() - seen
+        self.ref = structure
         while todo:
             variable = todo.pop()
-            variable.ref = structure
-            variables.append(variable)
             seen.add(variable)
             todo |= variable.keys() - seen
+            variable.ref = structure
         @trail
-        def rollback(variables=variables):
-            for variable in variables:
+        def rollback(seen=seen):
+            for variable in seen:
                 variable.ref = variable
 
 
