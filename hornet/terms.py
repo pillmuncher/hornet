@@ -128,13 +128,17 @@ class Variable(collections.Counter):
 
     def __str__(self):
         if self.deref is self:
+            here = self.env.get
             seen = {self}
             todo = self.keys() - seen
+            name = self.name
             while todo:
                 variable = todo.pop()
                 seen.add(variable)
                 todo |= variable.keys() - seen
-            return min(each.name for each in seen if each.name in self.env)
+                if name > variable.name and variable is here(variable.name):
+                    name = variable.name
+            return name
         else:
             return str(self.deref)
 
@@ -168,10 +172,10 @@ class Variable(collections.Counter):
         other[self] += 1
         @trail
         def rollback(self=self, other=other):
-            if self[other] > 1:
-                self[other] -= 1
-                other[self] -= 1
-            else:
+            self[other] -= 1
+            other[self] -= 1
+            if self[other] < 1:
+                assert self[other] == other[self]
                 del self[other]
                 del other[self]
 
