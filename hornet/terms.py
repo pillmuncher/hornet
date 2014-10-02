@@ -179,16 +179,16 @@ class Variable(collections.Counter):
                 del other[self]
 
     def unify_structure(self, structure, trail):
-        variables = [self]
         self.ref = structure
+        variables = [self]
         seen = {self}
         todo = self.keys() - seen
         while todo:
             variable = todo.pop()
             variable.ref = structure
+            variables.append(variable)
             seen.add(variable)
             todo |= variable.keys() - seen
-            variables.append(variable)
         @trail
         def rollback(variables=variables):
             for variable in variables:
