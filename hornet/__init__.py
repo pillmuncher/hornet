@@ -494,7 +494,7 @@ def cut_parent(term=NIL):
         yield
     except Cut as cut:
         pass
-    if not isinstance(term, String) and term.name == 'cut':
+    if isinstance(term, Atom) and term.name == 'cut':
         raise Cut()
 
 
@@ -539,6 +539,24 @@ class Database(ClauseDict):
 
     def resolve(self, goal):
 
+        def _resolve_conjunction(body):
+            stack = [(None, None)]
+            waiting = body.right
+            running = _resolve(body.left.deref)
+            while running:
+                for _ in running:
+                    break
+                else:
+                    waiting, running = stack.pop()
+                    continue
+                descent = waiting.deref
+                if not isinstance(descent, Conjunction):
+                    yield from _resolve(descent)
+                    continue
+                stack.append((waiting, running))
+                waiting = descent.right
+                running = _resolve(descent.left.deref)
+
         def _resolve(goal, self=self, find_all=self.find_all):
             with cut_parent(goal):
                 for head, body in find_all(goal.indicator):
@@ -550,25 +568,10 @@ class Database(ClauseDict):
                             yield
                             continue
                         body = body.deref
-                        if not isinstance(body, Conjunction):
+                        if isinstance(body, Conjunction):
+                            yield from _resolve_conjunction(body)
+                        else:
                             yield from _resolve(body)
-                            continue
-                        stack = [(None, None)]
-                        running = _resolve(body.left.deref)
-                        waiting = body.right
-                        while running:
-                            for _ in running:
-                                break
-                            else:
-                                running, waiting = stack.pop()
-                                continue
-                            descent = waiting.deref
-                            if not isinstance(descent, Conjunction):
-                                yield from _resolve(descent)
-                                continue
-                            stack.append((running, waiting))
-                            running = _resolve(descent.left.deref)
-                            waiting = descent.right
 
         if isinstance(goal, Conjunction):
             goal = Relation(env=goal.env, name='call', params=[goal])

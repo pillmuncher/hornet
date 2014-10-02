@@ -127,12 +127,11 @@ class Variable(collections.Counter):
 
     def __str__(self):
         if self.deref is self:
+            seen = {self}
+            todo = self.keys() - seen
             name = self.name
-            seen = set()
-            todo = {self}
             while todo:
                 variable = todo.pop()
-                variable.keep_positive()
                 seen.add(variable)
                 todo |= variable.keys() - seen
                 if name > variable.name in self.env:
@@ -163,19 +162,18 @@ class Variable(collections.Counter):
     def ref(self, target):
         self.env[self.name] = target
 
-    def keep_positive(self):
-        non_positive = [k for k, v in self.items() if v <= 0]
-        for each in non_positive:
-            del self[each]
-
     def unify(self, other, trail):
         other.unify_variable(self, trail)
 
     def unify_variable(self, other, trail):
         @trail
         def rollback(self=self, other=other, ref=other.deref):
-            self[other] -= 1
-            other[self] -= 1
+            if self[other] == 1:
+                del self[other]
+                del other[self]
+            else:
+                self[other] -= 1
+                other[self] -= 1
         self[other] += 1
         other[self] += 1
 
@@ -185,7 +183,6 @@ class Variable(collections.Counter):
         todo = {self}
         while todo:
             variable = todo.pop()
-            variable.keep_positive()
             variable.ref = structure
             seen.add(variable)
             todo |= variable.keys() - seen
@@ -233,9 +230,9 @@ class Structure:
             params=[each.fresh(env) for each in self.params],
             actions=self.actions)
 
-    def action(self, *args, **kwargs):
+    def action(self, db, trail):
         for each_action in self.actions:
-            each_action(self, self.env, *args, **kwargs)
+            each_action(self, self.env, db, trail)
 
     def unify(self, other, trail):
         other.unify_structure(self, trail)

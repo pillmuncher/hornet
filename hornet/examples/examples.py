@@ -174,9 +174,11 @@ def tribes(db):
             patriarch(Z, Y) & cut,
         patriarch(Z, Z),
 
-        tribe(X, [Z | Tribe]) <<
-            patriarch(Z, X) &
-            findall(Y, descendant(Y, Z), Tribe),
+        tribe(X, [X|Tribe]) <<
+            findall(Y, related(X, Y), Tribe),
+        #tribe(X, [Z | Tribe]) <<
+            #patriarch(Z, X) &
+            #findall(Y, descendant(Y, Z), Tribe),
             #findall(test(Y, U), descendant(Y, Z), Tribe, U) & equal(U, [patriarch]),
             #findall(test(Y, U, test(U)), descendant(Y, Z), Tribe) &
             #equal(W, bob) & equal(Tribe, [test(_, V, _) | _]) & equal(W, V),
