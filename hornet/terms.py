@@ -283,8 +283,10 @@ class String(Structure):
     __slots__ = ()
 
     __call__ = get_name
-    __str__ = get_name
-    __repr__ = compose(get_name, "'{}'".format)
+    #__str__ = get_name
+    #__repr__ = compose(get_name, "'{}'".format)
+    __str__ = compose(get_name, "'{}'".format)
+    __repr__ = __str__
     __deepcopy__ = get_self
 
     fresh = get_self

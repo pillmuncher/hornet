@@ -9,6 +9,8 @@ __author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
 __license__ = 'MIT'
 
 
+import pprint
+
 from hornet import *
 
 from hornet.symbols import (
@@ -308,9 +310,9 @@ def mudlang2(db):
 
     def test(term, env, db, trail):
         nouns[env.X.name] = dict(
-            gender=env.Gender,
-            number=env.Number,
-            case=env.Case,
+            gender=str(env.Gender),
+            number=str(env.Number),
+            case=str(env.Case),
         )
 
 
@@ -328,8 +330,8 @@ def mudlang2(db):
     for subst in db.ask(equal(L, S) & s(S, T)):
         print(subst[S])
         print(subst[T])
-    print(nouns)
+    pprint.pprint(nouns)
 
 db = Database()
-grammar(db)
+#grammar(db)
 mudlang2(db)

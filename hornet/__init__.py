@@ -344,16 +344,17 @@ def _univ(term, env, db, trail):
         unify(env.L, result, trail)
 
     elif isinstance(env.L, List):
-        functor, *params = flatten(env.L)
+        functor = env.L.car
         if not isinstance(functor, Atom):
             raise UnificationFailed
-        if params:
+        if isinstance(env.L.cdr, Nil):
+            unify(env.T, Atom(env=env, name=functor.name), trail)
+        else:
+            params = flatten(env.L.cdr)
             if isinstance(params[-1], Adjunction):
-                raise TypeError('List expected, found {}'.format(env.L))
+                raise TypeError('Proper List expected, found {}'.format(env.L))
             result = Relation(env=env, name=functor.name, params=params)
             unify(env.T, result, trail)
-        else:
-            unify(env.T, Atom(env=env, name=functor.name), trail)
 
     else:
         raise UnificationFailed
