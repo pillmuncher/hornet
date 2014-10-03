@@ -133,17 +133,20 @@ build_term = bind_compose(rearrange, build)
 
 class Environment(dict):
 
-    def __call__(self, name, dict_getitem=dict.__getitem__, str=str):
+    def __call__(self, name):
         try:
-            return dict_getitem(self, str(name))
+            return self[name]
         except KeyError:
             var = self[name] = Variable(env=self, name=name)
             return var
 
-    def __getitem__(self, name, dict_getitem=dict.__getitem__, str=str):
-        return dict_getitem(self, str(name))
+    __getattr__ = dict.__getitem__
 
-    __getattr__ = __getitem__
+    @property
+    class proxy(collections.ChainMap):
+
+        def __getitem__(self, key, _getitem=collections.ChainMap.__getitem__):
+            return _getitem(self, str(key))
 
 
 class Clause(collections.namedtuple('BaseClause', 'head body term')):
@@ -344,13 +347,14 @@ def _univ(term, env, db, trail):
         unify(env.L, result, trail)
 
     elif isinstance(env.L, List):
-        functor = env.L.car
+        functor = env.L.car.deref
         if not isinstance(functor, Atom):
-            raise UnificationFailed
-        if isinstance(env.L.cdr, Nil):
+            raise TypeError('First Element of List must be Atom, not {}: {}'
+                            .format(type(functor), functor))
+        if isinstance(env.L.cdr.deref, Nil):
             unify(env.T, Atom(env=env, name=functor.name), trail)
         else:
-            params = flatten(env.L.cdr)
+            params = flatten(env.L.cdr.deref)
             if isinstance(params[-1], Adjunction):
                 raise TypeError('Proper List expected, found {}'.format(env.L))
             result = Relation(env=env, name=functor.name, params=params)
@@ -532,7 +536,7 @@ class Database(ClauseDict):
     def ask(self, expression):
         term = build_term(expression)
         for _ in self.resolve(term):
-            yield term.env
+            yield term.env.proxy
 
     def find_all(self, indicator):
         for clause in self.get(indicator, ()):

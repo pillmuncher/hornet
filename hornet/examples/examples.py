@@ -338,6 +338,13 @@ def univ_test(db):
     else:
         print('No.')
 
+    for subst in db.ask(equal(X, a(B, C)) & univ(X, [Y|Z])):
+        print(subst[X], ':', subst[Y], ':', subst[Z])
+        print('Yes.')
+        break
+    else:
+        print('No.')
+
     for subst in db.ask(equal(a(B, C), X) & equal([a, B, C], Y) & univ(X, Y)):
         print(subst[X], ':', subst[Y])
         print('Yes.')
