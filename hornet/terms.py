@@ -173,7 +173,7 @@ class Variable(collections.Counter):
     def unify_variable(self, other, trail):
         self[other] += 1
         other[self] += 1
-        @trail.appendleft
+        @trail
         def rollback(self=self, other=other):
             self[other] -= 1
             other[self] -= 1
@@ -190,7 +190,7 @@ class Variable(collections.Counter):
             seen.add(variable)
             todo |= variable.keys() - seen
             variable.ref = structure
-        @trail.appendleft
+        @trail
         def rollback(seen=seen):
             for variable in seen:
                 variable.ref = variable
