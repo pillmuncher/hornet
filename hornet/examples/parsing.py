@@ -333,5 +333,5 @@ def mudlang2(db):
     pprint.pprint(nouns)
 
 db = Database()
-#grammar(db)
+grammar(db)
 mudlang2(db)

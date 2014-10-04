@@ -16,7 +16,7 @@ import functools
 import operator
 import string
 
-from .util import identity, noop, const, foldr, compose2 as compose, method_of
+from .util import identity, noop, foldr, compose, method_of
 from .util import first_arg as get_self
 from .expressions import is_bitor
 from .operators import fy, xfx, xfy, yfx, make_token
@@ -64,11 +64,13 @@ is_variable_name = compose(
     set(string.ascii_uppercase + '_').__contains__)
 
 
-first_param = property(compose(
-    operator.attrgetter('params'), operator.itemgetter(0)))
-second_param = property(compose(
-    operator.attrgetter('params'), operator.itemgetter(1)))
+@property
+def first_param(structure):
+    return structure.params[0]
 
+@property
+def second_param(structure):
+    return structure.params[1]
 
 parenthesized = '({})'.format
 comma_separated = compose(functools.partial(map, str), ', '.join)
@@ -162,8 +164,8 @@ class Variable(collections.Counter):
         return self.env[self.name]
 
     @deref.setter
-    def ref(self, target):
-        self.env[self.name] = target
+    def ref(self, structure):
+        self.env[self.name] = structure
 
     def unify(self, other, trail):
         other.unify_variable(self, trail)
@@ -171,12 +173,11 @@ class Variable(collections.Counter):
     def unify_variable(self, other, trail):
         self[other] += 1
         other[self] += 1
-        @trail
+        @trail.appendleft
         def rollback(self=self, other=other):
             self[other] -= 1
             other[self] -= 1
             if self[other] < 1:
-                assert self[other] == other[self]
                 del self[other]
                 del other[self]
 
@@ -189,7 +190,7 @@ class Variable(collections.Counter):
             seen.add(variable)
             todo |= variable.keys() - seen
             variable.ref = structure
-        @trail
+        @trail.appendleft
         def rollback(seen=seen):
             for variable in seen:
                 variable.ref = variable
@@ -349,7 +350,7 @@ class Nil(Structure):
     def __init__(self):
         Structure.__init__(self, env={}, name='[]')
 
-    __call__ = const([])
+    __call__ = list
     __str__ = '[]'.__str__
     __deepcopy__ = get_self
 

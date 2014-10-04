@@ -20,7 +20,7 @@ def main():
 
     db = Database()
 
-    nums = list(range(1, 8))
+    nums = list(range(1, 9))
 
     db.tell(
 

@@ -106,29 +106,8 @@ __all__ = [
 globals().update((each, Name(each)) for each in system_names)
 
 
-def build(node):
-    return Builder(Environment()).build(node)
-
-
-def make_list(env, items, tail=NIL):
-
-    def cons(*params):
-        return List(env=env, params=params)
-
-    return foldr(cons, items, tail)
-
-
 def unify(left, right, trail):
     left.deref.unify(right.deref, trail)
-
-
-is_atomic = rpartial(isinstance, (Atom, String, Num))
-not_assertable = rpartial(isinstance,
-        (String, Num, Conjunction, Variable, Wildcard))
-
-
-expand_term = bind_compose(rearrange, dcg_expand, build)
-build_term = bind_compose(rearrange, build)
 
 
 class Environment(dict):
@@ -147,6 +126,19 @@ class Environment(dict):
 
         def __getitem__(self, key, _getitem=collections.ChainMap.__getitem__):
             return _getitem(self, str(key))
+
+
+def build(node):
+    return Builder(Environment()).build(node)
+
+
+expand_term = bind_compose(rearrange, dcg_expand, build)
+build_term = bind_compose(rearrange, build)
+
+
+is_atomic = rpartial(isinstance, (Atom, String, Num))
+not_assertable = rpartial(isinstance,
+        (String, Num, Conjunction, Variable, Wildcard))
 
 
 class Clause(collections.namedtuple('BaseClause', 'head body term')):
@@ -220,101 +212,12 @@ def print_trail(term, env, db, trail):
     pprint.pprint(trail)
 
 
-def _fail(term, env, db, trail):
-    raise UnificationFailed
+def make_list(env, items, tail=NIL):
 
+    def cons(*params):
+        return List(env=env, params=params)
 
-def _write(term, env, db, trail):
-    print(env.X, end='')
-
-
-def _writeln(term, env, db, trail):
-    print(env.X)
-
-
-def _findall_3(term, env, db, trail):
-    results = [copy.deepcopy(env.Object.deref) for _ in db.resolve(env.Goal)]
-    unify(env.List, make_list(env, results), trail)
-
-
-def _findall_4(term, env, db, trail):
-    results = [copy.deepcopy(env.Object.deref) for _ in db.resolve(env.Goal)]
-    unify(env.List, make_list(env, results, env.Rest), trail)
-
-
-def _listing_0(term, env, db, trail):
-    for each in db.items():
-        _listing(*each)
-
-
-def _listing_1(term, env, db, trail):
-    for indicator in sorted(db.indicators[env.Predicate()]):
-        _listing(indicator, db.get(indicator))
-
-
-def _listing_2(term, env, db, trail):
-    indicator = Indicator(env.Predicate(), env.Arity())
-    _listing(indicator, db.get(indicator))
-
-
-def _listing(indicator, clauses):
-    print(str(indicator))
-    for clause in clauses:
-        print('    {}.'.format(clause))
-    print()
-
-
-def _smaller(term, env, db, trail):
-    if not env.X() < env.Y():
-        raise UnificationFailed
-
-
-def _greater(term, env, db, trail):
-    if not env.X() > env.Y():
-        raise UnificationFailed
-
-
-def _let(term, env, db, trail):
-    unify(env.X, build_term(promote(env.Y())), trail)
-
-
-def _atomic(term, env, db, trail):
-    if not is_atomic(env.X):
-        raise UnificationFailed
-
-
-def _integer(term, env, db, trail):
-    if not isinstance(env.X, Num):
-        raise UnificationFailed
-    if not isinstance(env.X(), int):
-        raise UnificationFailed
-
-
-def _real(term, env, db, trail):
-    if not isinstance(env.X, Num):
-        raise UnificationFailed
-    if not isinstance(env.X(), float):
-        raise UnificationFailed
-
-
-def _numeric(term, env, db, trail):
-    if not isinstance(env.X, Num):
-        raise UnificationFailed
-    if not isinstance(env.X(), numbers.Number):
-        raise UnificationFailed
-
-
-def _join_2(term, env, db, trail):
-    unify(env.S, build_term(promote(''.join(env.L()))), trail)
-
-
-def _join_3(term, env, db, trail):
-    unify(env.S, build_term(promote(env.T().join(env.L()))), trail)
-
-
-def _var(term, env, db, trail):
-    if not isinstance(env.X, Variable):
-        raise UnificationFailed
+    return foldr(cons, items, tail)
 
 
 def flatten(L):
@@ -333,6 +236,117 @@ def flatten(L):
         else:
             acc.append(Adjunction(env=L.env, name='|', params=[car, cdr]))
             return acc
+
+
+def expect(item, expected_type):
+    if not isinstance(item, expected_type):
+        raise UnificationFailed
+
+def _fail(term, env, db, trail):
+    raise UnificationFailed
+
+
+def _write(term, env, db, trail):
+    print(env.X, end='')
+
+
+def _writeln(term, env, db, trail):
+    print(env.X)
+
+
+def _findall_3(term, env, db, trail):
+    results = [copy.deepcopy(env.Object) for _ in db.resolve(env.Goal)]
+    unify(env.List, make_list(env, results), trail)
+
+
+def _findall_4(term, env, db, trail):
+    results = [copy.deepcopy(env.Object) for _ in db.resolve(env.Goal)]
+    unify(env.List, make_list(env, results, env.Rest), trail)
+
+
+def _listing_0(term, env, db, trail):
+    for each in db.items():
+        _listing(*each)
+
+
+def _listing_1(term, env, db, trail):
+    expect(env.Predicate, Atom)
+    for indicator in sorted(db.indicators[env.Predicate()]):
+        _listing(indicator, db.get(indicator))
+
+
+def _listing_2(term, env, db, trail):
+    expect(env.Predicate, Atom)
+    expect(env.Arity, Num)
+    indicator = Indicator(env.Predicate(), env.Arity())
+    _listing(indicator, db.get(indicator))
+
+
+def _listing(indicator, clauses):
+    print(indicator)
+    for clause in clauses:
+        print('    {}.'.format(clause))
+    print()
+
+
+def _smaller(term, env, db, trail):
+    expect(env.X, Num)
+    expect(env.Y, Num)
+    if not env.X() < env.Y():
+        raise UnificationFailed
+
+
+def _greater(term, env, db, trail):
+    expect(env.X, Num)
+    expect(env.Y, Num)
+    if not env.X() > env.Y():
+        raise UnificationFailed
+
+
+def _let(term, env, db, trail):
+    unify(env.X, build_term(promote(env.Y())), trail)
+
+
+def _atomic(term, env, db, trail):
+    if not is_atomic(env.X):
+        raise UnificationFailed
+
+
+def _integer(term, env, db, trail):
+    expect(env.X, Num)
+    expect(env.X(), int)
+
+
+def _real(term, env, db, trail):
+    expect(env.X, Num)
+    expect(env.X(), float)
+
+
+def _numeric(term, env, db, trail):
+    expect(env.X, Num)
+    expect(env.X(), numbers.Number)
+
+
+def flatten_strs(L):
+    try:
+        for each in flatten(L):
+            expect(each, String)
+            yield each.deref()
+    except UnificationFailed:
+        raise TypeError('Expected String, found {}: {}'
+                        .format(type(each), each))
+
+
+def _join_2(term, env, db, trail):
+    unify(env.S, build_term(promote(''.join(flatten_strs(env.L)))), trail)
+
+
+def _join_3(term, env, db, trail):
+    unify(env.S, build_term(promote(env.T().join(flatten_strs(env.L)))), trail)
+
+
+def _var(term, env, db, trail):
+    expect(env.X, Variable)
 
 
 def _univ(term, env, db, trail):
@@ -493,26 +507,9 @@ def _bootstrap():
 _system_db, _indicators = _bootstrap()
 
 
-@contextlib.contextmanager
-def cut_parent(term=NIL):
-    try:
-        yield
-    except Cut as cut:
-        pass
-    if isinstance(term, Atom) and term.name == 'cut':
+def raise_on_cut(goal):
+    if isinstance(goal, Atom) and goal.name == 'cut':
         raise Cut()
-
-
-@contextlib.contextmanager
-def trailing():
-    rollback_funcs = collections.deque()
-    try:
-        yield rollback_funcs.appendleft
-    except UnificationFailed:
-        pass
-    finally:
-        for rollback in rollback_funcs:
-            rollback()
 
 
 class Database(ClauseDict):
@@ -544,6 +541,31 @@ class Database(ClauseDict):
 
     def resolve(self, goal):
 
+        def _resolve(goal, self=self, find_all=self.find_all):
+            for head, body in find_all(goal.indicator):
+                trail = collections.deque()
+                try:
+                    try:
+                        goal.unify(head, trail)
+                        goal.action(self, trail)
+                        head.action(self, trail)
+                    except UnificationFailed:
+                        continue
+                    if body is None:
+                        yield
+                        continue
+                    body = body.deref
+                    if isinstance(body, Conjunction):
+                        yield from _resolve_conjunction(body)
+                        continue
+                    yield from _resolve(body)
+                except Cut as cut:
+                    break
+                finally:
+                    for undo in trail:
+                        undo()
+            raise_on_cut(goal)
+
         def _resolve_conjunction(body):
             stack = [(None, None)]
             waiting = body.right
@@ -561,22 +583,6 @@ class Database(ClauseDict):
                 stack.append((waiting, running))
                 waiting = descent.right
                 running = _resolve(descent.left.deref)
-
-        def _resolve(goal, self=self, find_all=self.find_all):
-            with cut_parent(goal):
-                for head, body in find_all(goal.indicator):
-                    with trailing() as trail:
-                        goal.unify(head, trail)
-                        goal.action(self, trail)
-                        head.action(self, trail)
-                        if body is None:
-                            yield
-                            continue
-                        body = body.deref
-                        if isinstance(body, Conjunction):
-                            yield from _resolve_conjunction(body)
-                        else:
-                            yield from _resolve(body)
 
         if isinstance(goal, Implication):
             raise TypeError("Term '{}' is not a valid goal.".format(goal))
