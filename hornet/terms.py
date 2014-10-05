@@ -51,6 +51,7 @@ __all__ = [
     'Positive',
     'Negative',
     'Builder',
+    'raise_on_cut',
 ]
 
 
@@ -97,6 +98,11 @@ class UnificationFailed(Exception):
 
 class Cut(Exception):
     pass
+
+
+def raise_on_cut(goal):
+    if isinstance(goal, Atom) and goal.name == 'cut':
+        raise Cut
 
 
 class Wildcard:
@@ -251,6 +257,27 @@ class Structure:
         elif self.params:
             for this, that in zip(self.params, other.params):
                 this.deref.unify(that.deref, trail)
+
+    def resolve(self, db):
+        for head, body in db.find_all(self.indicator):
+            trailing = []
+            trail = trailing.append
+            try:
+                self.unify(head, trail)
+                self.action(db, trail)
+                head.action(db, trail)
+                if body is None:
+                    yield
+                else:
+                    yield from body.deref.resolve(db)
+            except UnificationFailed:
+                continue
+            except Cut:
+                break
+            finally:
+                for undo in reversed(trailing):
+                    undo()
+        raise_on_cut(self)
 
 
 class Relation(Structure):
@@ -420,9 +447,16 @@ class Implication(InfixOperator):
     __slots__ = ()
     op = lambda left, right: left or not right  # reverse implication: l << r
 
+    def resolve(self, db):
+        raise TypeError("Term '{}' is not a valid goal.".format(self))
+
 class Conjunction(InfixOperator):
     __slots__ = ()
     op = operator.and_
+
+    def resolve(self, db):
+        for _ in self.left.deref.resolve(db):
+            yield from self.right.deref.resolve(db)
 
 class Disjunction(InfixOperator):
     __slots__ = ()

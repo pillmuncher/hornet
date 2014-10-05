@@ -362,6 +362,15 @@ def univ_test(db):
     else:
         print('No.')
 
+    #db.tell(
+        #blub << true & (A << (A & true))
+    #)
+    #for subst in db.ask(blub):
+        #print(subst[X])
+        #print('Yes.')
+        #break
+    #else:
+        #print('No.')
     #for subst in db.ask(equal([a, B, C|D], Y) & univ(X, Y)):
         #print(subst[X], ':', subst[Y])
         #print('Yes.')

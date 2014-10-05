@@ -512,11 +512,6 @@ def _bootstrap():
 _system_db, _indicators = _bootstrap()
 
 
-def raise_on_cut(goal):
-    if isinstance(goal, Atom) and goal.name == 'cut':
-        raise Cut
-
-
 class Database(ClauseDict):
 
     def __init__(self):
@@ -544,51 +539,105 @@ class Database(ClauseDict):
         for clause in self.get(indicator, ()):
             yield clause.fresh(Environment())[:2]
 
-    def _resolve(self, goal):
-        for head, body in self.find_all(goal.indicator):
-            trailing = []
-            trail = trailing.append
-            try:
-                try:
-                    goal.unify(head, trail)
-                    goal.action(self, trail)
-                    head.action(self, trail)
-                except UnificationFailed:
-                    continue
-                if body is None:
-                    yield
-                    continue
-                body = body.deref
-                try:
-                    if not isinstance(body, Conjunction):
-                        yield from self._resolve(body)
-                        continue
-                    stack = [(None, None)]
-                    running = self._resolve(body.left.deref)
-                    waiting = body.right
-                    while running:
-                        for _ in running:
-                            break
-                        else:
-                            running, waiting = stack.pop()
-                            continue
-                        descent = waiting.deref
-                        if not isinstance(descent, Conjunction):
-                            yield from self._resolve(descent)
-                            continue
-                        stack.append((running, waiting))
-                        running = self._resolve(descent.left.deref)
-                        waiting = descent.right
-                except Cut:
-                    break
-            finally:
-                for undo in reversed(trailing):
-                    undo()
-        raise_on_cut(goal)
-
     def resolve(self, goal):
-        if isinstance(goal, Implication):
-            raise TypeError("Term '{}' is not a valid goal.".format(goal))
-        elif isinstance(goal, Conjunction):
-            goal = Relation(env=goal.env, name='call', params=[goal])
-        return self._resolve(goal)
+
+        #def _resolve(goal):
+            #if is_implication(goal):
+                #raise TypeError("Term '{}' is not a valid goal.".format(goal))
+            #elif is_conjunction(goal):
+                #stack = [(None, None)]
+                #running = _resolve(goal.left.deref)
+                #waiting = goal.right
+                #while running:
+                    #for _ in running:
+                        #break
+                    #else:
+                        #running, waiting = stack.pop()
+                        #continue
+                    #descent = waiting.deref
+                    #if is_conjunction(descent):
+                        #stack.append((running, waiting))
+                        #running = _resolve(descent.left.deref)
+                        #waiting = descent.right
+                    #else:
+                        #yield from _resolve(descent)
+            #else:
+                #for head, body in self.find_all(goal.indicator):
+                    #trailing = []
+                    #trail = trailing.append
+                    #try:
+                        #goal.unify(head, trail)
+                        #goal.action(self, trail)
+                        #head.action(self, trail)
+                        #if body is None:
+                            #yield
+                            #continue
+                        #body = body.deref
+                        #if is_conjunction(body):
+                            #stack = [(None, None)]
+                            #running = _resolve(body.left.deref)
+                            #waiting = body.right
+                            #while running:
+                                #for _ in running:
+                                    #break
+                                #else:
+                                    #running, waiting = stack.pop()
+                                    #continue
+                                #descent = waiting.deref
+                                #if is_conjunction(descent):
+                                    #stack.append((running, waiting))
+                                    #running = _resolve(descent.left.deref)
+                                    #waiting = descent.right
+                                #else:
+                                    #yield from _resolve(descent)
+                        #else:
+                            #yield from _resolve(body)
+                    #except UnificationFailed:
+                        #continue
+                    #except Cut:
+                        #break
+                    #finally:
+                        #for undo in reversed(trailing):
+                            #undo()
+                #raise_on_cut(goal)
+
+        #def _resolve(goal):
+            #if is_implication(goal):
+                #raise TypeError("Term '{}' is not a valid goal.".format(goal))
+            #elif is_conjunction(goal):
+                #for _ in _resolve(goal.left.deref):
+                    #yield from _resolve(goal.right.deref)
+            #else:
+                #for head, body in self.find_all(goal.indicator):
+                    #trailing = []
+                    #trail = trailing.append
+                    #try:
+                        #goal.unify(head, trail)
+                        #goal.action(self, trail)
+                        #head.action(self, trail)
+                        #if body is None:
+                            #yield
+                        #else:
+                            #yield from _resolve(body.deref)
+                    #except UnificationFailed:
+                        #continue
+                    #except Cut:
+                        #break
+                    #finally:
+                        #for undo in reversed(trailing):
+                            #undo()
+                #raise_on_cut(goal)
+
+        #try:
+            #yield from _resolve(goal)
+        #except Cut:
+            #pass
+
+        try:
+            yield from goal.resolve(self)
+        except Cut:
+            pass
+
+
+is_conjunction = rpartial(isinstance, Conjunction)
+is_implication = rpartial(isinstance, Implication)

@@ -115,14 +115,14 @@ def coroutine(generator=None, *, clean_exit=True):
     return starter
 
 
-def receive_missing_args(func):
-    sig = signature(func)
-    @wraps(func)
+def receive_missing_args(procedure):
+    sig = signature(procedure)
     @coroutine
+    @wraps(procedure)
     def receiver(*args, **kwargs):
         ba = sig.bind_partial(*args, **kwargs)
         for name in sig.parameters:
             if name not in ba.arguments:
                 ba.arguments[name] = (yield)
-        func(*ba.args, **ba.kwargs)
+        procedure(*ba.args, **ba.kwargs)
     return receiver
