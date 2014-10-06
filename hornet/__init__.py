@@ -539,7 +539,34 @@ class Database(ClauseDict):
         for clause in self.get(indicator, ()):
             yield clause.fresh(Environment())[:2]
 
+    def matches(self, goal):
+        trail = []
+        for head, body in self.find_all(goal.indicator):
+            assert not trail
+            try:
+                head.unify(goal, trail)
+                head.action(self, trail)
+                goal.action(self, trail)
+            except UnificationFailed:
+                continue
+            else:
+                yield body
+            finally:
+                while trail:
+                    trail.pop()()
+
     def resolve(self, goal):
+
+        def success(db, no, cut):
+            yield
+            yield from no()
+
+        def failure():
+            return
+            yield
+
+        yield from goal.resolve(self, yes=success, no=failure, cut=failure)
+
 
         #def _resolve(goal):
             #if is_implication(goal):
@@ -601,6 +628,11 @@ class Database(ClauseDict):
                             #undo()
                 #raise_on_cut(goal)
 
+        #try:
+            #yield from goal.resolve(self)
+        #except Cut:
+            #pass
+
         #def _resolve(goal):
             #if is_implication(goal):
                 #raise TypeError("Term '{}' is not a valid goal.".format(goal))
@@ -609,34 +641,36 @@ class Database(ClauseDict):
                     #yield from _resolve(goal.right.deref)
             #else:
                 #for head, body in self.find_all(goal.indicator):
-                    #trailing = []
-                    #trail = trailing.append
+                    #trail = []
                     #try:
-                        #goal.unify(head, trail)
-                        #goal.action(self, trail)
-                        #head.action(self, trail)
+                        #if not self.match(head, goal, trail):
+                            #continue
                         #if body is None:
                             #yield
-                        #else:
+                            #continue
+                        #try:
                             #yield from _resolve(body.deref)
-                    #except UnificationFailed:
-                        #continue
-                    #except Cut:
-                        #break
+                        #except Cut:
+                            #break
                     #finally:
-                        #for undo in reversed(trailing):
+                        #for undo in reversed(trail):
                             #undo()
-                #raise_on_cut(goal)
+                        #raise_on_cut(goal)
 
         #try:
             #yield from _resolve(goal)
         #except Cut:
             #pass
 
-        try:
-            yield from goal.resolve(self)
-        except Cut:
-            pass
+
+    #def match(self, term1, term2, trail):
+        #try:
+            #term1.unify(term2, trail)
+            #term1.action(self, trail)
+            #term2.action(self, trail)
+            #return True
+        #except UnificationFailed:
+            #return False
 
 
 is_conjunction = rpartial(isinstance, Conjunction)
