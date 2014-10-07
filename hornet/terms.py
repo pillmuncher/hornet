@@ -21,7 +21,7 @@ from .util import identity, noop, foldr, compose, method_of
 from .util import first_arg as get_self, rpartial
 from .expressions import is_bitor
 from .operators import fy, xfx, xfy, yfx, make_token
-from .trampoline import bouncy, land, throw
+from .trampoline import bouncy, land as failure, throw as success
 
 
 __all__ = [
@@ -195,10 +195,6 @@ class Variable(collections.Counter):
                 variable.ref = variable
 
 
-failure = land
-success = throw
-
-
 #def failure():
     #return
     #yield
@@ -273,7 +269,7 @@ class Structure:
             else:
                 return prune() if is_cut(self) else no()
             if body is None:
-                return yes(db, try_next)
+                return yes(try_next)
             else:
                 return body.deref.resolve(db, yes, try_next, no)
         return try_next()
@@ -357,14 +353,14 @@ class List(Structure):
         while isinstance(self, List):
             acc.append(self.car.deref())
             self = self.cdr.deref
-        return acc if self == NIL else acc + [self]
+        return acc if is_nil(self) else acc + [self]
 
     def __str__(self):
         acc = []
         while isinstance(self, List):
             acc.append(self.car.deref)
             self = self.cdr.deref
-        if self == NIL:
+        if is_nil(self):
             return '[{}]'.format(comma_separated(acc))
         return '[{}|{}]'.format(comma_separated(acc), self)
 
@@ -384,6 +380,7 @@ class Nil(Structure):
 
 
 NIL = Nil()
+is_nil = rpartial(isinstance, Nil)
 
 
 class PrefixOperator(Structure):
@@ -454,7 +451,7 @@ class Conjunction(InfixOperator):
     op = operator.and_
 
     def resolve(self, db, yes=success, no=failure, prune=failure):
-        def resolve_right(db, retry):
+        def resolve_right(retry):
             return self.right.deref.resolve(db, yes, retry, prune)
         return self.left.deref.resolve(db, resolve_right, no, prune)
 

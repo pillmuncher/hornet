@@ -18,24 +18,17 @@ def trampoline(bouncing, *args, **kwargs):
         yield from results
 
 
-zero = iter(())
-
-
-def unit(item):
-    yield item
-
-
 def land(*args, **kwargs):
-    return zero, None, args, kwargs
+    return (), None, args, kwargs
 
 
-def throw(thrown, function, *args, **kwargs):
-    return unit(thrown), function, args, kwargs
+def throw(function, *args, thrown=None, **kwargs):
+    return [thrown], function, args, kwargs
 
 
 def bounce(function, *args, **kwargs):
-    return zero, function, args, kwargs
+    return (), function, args, kwargs
 
 
-def bouncy(f):
-    return functools.partial(bounce, f)
+def bouncy(function):
+    return functools.wraps(function)(functools.partial(bounce, function))
