@@ -553,4 +553,4 @@ class Database(ClauseDict):
                     trail.pop()()
 
     def resolve(self, goal):
-        yield from goal.resolve(self)
+        return goal.resolve(self)

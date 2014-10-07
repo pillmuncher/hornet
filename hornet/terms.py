@@ -259,18 +259,17 @@ class Structure:
             for this, that in zip(self.params, other.params):
                 this.deref.unify(that.deref, trail)
 
-    def resolve(self, db, yes=success, no=failure, cut_parent=failure):
+    def resolve(self, db, yes=success, no=failure, prune=failure):
         def try_next(matches=db.matches(self)):
             for body in matches:
                 break
             else:
-                yield from cut_parent() if is_cut(self) else no()
-                return
+                return prune() if is_cut(self) else no()
             if body is None:
-                yield from yes(db, try_next)
+                return yes(db, try_next)
             else:
-                yield from body.deref.resolve(db, yes, try_next, no)
-        return try_next()
+                return body.deref.resolve(db, yes, try_next, no)
+        yield from try_next()
 
 
 class Relation(Structure):
@@ -440,17 +439,17 @@ class Implication(InfixOperator):
     __slots__ = ()
     op = lambda left, right: left or not right  # reverse implication: l << r
 
-    def resolve(self, db, yes=success, no=failure, cut_parent=failure):
+    def resolve(self, db, yes=success, no=failure, prune=failure):
         raise TypeError("Term '{}' is not a valid goal.".format(self))
 
 class Conjunction(InfixOperator):
     __slots__ = ()
     op = operator.and_
 
-    def resolve(self, db, yes=success, no=failure, cut_parent=failure):
-        def resolve_right(db, no_):
-            return self.right.deref.resolve(db, yes, no_, cut_parent)
-        return self.left.deref.resolve(db, resolve_right, no, cut_parent)
+    def resolve(self, db, yes=success, no=failure, prune=failure):
+        def resolve_right(db, no):
+            return self.right.deref.resolve(db, yes, no, prune)
+        return self.left.deref.resolve(db, resolve_right, no, prune)
 
 class Disjunction(InfixOperator):
     __slots__ = ()
