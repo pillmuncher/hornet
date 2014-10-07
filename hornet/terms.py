@@ -195,15 +195,8 @@ class Variable(collections.Counter):
                 variable.ref = variable
 
 
-def yield_once():
-    yield
-
-
-def success(db, no):
-    return yield_once(), no, (), {}
-
-
 failure = land
+success = throw
 
 
 class Structure:
@@ -261,18 +254,6 @@ class Structure:
         elif self.params:
             for this, that in zip(self.params, other.params):
                 this.deref.unify(that.deref, trail)
-
-    #def resolve(self, db, yes=success, no=failure, prune=failure):
-        #def try_next(matches=db.matches(self)):
-            #for body in matches:
-                #break
-            #else:
-                #return prune() if is_cut(self) else no()
-            #if body is None:
-                #return yes(db, try_next)
-            #else:
-                #return body.deref.resolve(db, yes, try_next, no)
-        #yield from try_next()
 
     def resolve(self, db, yes=success, no=failure, prune=failure):
         @bouncy
@@ -463,8 +444,8 @@ class Conjunction(InfixOperator):
     op = operator.and_
 
     def resolve(self, db, yes=success, no=failure, prune=failure):
-        def resolve_right(db, no):
-            return self.right.deref.resolve(db, yes, no, prune)
+        def resolve_right(db, retry):
+            return self.right.deref.resolve(db, yes, retry, prune)
         return self.left.deref.resolve(db, resolve_right, no, prune)
 
 class Disjunction(InfixOperator):
@@ -518,10 +499,6 @@ class Positive(PrefixOperator):
 class Negative(PrefixOperator):
     __slots__ = ()
     op = operator.neg
-
-
-is_conjunction = rpartial(isinstance, Conjunction)
-is_implication = rpartial(isinstance, Implication)
 
 
 operator_fixities = {

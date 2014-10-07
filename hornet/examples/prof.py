@@ -9,6 +9,7 @@ __author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
 __license__ = 'MIT'
 
 
+#from hornet.examples.eight_queens import *
 from hornet.examples.symdiff import *
 #from hornet.examples.fizzbuzz import *
 

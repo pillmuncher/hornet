@@ -540,7 +540,6 @@ class Database(ClauseDict):
     def matches(self, goal):
         trail = []
         for head, body in self.find_all(goal.indicator):
-            assert not trail
             try:
                 head.unify(goal, trail)
                 head.action(self, trail)
