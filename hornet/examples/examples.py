@@ -211,10 +211,10 @@ def genealogy(db):
         print(subst[A])
     print()
 
-    #print('who is related to bob?')
-    #for subst in db.ask(related(A, bob)):
-        #print(subst[A])
-    #print()
+    print('who is related to bob?')
+    for subst in db.ask(related(A, bob)):
+        print(subst[A])
+    print()
 
     print('who is lee related to?')
     for subst in db.ask(related(lee, A)):

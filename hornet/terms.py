@@ -26,7 +26,6 @@ from .operators import fy, xfx, xfy, yfx, make_token
 __all__ = [
     'Indicator',
     'UnificationFailed',
-    'Cut',
     'Wildcard',
     'Variable',
     'Relation',
@@ -52,7 +51,6 @@ __all__ = [
     'Positive',
     'Negative',
     'Builder',
-    'raise_on_cut',
     'success',
     'failure',
 ]
@@ -97,15 +95,6 @@ def __str__(self):
 
 class UnificationFailed(Exception):
     pass
-
-
-class Cut(Exception):
-    pass
-
-
-def raise_on_cut(goal):
-    if isinstance(goal, Atom) and goal.name == 'cut':
-        raise Cut
 
 
 class Wildcard:
@@ -270,12 +259,12 @@ class Structure:
             for this, that in zip(self.params, other.params):
                 this.deref.unify(that.deref, trail)
 
-    def resolve(self, db, yes=success, no=failure, cut=failure):
+    def resolve(self, db, yes=success, no=failure, cut_parent=failure):
         def try_next(matches=db.matches(self)):
             for body in matches:
                 break
             else:
-                yield from cut() if is_cut(self) else no()
+                yield from cut_parent() if is_cut(self) else no()
                 return
             if body is None:
                 yield from yes(db, try_next)
@@ -451,18 +440,17 @@ class Implication(InfixOperator):
     __slots__ = ()
     op = lambda left, right: left or not right  # reverse implication: l << r
 
-    def resolve(self, db, yes=success, no=failure, cut=failure):
+    def resolve(self, db, yes=success, no=failure, cut_parent=failure):
         raise TypeError("Term '{}' is not a valid goal.".format(self))
 
 class Conjunction(InfixOperator):
     __slots__ = ()
     op = operator.and_
 
-    def resolve(self, db, yes=success, no=failure, cut=failure):
-        left, right = self.left.deref, self.right.deref
+    def resolve(self, db, yes=success, no=failure, cut_parent=failure):
         def resolve_right(db, no_):
-            return right.resolve(db, yes, no_, cut)
-        return left.resolve(db, resolve_right, no, cut)
+            return self.right.deref.resolve(db, yes, no_, cut_parent)
+        return self.left.deref.resolve(db, resolve_right, no, cut_parent)
 
 class Disjunction(InfixOperator):
     __slots__ = ()

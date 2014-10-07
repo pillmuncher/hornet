@@ -242,9 +242,6 @@ def expect(item, expected_type):
     if not isinstance(item, expected_type):
         raise UnificationFailed
 
-def _cut(term, env, db, trail):
-    raise Cut
-
 
 def _fail(term, env, db, trail):
     raise UnificationFailed
