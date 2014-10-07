@@ -53,6 +53,8 @@ __all__ = [
     'Negative',
     'Builder',
     'raise_on_cut',
+    'success',
+    'failure',
 ]
 
 
@@ -203,6 +205,15 @@ class Variable(collections.Counter):
                 variable.ref = variable
 
 
+def success(db, no):
+    yield
+    yield from no()
+
+def failure():
+    return
+    yield
+
+
 class Structure:
 
     __slots__ = 'env', 'name', 'params', 'actions'
@@ -259,168 +270,18 @@ class Structure:
             for this, that in zip(self.params, other.params):
                 this.deref.unify(that.deref, trail)
 
-
-    def resolve(self, db, yes, no, cut):
-        matches = db.matches(self)
-        def next_clause():
+    def resolve(self, db, yes=success, no=failure, cut=failure):
+        def try_next(matches=db.matches(self)):
             for body in matches:
                 break
             else:
                 yield from cut() if is_cut(self) else no()
                 return
             if body is None:
-                yield from yes(db, no=next_clause, cut=cut)
+                yield from yes(db, try_next)
             else:
-                yield from body.deref.resolve(
-                            db, yes=yes, no=next_clause, cut=cut)
-
-        yield from next_clause()
-
-
-
-
-
-
-
-
-
-
-
-
-    #def resolve(self, db):
-
-        #def match(head):
-            #try:
-                #head.unify(goal, trail)
-                #head.action(db, trail)
-                #goal.action(db, trail)
-                #return True
-            #except UnificationFailed:
-                #return False
-
-        #def rollback():
-            #while trail:
-                #trail.pop()()
-
-        #def save():
-            #stack.append((goal, running, waiting, trail))
-
-        #def restore():
-            #nonlocal goal, running, waiting, trail
-            #rollback()
-            #goal, running, waiting, trail = stack.pop()
-
-        #def find_all():
-            #for head, body in db.find_all(goal.indicator):
-                #try:
-                    #head.unify(goal, trail)
-                    #head.action(db, trail)
-                    #goal.action(db, trail)
-                    #yield body
-                #except UnificationFailed:
-                    #rollback()
-                    #continue
-
-        #def advance_or_unwind():
-            #while goal:
-                #for body in find_all():
-                    #break
-                #else:
-                    #restore()
-                    #continue
-                #if body is None:
-                    #yield
-                #elif is_conjunction(body.deref):
-                    #pass
-                #else:
-                    #pass
-
-
-
-
-        #def advance_or_unwind():
-            #nonlocal current
-            #if waiting:
-                #if is_implication(waiting):
-                    #raise TypeError("Term '{}' is not a valid goal."
-                                    #.format(waiting))
-                #elif is_conjunction(waiting):
-                    #try_or_unwind(waiting.left.deref, waiting.right.deref)
-                #else:
-                    #try_or_unwind(waiting)
-            #while running:
-                #for current in running:
-                    #return
-                #else:
-                    #restore()
-
-        #def try_or_unwind(new_goal, new_waiting=None):
-            #nonlocal goal, running, trail
-            #save()
-            #goal = new_goal
-            #running = db.find_all(goal.indicator)
-            #waiting = new_waiting
-            #trail = []
-            #advance_or_unwind()
-
-        #def retry_or_unwind():
-            #rollback()
-            #advance_or_unwind()
-
-        #def unwind_on_cut():
-            #if is_cut(goal):
-                #restore()
-
-
-        #goal = None
-        #current = None
-        #running = None
-        #waiting = None
-        #trail = None
-
-        #stack = []
-
-        #try_or_unwind(self)
-        #while goal:
-            #head, body = current
-            #if not match(head):
-                #retry_or_unwind()
-            #elif body is None:
-                #yield
-                #retry_or_unwind()
-            #elif is_conjunction(body.deref):
-                #try_or_unwind(body.deref.left.deref, body.deref.right.deref)
-            #else:
-                #try_or_unwind(body.deref)
-            #unwind_on_cut()
-
-
-
-
-
-
-    #def resolve(self, db):
-        #for head, body in db.find_all(self.indicator):
-            #trail = []
-            #trail = trail.append
-            #try:
-                #try:
-                    #head.unify(self, trail)
-                    #head.action(db, trail)
-                    #self.action(db, trail)
-                #except UnificationFailed:
-                    #continue
-                #if body is None:
-                    #yield
-                #else:
-                    #try:
-                        #yield from body.deref.resolve(db)
-                    #except Cut:
-                        #break
-            #finally:
-                #for undo in reversed(trail):
-                    #undo()
-                #raise_on_cut(self)
+                yield from body.deref.resolve(db, yes, try_next, no)
+        return try_next()
 
 
 class Relation(Structure):
@@ -590,21 +451,18 @@ class Implication(InfixOperator):
     __slots__ = ()
     op = lambda left, right: left or not right  # reverse implication: l << r
 
-    def resolve(self, db, yes, no, cut):
+    def resolve(self, db, yes=success, no=failure, cut=failure):
         raise TypeError("Term '{}' is not a valid goal.".format(self))
 
 class Conjunction(InfixOperator):
     __slots__ = ()
     op = operator.and_
 
-    def resolve(self, db, yes, no, cut):
+    def resolve(self, db, yes=success, no=failure, cut=failure):
         left, right = self.left.deref, self.right.deref
-        def resolve_right(db, no, cut):
-            yield from right.resolve(db, yes=yes, no=no, cut=cut)
-        yield from left.resolve(db, yes=resolve_right, no=no, cut=cut)
-    #def resolve(self, db):
-        #for _ in self.left.deref.resolve(db):
-            #yield from self.right.deref.resolve(db)
+        def resolve_right(db, no_):
+            return right.resolve(db, yes, no_, cut)
+        return left.resolve(db, resolve_right, no, cut)
 
 class Disjunction(InfixOperator):
     __slots__ = ()
