@@ -392,7 +392,6 @@ def _bootstrap():
     exprs = (
 
         cut,
-        #cut[_cut],
 
         true,
 
@@ -547,10 +546,11 @@ class Database(ClauseDict):
             except UnificationFailed:
                 continue
             else:
-                yield body
+                yield head, body
             finally:
                 while trail:
                     trail.pop()()
 
     def resolve(self, goal):
         return trampoline(goal.resolve, db=self)
+        #return goal.resolve(self)

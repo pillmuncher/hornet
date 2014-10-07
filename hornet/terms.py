@@ -199,6 +199,16 @@ failure = land
 success = throw
 
 
+#def failure():
+    #return
+    #yield
+
+
+#def success(db, retry):
+    #yield
+    #yield from retry()
+
+
 class Structure:
 
     __slots__ = 'env', 'name', 'params', 'actions'
@@ -258,7 +268,7 @@ class Structure:
     def resolve(self, db, yes=success, no=failure, prune=failure):
         @bouncy
         def try_next(matches=db.matches(self)):
-            for body in matches:
+            for head, body in matches:
                 break
             else:
                 return prune() if is_cut(self) else no()

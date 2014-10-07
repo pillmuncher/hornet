@@ -43,8 +43,8 @@ def main():
     )
 
     for subst in db.ask(queens(S)):
-        pass
-        #print(subst[S])
+        #pass
+        print(subst[S])
         #if not input('more? ').lower().strip().startswith('y'):
             #break
 
