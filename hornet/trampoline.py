@@ -22,12 +22,12 @@ def land(*args, **kwargs):
     return (), None, args, kwargs
 
 
-def throw(function, *args, thrown=None, **kwargs):
-    return [thrown], function, args, kwargs
+def throw(cont, *args, result=None, **kwargs):
+    return [result], cont, args, kwargs
 
 
-def bounce(function, *args, **kwargs):
-    return (), function, args, kwargs
+def bounce(cont, *args, **kwargs):
+    return (), cont, args, kwargs
 
 
 def bouncy(function):

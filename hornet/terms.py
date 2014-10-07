@@ -269,7 +269,7 @@ class Structure:
             else:
                 return prune() if is_cut(self) else no()
             if body is None:
-                return yes(try_next)
+                return yes(cont=try_next)
             else:
                 return body.deref.resolve(db, yes, try_next, no)
         return try_next()
@@ -451,8 +451,8 @@ class Conjunction(InfixOperator):
     op = operator.and_
 
     def resolve(self, db, yes=success, no=failure, prune=failure):
-        def resolve_right(retry):
-            return self.right.deref.resolve(db, yes, retry, prune)
+        def resolve_right(cont):
+            return self.right.deref.resolve(db, yes, cont, prune)
         return self.left.deref.resolve(db, resolve_right, no, prune)
 
 class Disjunction(InfixOperator):
