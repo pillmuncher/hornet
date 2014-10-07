@@ -41,7 +41,7 @@ def main():
     )
 
     try:
-        for subst in db.ask(fizzbuzz(1, 1000)):
+        for subst in db.ask(fizzbuzz(1, 1111)):
             break
     except RuntimeError:
         print('oops!')

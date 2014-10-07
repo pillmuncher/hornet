@@ -55,6 +55,7 @@ from .expressions import bind_compose, promote, Name
 from .operators import rearrange
 from .dcg import _C_, dcg_expand
 from .terms import *
+from .trampoline import trampoline
 
 
 system_names = [
@@ -553,4 +554,4 @@ class Database(ClauseDict):
                     trail.pop()()
 
     def resolve(self, goal):
-        return goal.resolve(self)
+        return trampoline(goal.resolve, db=self)

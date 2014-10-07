@@ -21,6 +21,7 @@ from .util import identity, noop, foldr, compose, method_of
 from .util import first_arg as get_self, rpartial
 from .expressions import is_bitor
 from .operators import fy, xfx, xfy, yfx, make_token
+from .trampoline import bouncy, land, throw
 
 
 __all__ = [
@@ -194,13 +195,15 @@ class Variable(collections.Counter):
                 variable.ref = variable
 
 
-def success(db, no):
+def yield_once():
     yield
-    yield from no()
 
-def failure():
-    return
-    yield
+
+def success(db, no):
+    return yield_once(), no, (), {}
+
+
+failure = land
 
 
 class Structure:
@@ -259,7 +262,20 @@ class Structure:
             for this, that in zip(self.params, other.params):
                 this.deref.unify(that.deref, trail)
 
+    #def resolve(self, db, yes=success, no=failure, prune=failure):
+        #def try_next(matches=db.matches(self)):
+            #for body in matches:
+                #break
+            #else:
+                #return prune() if is_cut(self) else no()
+            #if body is None:
+                #return yes(db, try_next)
+            #else:
+                #return body.deref.resolve(db, yes, try_next, no)
+        #yield from try_next()
+
     def resolve(self, db, yes=success, no=failure, prune=failure):
+        @bouncy
         def try_next(matches=db.matches(self)):
             for body in matches:
                 break
@@ -269,7 +285,7 @@ class Structure:
                 return yes(db, try_next)
             else:
                 return body.deref.resolve(db, yes, try_next, no)
-        yield from try_next()
+        return try_next()
 
 
 class Relation(Structure):
