@@ -282,7 +282,7 @@ class Structure:
             matches.close()
             return no()
         @bouncy
-        def try_next(matches=matches, prune_here=prune_here):
+        def try_next():
             for head, body in matches:
                 break
             else:
