@@ -80,13 +80,6 @@ def pairwise(iterable, *, rotate=False, fillvalue=_sentinel):
         return zip_longest(a, b, fillvalue=fillvalue)
 
 
-def method_of(cls):
-    def attach(func):
-        setattr(cls, func.__name__, func)
-        return func
-    return attach
-
-
 def qualname(fullname):
     name = fullname.rsplit('.', 1).pop()
     def name_setter(func):

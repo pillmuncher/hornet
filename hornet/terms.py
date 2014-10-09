@@ -17,7 +17,7 @@ import itertools
 import operator
 import string
 
-from .util import identity, noop, foldr, compose, method_of
+from .util import identity, noop, foldr, compose
 from .util import first_arg as get_self, rpartial
 from .expressions import is_bitor
 from .operators import fy, xfx, xfy, yfx, make_token
@@ -62,21 +62,27 @@ def get_name(self):
 
 
 is_wildcard_name = '_'.__eq__
-is_variable_name = compose(
-    operator.itemgetter(0),
-    set(string.ascii_uppercase + '_').__contains__)
+
+
+def is_variable_name(name, _first_chars=set(string.ascii_uppercase + '_')):
+    return name[0] in _first_chars
 
 
 @property
 def first_param(structure):
     return structure.params[0]
 
+
 @property
 def second_param(structure):
     return structure.params[1]
 
+
 parenthesized = '({})'.format
-comma_separated = compose(functools.partial(map, str), ', '.join)
+
+
+def comma_separated(items):
+    return ', '.join(str(each) for each in items)
 
 
 def action_str(term):
@@ -86,12 +92,10 @@ def action_str(term):
         return ''
 
 
-Indicator = collections.namedtuple('Indicator', 'name arity')
+class Indicator(collections.namedtuple('BaseIndicator', 'name arity')):
 
-
-@method_of(Indicator)
-def __str__(self):
-    return '{}/{}:'.format(*self)
+    def __str__(self):
+        return '{}/{}:'.format(*self)
 
 
 class UnificationFailed(Exception):
@@ -195,14 +199,8 @@ class Variable(collections.Counter):
                 variable.ref = variable
 
 
-#def failure():
-    #return
-    #yield
-
-
-#def success(cont):
-    #yield
-    #yield from cont()
+def is_cut(term):
+    return isinstance(term, Atom) and term.name == 'cut'
 
 
 class Structure:
@@ -261,7 +259,7 @@ class Structure:
             for this, that in zip(self.params, other.params):
                 this.deref.unify(that.deref, trail)
 
-    def matches(self, db):
+    def descend(self, db):
         trail = []
         for head, body in db.find_all(self.indicator):
             try:
@@ -271,26 +269,26 @@ class Structure:
             except UnificationFailed:
                 continue
             else:
-                yield head, body
+                yield body
             finally:
                 while trail:
                     trail.pop()()
 
     def resolve(self, db, yes=success, no=failure, prune=failure):
-        matches = self.matches(db)
+        alternate_goals = self.descend(db)
         def prune_here():
-            matches.close()
+            alternate_goals.close()
             return no()
         @bouncy
         def try_next():
-            for head, body in matches:
+            for goal in alternate_goals:
                 break
             else:
                 return prune() if is_cut(self) else no()
-            if body is None:
+            if goal is None:
                 return yes(try_next)
             else:
-                return body.deref.resolve(db, yes, try_next, prune_here)
+                return goal.deref.resolve(db, yes, try_next, prune_here)
         return try_next()
 
 
@@ -469,6 +467,7 @@ class Implication(InfixOperator):
     def resolve(self, db, yes=success, no=failure, prune=failure):
         raise TypeError("Term '{}' is not a valid goal.".format(self))
 
+
 class Conjunction(InfixOperator):
     __slots__ = ()
     op = operator.and_
@@ -478,53 +477,66 @@ class Conjunction(InfixOperator):
             return self.right.deref.resolve(db, yes, cont, prune)
         return self.left.deref.resolve(db, resolve_right, no, prune)
 
+
 class Disjunction(InfixOperator):
     __slots__ = ()
     op = operator.xor
+
 
 class Adjunction(InfixOperator):
     __slots__ = ()
     op = operator.or_
 
+
 class Conditional(InfixOperator):
     __slots__ = ()
     op = operator.rshift
+
 
 class Addition(InfixOperator):
     __slots__ = ()
     op = operator.add
 
+
 class Subtraction(InfixOperator):
     __slots__ = ()
     op = operator.sub
+
 
 class Multiplication(InfixOperator):
     __slots__ = ()
     op = operator.mul
 
+
 class Division(InfixOperator):
     __slots__ = ()
     op = operator.truediv
+
 
 class FloorDivision(InfixOperator):
     __slots__ = ()
     op = operator.floordiv
 
+
 class Remainder(InfixOperator):
     __slots__ = ()
     op = operator.mod
+
 
 class Exponentiation(InfixOperator):
     __slots__ = ()
     op = operator.pow
 
+
 class Negation(PrefixOperator):
     __slots__ = ()
     op = operator.invert
 
+
 class Positive(PrefixOperator):
     __slots__ = ()
     op = operator.pos
+
 
 class Negative(PrefixOperator):
     __slots__ = ()
@@ -683,7 +695,3 @@ class Builder(ast.NodeVisitor):
     visit_BitAnd = visit_op(Conjunction, '&')
     visit_BitXor = visit_op(Disjunction, '^')
     visit_BitOr = visit_op(Adjunction, '|')
-
-
-def is_cut(term):
-    return isinstance(term, Atom) and term.name == 'cut'

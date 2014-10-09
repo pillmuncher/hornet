@@ -12,7 +12,7 @@ __license__ = 'MIT'
 from hornet import *
 
 from hornet.symbols import (
-    queens, solution, noattack, Rest, S, X, Y, X1, Y1, Xs, Ys, Y1s, Qs,
+    queens, solution, noattack, Rest, S, X, Y, X1, Y1, Xs, Ys, Y0s, Qs,
 )
 
 
@@ -27,10 +27,10 @@ def main():
         queens(S) <<
             solution(nums, nums, [], S),
 
-        solution([X|Xs], Ys, Qs, [X/Y|S]) <<
-            select(Y, Ys, Y1s) &
+        solution([X|Xs], Y0s, Qs, [X/Y|S]) <<
+            select(Y, Y0s, Ys) &
             noattack(X/Y, Qs) &
-            solution(Xs, Y1s, [X/Y|Qs], S),
+            solution(Xs, Ys, [X/Y|Qs], S),
         solution([], _, _, []),
 
         noattack(X/Y, [X1/Y1|Rest]) <<

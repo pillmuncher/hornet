@@ -15,7 +15,7 @@ import enum
 import functools
 import operator
 
-from .util import pairwise, method_of, compose2 as compose
+from .util import pairwise, compose2 as compose
 from .expressions import lift, promote, AstWrapper, is_tuple, is_astwrapper
 from .expressions import is_name, is_operator
 
@@ -27,27 +27,19 @@ class ParseError(Exception):
 parse_error = compose('Precedence conflict: ({}) {} ({})'.format, ParseError)
 
 
-Token = collections.namedtuple('Token', 'lbp rbp node')
+class Token(collections.namedtuple('BaseToken', 'lbp rbp node')):
 
+    def __lt__(left, right):
+        return left.rbp < right.lbp
 
-@method_of(Token)
-def __lt__(left, right):
-    return left.rbp < right.lbp
+    def __gt__(left, right):
+        return left.rbp > right.lbp
 
+    def __le__(left, right):
+        return left.rbp <= right.lbp
 
-@method_of(Token)
-def __gt__(left, right):
-    return left.rbp > right.lbp
-
-
-@method_of(Token)
-def __le__(left, right):
-    return left.rbp <= right.lbp
-
-
-@method_of(Token)
-def __ge__(left, right):
-    return left.rbp >= right.lbp
+    def __ge__(left, right):
+        return left.rbp >= right.lbp
 
 
 class Nofix(Token):

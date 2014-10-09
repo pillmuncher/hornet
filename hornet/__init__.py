@@ -129,6 +129,10 @@ class Environment(dict):
             return _getitem(self, str(key))
 
 
+def is_cut(term):
+    return isinstance(term, Atom) and term.name == 'cut'
+
+
 def build(node):
     return Builder(Environment()).build(node)
 
@@ -403,10 +407,10 @@ def _bootstrap():
         X | _ << X,
         _ | Y << Y,
 
+        X ^ Y << ~X & cut & Y,
         X ^ Y << X & ~Y,
-        X ^ Y << ~X & Y,
 
-        X >> _ | Z << ~X & Z,
+        X >> _ | Z << ~X & cut & Z,
         X >> Y | _ << X & Y,
 
         let(X, Y)[_let],
@@ -415,8 +419,7 @@ def _bootstrap():
 
         once(Goal) << Goal & cut,
 
-        ignore(Goal) << Goal & cut,
-        ignore(_),
+        ignore(Goal) << Goal | true,
 
         equal(P, P),
 
