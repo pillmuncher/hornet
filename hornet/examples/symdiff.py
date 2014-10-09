@@ -261,8 +261,8 @@ def simp_rules(db):
 
 
 def diff_test(db):
-    F = x ** -3 + 2 * x ** 2 + 7 * (x + 9)
-    #F = 5 + x * 3 + 5 * x ** 4 * 5
+    #F = x ** -3 + 2 * x ** 2 + 7 * (x + 9)
+    F = 5 + x * 3 + 5 * x ** 4 * 5
     #F = (2 + x) ** 3
     #F = (x * y) * (x + 3)
     print(build_term(F))

@@ -536,21 +536,6 @@ class Database(ClauseDict):
         for clause in self.get(indicator, ()):
             yield clause.fresh(Environment())[:2]
 
-    def matches(self, goal):
-        trail = []
-        for head, body in self.find_all(goal.indicator):
-            try:
-                head.unify(goal, trail)
-                head.action(self, trail)
-                goal.action(self, trail)
-            except UnificationFailed:
-                continue
-            else:
-                yield head, body
-            finally:
-                while trail:
-                    trail.pop()()
-
     def resolve(self, goal):
+        #return goal.resolve(db=self)
         return trampoline(goal.resolve, db=self)
-        #return goal.resolve(self)

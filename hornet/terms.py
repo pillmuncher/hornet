@@ -200,9 +200,9 @@ class Variable(collections.Counter):
     #yield
 
 
-#def success(db, retry):
+#def success(cont):
     #yield
-    #yield from retry()
+    #yield from cont()
 
 
 class Structure:
@@ -261,17 +261,36 @@ class Structure:
             for this, that in zip(self.params, other.params):
                 this.deref.unify(that.deref, trail)
 
+    def matches(self, db):
+        trail = []
+        for head, body in db.find_all(self.indicator):
+            try:
+                head.unify(self, trail)
+                head.action(db, trail)
+                self.action(db, trail)
+            except UnificationFailed:
+                continue
+            else:
+                yield head, body
+            finally:
+                while trail:
+                    trail.pop()()
+
     def resolve(self, db, yes=success, no=failure, prune=failure):
+        matches = self.matches(db)
+        def prune_here():
+            matches.close()
+            return no()
         @bouncy
-        def try_next(matches=db.matches(self)):
+        def try_next(matches=matches, prune_here=prune_here):
             for head, body in matches:
                 break
             else:
                 return prune() if is_cut(self) else no()
             if body is None:
-                return yes(cont=try_next)
+                return yes(try_next)
             else:
-                return body.deref.resolve(db, yes, try_next, no)
+                return body.deref.resolve(db, yes, try_next, prune_here)
         return try_next()
 
 
@@ -415,7 +434,11 @@ class InfixOperator(Structure):
     right = second_param
 
     def __call__(self):
-        return self.op(self.left.deref(), self.right.deref())
+        try:
+            return self.op(self.left.deref(), self.right.deref())
+        except:
+            print('!!!', self, type(self), self.deref, type(self.deref))
+            raise
 
     def __str__(self):
 

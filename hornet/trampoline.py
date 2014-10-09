@@ -14,20 +14,20 @@ import functools
 
 def trampoline(bouncing, *args, **kwargs):
     while bouncing:
-        results, bouncing, args, kwargs = bouncing(*args, **kwargs)
-        yield from results
+        bouncing, result, args, kwargs = bouncing(*args, **kwargs)
+        yield from result
 
 
 def land(*args, **kwargs):
-    return (), None, args, kwargs
+    return None, (), args, kwargs
 
 
-def throw(cont, *args, result=None, **kwargs):
-    return [result], cont, args, kwargs
+def throw(cont, result=None, *args, **kwargs):
+    return cont, [result], args, kwargs
 
 
 def bounce(cont, *args, **kwargs):
-    return (), cont, args, kwargs
+    return cont, (), args, kwargs
 
 
 def bouncy(function):

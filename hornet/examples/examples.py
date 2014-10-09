@@ -385,6 +385,29 @@ def univ_test(db):
     #print()
 
 
+def cut_test(db):
+
+    from ..symbols import branch, root, foo, bar, A, B, X, Y
+
+    db.tell(
+
+        root(X, Y) <<
+            branch(X, Y),
+
+        branch(X, Y) << foo(X) & bar(Y),
+        branch(X, Y) << foo(Y) & bar(X),
+
+        foo(1) << cut,
+        foo(2),
+        bar(3),
+        bar(4),
+
+    )
+
+    for subst in db.ask(root(A, B)):
+        print(subst)
+
+
 db = Database()
 xor_test(db)
 eqtest(db)
@@ -397,5 +420,6 @@ genealogy(db)
 unify_test(db)
 backwards(db)
 univ_test(db)
+cut_test(db)
 #show_db(db)
 #rec(db)
