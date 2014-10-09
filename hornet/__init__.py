@@ -142,8 +142,8 @@ build_term = bind_compose(rearrange, build)
 
 
 is_atomic = rpartial(isinstance, (Atom, String, Num))
-not_assertable = rpartial(isinstance,
-        (String, Num, Conjunction, Variable, Wildcard))
+not_assertable = rpartial(
+    isinstance, (String, Num, Conjunction, Variable, Wildcard))
 
 
 class Clause(collections.namedtuple('BaseClause', 'head body term')):

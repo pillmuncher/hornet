@@ -18,9 +18,7 @@ from .expressions import unit, Name, is_rshift, is_bitand, is_name, is_list
 from .expressions import is_set, is_call, is_str
 
 
-
 _C_ = Name("'C'")
-
 
 
 def rule(head, body):
@@ -32,7 +30,6 @@ def rule(head, body):
         return head
 
 
-
 def conjunction(left, right):
 
     if left and right:
@@ -42,12 +39,10 @@ def conjunction(left, right):
         return left or right
 
 
-
 def numbered_vars(prefix):
 
     for n in itertools.count():
         yield Name(prefix + str(n)).node
-
 
 
 @receive_missing_args
@@ -57,7 +52,6 @@ def goal_setter(node, first, second):
     node.args.append(second)
 
 
-
 @receive_missing_args
 def terminal_setter(node, first, second):
 
@@ -65,13 +59,11 @@ def terminal_setter(node, first, second):
     node.args.append(second)
 
 
-
 @receive_missing_args
 def pushback_setter(node, first, second):
 
     node.args.insert(-1, second)
     node.args.append(first)
-
 
 
 class NodeTagger:
@@ -103,7 +95,6 @@ class NodeTagger:
         return call
 
 
-
 def dcg_call(node, tagged):
 
     if is_name(node):
@@ -114,7 +105,6 @@ def dcg_call(node, tagged):
 
     else:
         raise TypeError('Name or Call node expected, not {}'.format(node))
-
 
 
 def dcg_list(node, tagged, cont=identity):
@@ -129,7 +119,6 @@ def dcg_list(node, tagged, cont=identity):
     else:
         raise TypeError(
             'Non-terminal in DCG terrminal list found: {}'.format(left))
-
 
 
 def dcg_body(node, tag, cont=identity):
@@ -154,7 +143,6 @@ def dcg_body(node, tag, cont=identity):
         return cont(dcg_call(node, tag.as_goal))
 
 
-
 def dcg_clause(node):
 
     head, body = node.left, node.right
@@ -176,7 +164,6 @@ def dcg_clause(node):
             return rule(
                 dcg_call(head, tag.as_goal),
                 dcg_body(body, tag))
-
 
 
 def dcg_expand(node):

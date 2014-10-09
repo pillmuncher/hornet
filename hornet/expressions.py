@@ -119,6 +119,7 @@ def lift(func):
 def bind_compose(*mfuncs):
     return functools.partial(foldl, bind, mfuncs)
 
+
 # Make monadic functions mf:AST --> Expression composable:
 
 def mcompose(*mfuncs):
@@ -348,6 +349,7 @@ _promotions = [
     (set, Set),
     (object, Wrapper),
 ]
+
 
 def promote(item):
     for T, F in _promotions:

@@ -174,8 +174,10 @@ class Variable(collections.Counter):
         other.unify_variable(self, trail)
 
     def unify_variable(self, other, trail):
+
         self[other] += 1
         other[self] += 1
+
         @trail.append
         def rollback(self=self, other=other):
             self[other] -= 1
@@ -185,6 +187,7 @@ class Variable(collections.Counter):
                 del other[self]
 
     def unify_structure(self, structure, trail):
+
         seen = {self}
         todo = self.keys() - seen
         self.ref = structure
@@ -193,6 +196,7 @@ class Variable(collections.Counter):
             seen.add(variable)
             todo |= variable.keys() - seen
             variable.ref = structure
+
         @trail.append
         def rollback(seen=seen):
             for variable in seen:
@@ -275,10 +279,14 @@ class Structure:
                     trail.pop()()
 
     def resolve(self, db, yes=success, no=failure, prune=failure):
+
         alternate_goals = self.descend(db)
+
+        @bouncy
         def prune_here():
             alternate_goals.close()
             return no()
+
         @bouncy
         def try_next():
             for goal in alternate_goals:
@@ -289,6 +297,7 @@ class Structure:
                 return yes(try_next)
             else:
                 return goal.deref.resolve(db, yes, try_next, prune_here)
+
         return try_next()
 
 
@@ -473,9 +482,13 @@ class Conjunction(InfixOperator):
     op = operator.and_
 
     def resolve(self, db, yes=success, no=failure, prune=failure):
-        def resolve_right(cont):
-            return self.right.deref.resolve(db, yes, cont, prune)
-        return self.left.deref.resolve(db, resolve_right, no, prune)
+        @bouncy
+        def left_then_right():
+            @bouncy
+            def resolve_right(cont):
+                return self.right.deref.resolve(db, yes, cont, prune)
+            return self.left.deref.resolve(db, resolve_right, no, prune)
+        return left_then_right()
 
 
 class Disjunction(InfixOperator):

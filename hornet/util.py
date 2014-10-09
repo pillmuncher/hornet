@@ -25,15 +25,19 @@ first_arg = lambda x, *a, **k: x
 
 
 def compose(*fs):
+
     # make me monoidal:
     #if not fs:
         #return identity
+
     f, *gs = fs
+
     def composed(*a, **k):
         x = f(*a, **k)
         for g in gs:
             x = g(x)
         return x
+
     return composed
 
 
@@ -81,11 +85,14 @@ def pairwise(iterable, *, rotate=False, fillvalue=_sentinel):
 
 
 def qualname(fullname):
+
     name = fullname.rsplit('.', 1).pop()
+
     def name_setter(func):
         func.__name__ = name
         func.__qualname__ = fullname
         return func
+
     return name_setter
 
 
@@ -109,13 +116,15 @@ def coroutine(generator=None, *, clean_exit=True):
 
 
 def receive_missing_args(procedure):
-    sig = signature(procedure)
+
     @coroutine
     @wraps(procedure)
     def receiver(*args, **kwargs):
+        sig = signature(procedure)
         ba = sig.bind_partial(*args, **kwargs)
         for name in sig.parameters:
             if name not in ba.arguments:
                 ba.arguments[name] = (yield)
         procedure(*ba.args, **ba.kwargs)
+
     return receiver
