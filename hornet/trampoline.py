@@ -22,7 +22,7 @@ def land(*args, **kwargs):
     return None, (), args, kwargs
 
 
-def throw(cont, result=None, *args, **kwargs):
+def throw(cont, *args, result=None, **kwargs):
     return cont, [result], args, kwargs
 
 
@@ -30,5 +30,5 @@ def bounce(cont, *args, **kwargs):
     return cont, (), args, kwargs
 
 
-def bouncy(function):
+def tco(function):
     return functools.wraps(function)(functools.partial(bounce, function))

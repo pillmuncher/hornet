@@ -55,7 +55,6 @@ from .expressions import bind_compose, promote, Name
 from .operators import rearrange
 from .dcg import _C_, dcg_expand
 from .terms import *
-from .trampoline import trampoline
 
 
 system_names = [
@@ -72,9 +71,11 @@ system_names = [
     'ignore',
     'integer',
     'join',
+    #'length',
     'let',
     'listing',
     'lwriteln',
+    'maplist',
     'member',
     'nl',
     'numeric',
@@ -84,6 +85,7 @@ system_names = [
     'select',
     'smaller',
     'throw',
+    'transpose',
     'true',
     'unequal',
     'univ',
@@ -261,12 +263,12 @@ def _writeln(term, env, db, trail):
 
 
 def _findall_3(term, env, db, trail):
-    results = [copy.deepcopy(env.Object) for _ in db.resolve(env.Goal)]
+    results = [copy.deepcopy(env.Object) for _ in env.Goal.resolve(db)]
     unify(env.List, make_list(env, results), trail)
 
 
 def _findall_4(term, env, db, trail):
-    results = [copy.deepcopy(env.Object) for _ in db.resolve(env.Goal)]
+    results = [copy.deepcopy(env.Object) for _ in env.Goal.resolve(db)]
     unify(env.List, make_list(env, results, env.Rest), trail)
 
 
@@ -384,6 +386,14 @@ def _univ(term, env, db, trail):
         raise UnificationFailed
 
 
+def _transpose(term, env, db, trail):
+    L0 = flatten(env.L)
+    Ls = [flatten(each.deref) for each in L0]
+    Lt = list(zip(*Ls))
+    L1 = [make_list(env, each) for each in Lt]
+    unify(env.T, make_list(env, L1), trail)
+
+
 def _throw(term, env, db, trail):
     raise Exception
 
@@ -391,7 +401,8 @@ def _throw(term, env, db, trail):
 def _bootstrap():
 
     from .symbols import P, Q, X, Y, Z, Tail, Object, Goal, List, Rest
-    from .symbols import Predicate, A, B, C, D, H, L, T, S, Arity
+    from .symbols import Predicate, A, B, C, D, H, L, T, S, Arity, G, G1
+    from .symbols import Len, Len0
 
     exprs = (
 
@@ -419,7 +430,8 @@ def _bootstrap():
 
         once(Goal) << Goal & cut,
 
-        ignore(Goal) << Goal | true,
+        ignore(Goal) << Goal & cut,
+        ignore(_),
 
         equal(P, P),
 
@@ -493,6 +505,19 @@ def _bootstrap():
 
         arithemtic_not_equal(_, _),
 
+        transpose(L, T)[_transpose],
+
+        maplist(G, [H|T]) <<
+            cut & univ(G1, [G, H]) & G1 &
+            maplist(G, T),
+        maplist(_, []),
+
+        #length([], 0),
+        #length([H|T], Len) <<
+            #length(T, Len0) &
+            #let(Len, Len0 + 1),
+
+
     )
 
     db = ClauseDict()
@@ -532,13 +557,9 @@ class Database(ClauseDict):
 
     def ask(self, expression):
         term = build_term(expression)
-        for _ in self.resolve(term):
+        for _ in term.resolve(self):
             yield term.env.proxy
 
     def find_all(self, indicator):
         for clause in self.get(indicator, ()):
             yield clause.fresh(Environment())[:2]
-
-    def resolve(self, goal):
-        #return goal.resolve(db=self)
-        return trampoline(goal.resolve, db=self)

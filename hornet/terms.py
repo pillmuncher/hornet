@@ -21,7 +21,7 @@ from .util import identity, noop, foldr, compose
 from .util import first_arg as get_self, rpartial
 from .expressions import is_bitor
 from .operators import fy, xfx, xfy, yfx, make_token
-from .trampoline import bouncy, land as failure, throw as success
+from .trampoline import trampoline, tco, land as failure, throw as success
 
 
 __all__ = [
@@ -278,16 +278,19 @@ class Structure:
                 while trail:
                     trail.pop()()
 
-    def resolve(self, db, yes=success, no=failure, prune=failure):
+    def resolve(self, db):
+        return trampoline(self._resolve, db, success, failure, failure)
+
+    def _resolve(self, db, yes, no, prune):
 
         alternate_goals = self.descend(db)
 
-        @bouncy
+        @tco
         def prune_here():
             alternate_goals.close()
             return no()
 
-        @bouncy
+        @tco
         def try_next():
             for goal in alternate_goals:
                 break
@@ -296,7 +299,7 @@ class Structure:
             if goal is None:
                 return yes(try_next)
             else:
-                return goal.deref.resolve(db, yes, try_next, prune_here)
+                return goal.deref._resolve(db, yes, try_next, prune_here)
 
         return try_next()
 
@@ -332,10 +335,8 @@ class String(Structure):
     __slots__ = ()
 
     __call__ = get_name
-    #__str__ = get_name
-    #__repr__ = compose(get_name, "'{}'".format)
-    __str__ = compose(get_name, "'{}'".format)
-    __repr__ = __str__
+    __str__ = get_name
+    __repr__ = compose(get_name, "'{}'".format)
     __deepcopy__ = get_self
 
     fresh = get_self
@@ -473,7 +474,7 @@ class Implication(InfixOperator):
     __slots__ = ()
     op = lambda left, right: left or not right  # reverse implication: l << r
 
-    def resolve(self, db, yes=success, no=failure, prune=failure):
+    def _resolve(self, db, yes, no, prune):
         raise TypeError("Term '{}' is not a valid goal.".format(self))
 
 
@@ -481,13 +482,13 @@ class Conjunction(InfixOperator):
     __slots__ = ()
     op = operator.and_
 
-    def resolve(self, db, yes=success, no=failure, prune=failure):
-        @bouncy
+    def _resolve(self, db, yes, no, prune):
+        @tco
         def left_then_right():
-            @bouncy
+            @tco
             def resolve_right(cont):
-                return self.right.deref.resolve(db, yes, cont, prune)
-            return self.left.deref.resolve(db, resolve_right, no, prune)
+                return self.right.deref._resolve(db, yes, cont, prune)
+            return self.left.deref._resolve(db, resolve_right, no, prune)
         return left_then_right()
 
 

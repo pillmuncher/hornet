@@ -9,8 +9,12 @@ __author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
 __license__ = 'MIT'
 
 
+from functools import wraps, partial
+
+
 from hornet import *
 from hornet.expressions import promote
+from hornet.util import noop
 
 from hornet.symbols import (
     A, B, C, D, Seen, Tribe, U, V, W, Who, X, Y, Z, ancestor, appenddl,
@@ -20,11 +24,36 @@ from hornet.symbols import (
 )
 
 
+show_funcs = []
+
+def show(f=None, *, skip=False):
+    if f is None:
+        return partial(show, skip=skip)
+    if skip:
+        @wraps(f)
+        def wrapper(*a, **k):
+            print('\n\n' + f.__qualname__ + ': skipped\n')
+    else:
+        @wraps(f)
+        def wrapper(*a, **k):
+            print('\n\n' + f.__qualname__ + ':\n')
+            return f(*a, **k)
+    show_funcs.append(wrapper)
+    return wrapper
+
+
+def show_all(*a, **k):
+    for f in show_funcs:
+        f(*a, **k)
+
+
+@show(skip=True)
 def show_db(db):
     for each in db.ask(listing):
         break
 
 
+@show
 def xor_test(db):
     for each in fail ^ true, true ^ fail, fail ^ fail, true ^ true:
         for subst in db.ask(equal(each, X) & call(X)):
@@ -32,6 +61,7 @@ def xor_test(db):
     print()
 
 
+@show
 def eqtest(db):
     for subst in db.ask(equal(tom, X)):
         print(subst[X])
@@ -40,6 +70,7 @@ def eqtest(db):
     print()
 
 
+@show
 def barbara(db):
     db.tell(
         man(socrates),
@@ -53,6 +84,7 @@ def barbara(db):
     print()
 
 
+@show
 def varunify(db):
     for subst in db.ask(equal(X, Z) & equal(Y, Z) & (equal(man, Z) | true)):
         for k, v in sorted(subst.items()):
@@ -60,6 +92,7 @@ def varunify(db):
     print()
 
 
+@show
 def subtraction(db):
     q = equal(A, 5) & equal(B, 2) & equal(C, 1) & let(D, A - B - C)
     for subst in db.ask(q):
@@ -67,6 +100,7 @@ def subtraction(db):
     print()
 
 
+@show
 def stdtypes(db):
     for subst in db.ask(equal(10, X) & equal(X, 10)):
         print(sorted(subst.items()))
@@ -97,6 +131,7 @@ def stdtypes(db):
     print()
 
 
+@show
 def difflist(db):
     db.tell(
         appenddl(A - B, B - C, A - C),
@@ -122,6 +157,7 @@ def difflist(db):
     print()
 
 
+@show
 def unify_test(db):
 
     for subst in db.ask(join(['hallo', 'welt'], 'hallowelt')):
@@ -187,6 +223,7 @@ def tribes(db):
     )
 
 
+@show
 def genealogy(db):
 
     tribes(db)
@@ -273,27 +310,64 @@ def genealogy(db):
     print()
 
 
-def backwards(db):
+@show
+def member_test(db):
 
-    #for subst in db.ask(member(X, [a, b, c])):
-        #print(subst[X])
+    for subst in db.ask(member(X, [a, b, c])):
+        print(subst[X])
+    print()
+
+    for subst in db.ask(equal(W, [X, Y, Z]) & member(a, W)):
+        print(subst[W])
+    print()
 
     for subst in db.ask(equal(W, [X, Y, Z]) & member(a, W) & member(b, W)):
-    #for subst in db.ask(equal(W, [X, Y, Z]) & member(a, W)):
         print(subst[W])
 
-    #for subst in db.ask(append([a, b], [c, d, e], X)):
-        #print(subst[X])
 
-    #for subst in db.ask(append(X, Y, [a, b, c, d, e])):
-        #print(subst[X], subst[Y])
+@show
+def append_test(db):
 
-    #for subst in db.ask(ignore(true) & ignore(fail)):
-        #print('Yes, ignored.')
+    for subst in db.ask(append([], [a, b, c, d, e], X)):
+        print(subst[X])
+    print()
+
+    for subst in db.ask(append([a, b, c, d, e], [], X)):
+        print(subst[X])
+    print()
+
+    for subst in db.ask(append([a, b], [c, d, e], X)):
+        print(subst[X])
+    print()
+
+    for subst in db.ask(append([a, b, c, d], e, X)):
+        print(subst[X])
+    print()
+
+    for subst in db.ask(append(X, [d, e], [a, b, c, d, e])):
+        print(subst[X])
+    print()
+
+    for subst in db.ask(append([a, b, c], X, [a, b, c, d, e])):
+        print(subst[X])
+    print()
+
+    for subst in db.ask(append(X, Y, [a, b, c, d, e])):
+        print(subst[X], subst[Y])
+    print()
+
+    for subst in db.ask(append(X, Y, [a, b, c, d|e])):
+        print(subst[X], subst[Y])
 
 
+@show
+def ignore_test(db):
+
+    for subst in db.ask(ignore(true | true) & ignore(fail)):
+        print('Yes, ignored.')
 
 
+@show
 def univ_test(db):
 
     for subst in db.ask(var(X)):
@@ -385,6 +459,7 @@ def univ_test(db):
     #print()
 
 
+@show
 def cut_test(db):
 
     from ..symbols import branch, root, foo, bar, A, B, X, Y
@@ -408,18 +483,46 @@ def cut_test(db):
         print(subst)
 
 
-db = Database()
-xor_test(db)
-eqtest(db)
-barbara(db)
-varunify(db)
-subtraction(db)
-stdtypes(db)
-difflist(db)
-genealogy(db)
-unify_test(db)
-backwards(db)
-univ_test(db)
-cut_test(db)
-#show_db(db)
-#rec(db)
+
+@show
+def transpose_test(db):
+
+    from ..symbols import a, b, c, d, e, f, g, h, i, j, k, l, X, L
+
+    L0 = [[a, b, c, d], [e, f, g, h], [i, j, k, l]]
+    for subst in db.ask(equal(L0, L) & transpose(L, X)):
+        print(subst[L])
+        print(subst[X])
+
+
+@show
+def maplist_test(db):
+
+    for subst in db.ask(maplist(writeln, [1, 2, 3, 4, 5])):
+        pass
+
+
+#@show
+#def length_test(db):
+
+    #for subst in db.ask(length([1, 2, 3, 4, 5], X)):
+        #print(subst[X])
+
+    #for subst in db.ask(length(X, 3)):
+        #print(subst[X])
+        #break
+
+    #for subst in db.ask(length([1, 2, 3, 4, 5], 5)):
+        #print('Yes.')
+        #break
+    #else:
+        #print('No.')
+
+    #for i, subst in enumerate(db.ask(length(X, Y))):
+        #print(subst[X], subst[Y])
+        #if i == 5:
+            #break
+
+
+
+show_all(Database())
