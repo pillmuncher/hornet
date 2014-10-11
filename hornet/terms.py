@@ -490,10 +490,10 @@ class Conjunction(InfixOperator):
             return self.right.deref._resolve(db, yes, retry_left, prune)
 
         @tco
-        def try_left_then_right():
+        def try_left():
             return self.left.deref._resolve(db, try_right, no, prune)
 
-        return try_left_then_right()
+        return try_left()
 
 
 class Disjunction(InfixOperator):

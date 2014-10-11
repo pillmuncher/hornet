@@ -33,7 +33,7 @@ def main():
         word('buzz', N) << divisible(N, 5),
         word('blub', N) << divisible(N, 7),
 
-        divisible(N, D) << let(0, N % D),
+        divisible(N, D) << arithmetic_equal(0, N % D),
 
         show(N, Ws) <<
             equal(Ws, []) >> writeln(N) | join(Ws, S) & writeln(S),

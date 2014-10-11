@@ -34,17 +34,18 @@ def main():
         solution([], _, _, []),
 
         noattack(X/Y, [X1/Y1|Rest]) <<
-            arithemtic_not_equal(Y, Y1) &
-            arithemtic_not_equal(Y1 - Y, X1 - X) &
-            arithemtic_not_equal(Y1 - Y, X - X1) &
+            arithmetic_not_equal(Y, Y1) &
+            arithmetic_not_equal(Y1 - Y, X1 - X) &
+            arithmetic_not_equal(Y1 - Y, X - X1) &
             noattack(X/Y, Rest),
         noattack(_, []),
 
     )
 
     for subst in db.ask(queens(S)):
-        #pass
         print(subst[S])
+        #break
+        #pass
         #if not input('more? ').lower().strip().startswith('y'):
             #break
 

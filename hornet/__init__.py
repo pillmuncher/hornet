@@ -60,7 +60,8 @@ from .terms import *
 system_names = [
     '_',
     'append',
-    'arithemtic_not_equal',
+    'arithmetic_equal',
+    'arithmetic_not_equal',
     'atomic',
     'call',
     'cut',
@@ -494,11 +495,14 @@ def _bootstrap():
 
         univ(T, L)[_univ],
 
-        arithemtic_not_equal(X, Y) <<
+        arithmetic_equal(X, Y) <<
+            let(Z, X) &
+            let(Z, Y) & cut,
+
+        arithmetic_not_equal(X, Y) <<
             let(Z, X) &
             let(Z, Y) & cut[_fail],
-
-        arithemtic_not_equal(_, _),
+        arithmetic_not_equal(_, _),
 
         transpose(L, T)[_transpose],
 
