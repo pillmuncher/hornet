@@ -31,4 +31,4 @@ def bounce(cont, *args, **kwargs):
 
 
 def tco(function):
-    return functools.wraps(function)(functools.partial(bounce, function))
+    return functools.partial(bounce, function)

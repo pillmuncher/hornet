@@ -228,21 +228,16 @@ def make_list(env, items, tail=NIL):
 
 
 def flatten(L):
-    if isinstance(L, Nil):
-        return []
+    if not isinstance(L, (List, Nil)):
+        raise TypeError('Expected List or Nil, found {}: {}.'
+                        .format(type(L), L))
     acc = []
-    while True:
-        car = L.car.deref
-        cdr = L.cdr.deref
-        if isinstance(cdr, List):
-            acc.append(car)
-            L = cdr
-        elif isinstance(cdr, Nil):
-            acc.append(car)
-            return acc
-        else:
-            acc.append(Adjunction(env=L.env, name='|', params=[car, cdr]))
-            return acc
+    while isinstance(L, List):
+        acc.append(L.car.deref)
+        L = L.cdr.deref
+    if not is_nil(L):
+        acc[-1] = Adjunction(env=L.env, name='|', params=[acc[-1], L])
+    return acc
 
 
 def expect(item, expected_type):

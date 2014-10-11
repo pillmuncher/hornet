@@ -21,47 +21,25 @@ from .expressions import is_set, is_call, is_str
 _C_ = Name("'C'")
 
 
-def rule(head, body):
-
-    if body:
-        return head << body
-
-    else:
-        return head
-
-
-def conjunction(left, right):
-
-    if left and right:
-        return left & right
-
-    else:
-        return left or right
-
-
 def numbered_vars(prefix):
-
     for n in itertools.count():
         yield Name(prefix + str(n)).node
 
 
 @receive_missing_args
 def goal_setter(node, first, second):
-
     node.args.append(first)
     node.args.append(second)
 
 
 @receive_missing_args
 def terminal_setter(node, first, second):
-
     node.args.insert(-1, first)
     node.args.append(second)
 
 
 @receive_missing_args
 def pushback_setter(node, first, second):
-
     node.args.insert(-1, second)
     node.args.append(first)
 
@@ -93,6 +71,24 @@ class NodeTagger:
     def as_pushback(self, call):
         self.right_side.appendleft(pushback_setter(call.node))
         return call
+
+
+def rule(head, body):
+
+    if body:
+        return head << body
+
+    else:
+        return head
+
+
+def conjunction(left, right):
+
+    if left and right:
+        return left & right
+
+    else:
+        return left or right
 
 
 def dcg_call(node, tagged):
@@ -167,5 +163,4 @@ def dcg_clause(node):
 
 
 def dcg_expand(node):
-
     return dcg_clause(node) if is_rshift(node) else unit(node)

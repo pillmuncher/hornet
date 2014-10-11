@@ -54,6 +54,7 @@ __all__ = [
     'Builder',
     'success',
     'failure',
+    'is_nil',
 ]
 
 
@@ -475,7 +476,7 @@ class Implication(InfixOperator):
     op = lambda left, right: left or not right  # reverse implication: l << r
 
     def _resolve(self, db, yes, no, prune):
-        raise TypeError("Term '{}' is not a valid goal.".format(self))
+        raise TypeError("Implication '{}' is not a valid goal.".format(self))
 
 
 class Conjunction(InfixOperator):
@@ -483,13 +484,16 @@ class Conjunction(InfixOperator):
     op = operator.and_
 
     def _resolve(self, db, yes, no, prune):
+
         @tco
-        def left_then_right():
-            @tco
-            def resolve_right(cont):
-                return self.right.deref._resolve(db, yes, cont, prune)
-            return self.left.deref._resolve(db, resolve_right, no, prune)
-        return left_then_right()
+        def try_right(retry_left):
+            return self.right.deref._resolve(db, yes, retry_left, prune)
+
+        @tco
+        def try_left_then_right():
+            return self.left.deref._resolve(db, try_right, no, prune)
+
+        return try_left_then_right()
 
 
 class Disjunction(InfixOperator):

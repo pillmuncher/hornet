@@ -29,6 +29,8 @@ parse_error = compose('Precedence conflict: ({}) {} ({})'.format, ParseError)
 
 class Token(collections.namedtuple('BaseToken', 'lbp rbp node')):
 
+    __slots__ = ()
+
     def __lt__(left, right):
         return left.rbp < right.lbp
 

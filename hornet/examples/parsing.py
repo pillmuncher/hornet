@@ -227,7 +227,8 @@ def grammar(db):
     #words = 'manche mauese jagen viele katzen'.split()
     #words = [B, C, 'jagen']
     #words = ['manche', B, C]
-    words = [B, C, D, 'die', F]
+    #words = [B, C, D, 'die', F]
+    words = [B, 'hund', D, E, F]
     #words = [B, C, 'jagt', D, E]
 
     for subst in db.ask(equal(words, W) & s(W) & join(W, S, ' ')):
