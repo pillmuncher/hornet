@@ -321,7 +321,7 @@ class Atom(Structure):
 
     __call__ = get_name
     __deepcopy__ = get_self
-    __str__ = compose(get_name, str)
+    __str__ = get_name
 
     fresh = get_self
 
