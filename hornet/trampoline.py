@@ -22,8 +22,8 @@ def land(*args, **kwargs):
     return None, (), args, kwargs
 
 
-def throw(cont, *args, result=None, **kwargs):
-    return cont, [result], args, kwargs
+def throw(cont, *args, _=None, **kwargs):
+    return cont, [_], args, kwargs
 
 
 def bounce(cont, *args, **kwargs):
