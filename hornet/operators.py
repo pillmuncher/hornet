@@ -60,12 +60,9 @@ class Prefix(Token):
         return Token.__new__(cls, 0, rbp, node)
 
     def nud(self, parse, table):
-        operand = parse(self.rbp)
-        if is_operator(operand):
-            operand_op = make_token(table, operand.op)
-            if self.rbp == operand_op.lbp:
-                raise parse_error(self.rbp, operand, operand_op.lbp)
-        return ast.UnaryOp(self.node, operand)
+        right = parse(self.rbp)
+        check_right(self, right, table)
+        return ast.UnaryOp(self.node, right)
 
 
 class Infix(Token):
@@ -73,19 +70,27 @@ class Infix(Token):
     __slots__ = ()
 
     def led(self, left, parse, table):
-        if is_operator(left):
-            left_op = make_token(table, left.op)
-            if left_op.rbp == self.lbp:
-                raise parse_error(left_op.rbp, self.node, self.lbp)
+        check_left(self, left, table)
         right = parse(self.rbp)
-        if is_operator(right):
-            right_op = make_token(table, right.op)
-            if self.rbp == right_op.lbp:
-                raise parse_error(self.rbp, right, right_op.lbp)
+        check_right(self, right, table)
         return ast.BinOp(left, self.node, right)
 
 
 END = Nofix(0, 0, None)
+
+
+def check_left(op, left, table):
+    if is_operator(left):
+        left_token = make_token(table, left.op)
+        if left_token.rbp == op.lbp:
+            raise parse_error(left_token.rbp, op.node, op.lbp)
+
+
+def check_right(op, right, table):
+    if is_operator(right):
+        right_token = make_token(table, right.op)
+        if op.rbp == right_token.lbp:
+            raise parse_error(op.rbp, right, right_token.lbp)
 
 
 class Fix(enum.IntEnum):
@@ -99,9 +104,9 @@ class Fix(enum.IntEnum):
 
 
 def fixity(factory, fix):
-    def get_binding_power(bp):
+    def apply_binding_power(bp):
         return functools.partial(factory, *fix(bp))
-    return get_binding_power
+    return apply_binding_power
 
 
 f = fixity(Nofix, Fix.Non)
@@ -110,6 +115,39 @@ fy = fixity(Prefix, Fix.Right)
 xfx = fixity(Infix, Fix.Non)
 xfy = fixity(Infix, Fix.Right)
 yfx = fixity(Infix, Fix.Left)
+
+
+F0 = f(0)
+
+
+def make_token(table, node):
+    return table.get(type(node), F0)(node)
+
+
+def operator_fixity(table):
+    return lambda node: make_token(table, node.op)
+
+
+def pratt_parse(nodes, table):
+
+    tokens = (make_token(table, node) for node in nodes)
+    token_pairs = pairwise(tokens, fillvalue=END)
+    token = None
+
+    def parse(rbp):
+
+        nonlocal token
+
+        t, token = next(token_pairs)
+        left = t.nud(parse, table)
+
+        while rbp < token.lbp:
+            t, token = next(token_pairs)
+            left = t.led(left, parse, table)
+
+        return left
+
+    return parse(0)
 
 
 # see: https://docs.python.org/3/reference/expressions.html#operator-precedence
@@ -151,37 +189,8 @@ hornet_fixities = {
 }
 
 
-def make_token(table, node):
-    return table.get(type(node), f(0))(node)
-
-
-def operator_fixity(table):
-    return lambda node: make_token(table, node.op)
-
-
 python_fixities[ast.UnaryOp] = operator_fixity(python_fixities)
 python_fixities[ast.BinOp] = operator_fixity(python_fixities)
-
-
-def pratt_parse(nodes, table):
-
-    tokens = (make_token(table, node) for node in nodes)
-    token = None
-
-    def parse(rbp, token_pairs=pairwise(tokens, fillvalue=END), table=table):
-
-        nonlocal token
-
-        t, token = next(token_pairs)
-        left = t.nud(parse, table)
-
-        while rbp < token.lbp:
-            t, token = next(token_pairs)
-            left = t.led(left, parse, table)
-
-        return left
-
-    return parse(0)
 
 
 unaryop_fields = operator.attrgetter('op', 'operand')

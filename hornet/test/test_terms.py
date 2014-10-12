@@ -16,8 +16,7 @@ from hornet.test import *
 
 def test_builder():
 
-    from hornet.expressions import bind
-    from hornet.terms import build_term
+    from hornet import build_term
 
     from hornet.symbols import _, f, g, h, a, b, c, d, e, X, Y, Z, s, vp, np, S0, S1
 

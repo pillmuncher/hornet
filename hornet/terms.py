@@ -86,17 +86,17 @@ def comma_separated(items):
     return ', '.join(str(each) for each in items)
 
 
-def action_str(term):
-    if term.actions:
-        return '[{}]'.format(', '.join(a.__name__ for a in term.actions))
-    else:
-        return ''
+#def action_str(term):
+    #if term.actions:
+        #return '[{}]'.format(', '.join(a.__name__ for a in term.actions))
+    #else:
+        #return ''
 
 
 class Indicator(collections.namedtuple('BaseIndicator', 'name arity')):
 
     def __str__(self):
-        return '{}/{}:'.format(*self)
+        return '{}/{}'.format(*self)
 
 
 class UnificationFailed(Exception):
@@ -175,12 +175,11 @@ class Variable(collections.Counter):
         other.unify_variable(self, trail)
 
     def unify_variable(self, other, trail):
-
         self[other] += 1
         other[self] += 1
 
         @trail.append
-        def rollback(self=self, other=other):
+        def rollback_unify_variable(self=self, other=other):
             self[other] -= 1
             other[self] -= 1
             if self[other] < 1:
@@ -188,7 +187,6 @@ class Variable(collections.Counter):
                 del other[self]
 
     def unify_structure(self, structure, trail):
-
         seen = {self}
         todo = self.keys() - seen
         self.ref = structure
@@ -199,7 +197,7 @@ class Variable(collections.Counter):
             variable.ref = structure
 
         @trail.append
-        def rollback(seen=seen):
+        def rollback_unify_structure(seen=seen):
             for variable in seen:
                 variable.ref = variable
 
@@ -312,10 +310,9 @@ class Relation(Structure):
     __call__ = get_name
 
     def __str__(self):
-        return '{}({}){}'.format(
+        return '{}({})'.format(
             self.name,
-            comma_separated(str(each.deref) for each in self.params),
-            action_str(self))
+            comma_separated(str(each.deref) for each in self.params))
 
 
 class Atom(Structure):
@@ -324,9 +321,7 @@ class Atom(Structure):
 
     __call__ = get_name
     __deepcopy__ = get_self
-
-    def __str__(self):
-        return '{}{}'.format(self.name, action_str(self))
+    __str__ = get_self
 
     fresh = get_self
 
@@ -443,11 +438,7 @@ class InfixOperator(Structure):
     right = second_param
 
     def __call__(self):
-        try:
-            return self.op(self.left.deref(), self.right.deref())
-        except:
-            print('!!!', self, type(self), self.deref, type(self.deref))
-            raise
+        return self.op(self.left.deref(), self.right.deref())
 
     def __str__(self):
 

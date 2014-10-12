@@ -20,7 +20,7 @@ from hornet.symbols import (
     A, B, C, D, Seen, Tribe, U, V, W, Who, X, Y, Z, ancestor, appenddl,
     aristotle, bob, dan, descendant, directly_related, patriarch, hal, jim,
     joe, lee, man, mortal, plato, related, related_, sam, socrates, son, test,
-    tom, tribe, nonequal, lwriteln, a, b, c, d, e, blub,
+    tom, tribe, nonequal, lwriteln, a, b, c, d, e, blub, god, zeus
 )
 
 
@@ -73,6 +73,7 @@ def eqtest(db):
 @show
 def barbara(db):
     db.tell(
+        god(zeus),
         man(socrates),
         man(plato),
         man(aristotle),
@@ -522,7 +523,6 @@ def maplist_test(db):
         #print(subst[X], subst[Y])
         #if i == 5:
             #break
-
 
 
 show_all(Database())

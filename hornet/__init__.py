@@ -50,7 +50,7 @@ import copy
 import numbers
 import pprint
 
-from .util import rpartial, foldr
+from .util import rpartial, foldr, pairwise
 from .expressions import bind_compose, promote, Name
 from .operators import rearrange
 from .dcg import _C_, dcg_expand
@@ -385,6 +385,11 @@ def _univ(term, env, db, trail):
 def _transpose(term, env, db, trail):
     L0 = flatten(env.L)
     Ls = [flatten(each.deref) for each in L0]
+    if len(set(map(len, Ls))) > 1:
+        raise ValueError(
+            'Cannot transpose a List of Lists of different lengths: {}'
+            .format(env.L)
+        )
     Lt = list(zip(*Ls))
     L1 = [make_list(env, each) for each in Lt]
     unify(env.T, make_list(env, L1), trail)
