@@ -58,6 +58,7 @@ __all__ = [
     'BitAnd',
     'BitXor',
     'BitOr',
+    # AST node instance test functions:
     'is_binop',
     'is_lshift',
     'is_rshift',

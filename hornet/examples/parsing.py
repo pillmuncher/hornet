@@ -227,9 +227,9 @@ def grammar(db):
 
     #words = [B, 'hunde', 'jagen', C, 'katzen']
     #words = ['manche', 'maeuse', 'jagen' | B]
-    #words = [D, 'kater', 'jagen' | B]
+    words = [D, 'kater', 'jagen' | B]
     #words = 'manche maeuse jagen viele katzen'.split()
-    words = 'eine maus jagen viele katzen'.split()
+    #words = 'eine maus jagt viele katzen'.split()
     #words = [B, C, 'jagen']
     #words = ['manche', B, C]
     #words = [B, C, D, 'die', F]
@@ -239,7 +239,7 @@ def grammar(db):
     #for i, subst in enumerate(db.ask(s(W) & join(W, S, ' '))):
     for subst in db.ask(equal(words, W) & s(W) & join(W, S, ' ')):
         print(subst[S]())
-        print('Yes.')
+        #print('Yes.')
     else:
         print('No.')
 
@@ -344,4 +344,4 @@ def mudlang2(db):
 
 db = Database()
 grammar(db)
-#mudlang2(db)
+mudlang2(db)
