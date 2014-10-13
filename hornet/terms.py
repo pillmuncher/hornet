@@ -21,7 +21,6 @@ from .util import identity, noop, foldr, compose
 from .util import first_arg as get_self, rpartial
 from .expressions import is_bitor, is_name
 from .operators import fy, xfx, xfy, yfx, make_token
-from .trampoline import trampoline, tco, land as failure, throw as success
 
 
 __all__ = [
@@ -56,6 +55,28 @@ __all__ = [
     'failure',
     'is_nil',
 ]
+
+
+USE_TCO = True
+
+if USE_TCO:
+
+    from .trampoline import tco, trampoline, land as failure, throw as success
+
+else:
+
+    tco = identity
+
+    def trampoline(f, *a, **k):
+        return f(*a, **k)
+
+    def failure():
+        return
+        yield
+
+    def success(cont):
+        yield
+        yield from cont()
 
 
 def get_name(self):
@@ -136,16 +157,10 @@ class Variable(collections.Counter):
 
     def __str__(self):
         if self.deref is self:
-            seen = {self}
-            todo = self.keys() - seen
-            name = self.name
-            while todo:
-                variable = todo.pop()
-                seen.add(variable)
-                todo |= variable.keys() - seen
-                if variable.env is self.env and name > variable.name:
-                    name = variable.name
-            return name
+            return min(
+                    variable.name
+                    for variable in self.aliases()
+                    if variable.env is self.env)
         else:
             return str(self.deref)
 
@@ -162,6 +177,15 @@ class Variable(collections.Counter):
 
     def fresh(self, env):
         return env(self.name)
+
+    def aliases(self):
+        seen = {self}
+        todo = self.keys() - seen
+        while todo:
+            variable = todo.pop()
+            seen.add(variable)
+            todo |= variable.keys() - seen
+        return seen
 
     @property
     def deref(self):
@@ -187,18 +211,13 @@ class Variable(collections.Counter):
                 del other[self]
 
     def unify_structure(self, structure, trail):
-        seen = {self}
-        todo = self.keys() - seen
-        self.ref = structure
-        while todo:
-            variable = todo.pop()
-            seen.add(variable)
-            todo |= variable.keys() - seen
+        variables = self.aliases()
+        for variable in variables:
             variable.ref = structure
 
         @trail.append
-        def rollback_unify_structure(seen=seen):
-            for variable in seen:
+        def rollback_unify_structure(variables=variables):
+            for variable in variables:
                 variable.ref = variable
 
 
@@ -481,10 +500,10 @@ class Conjunction(InfixOperator):
             return self.right.deref._resolve(db, yes, retry_left, prune)
 
         @tco
-        def try_left():
+        def try_left_then_right():
             return self.left.deref._resolve(db, try_right, no, prune)
 
-        return try_left()
+        return try_left_then_right()
 
 
 class Disjunction(InfixOperator):

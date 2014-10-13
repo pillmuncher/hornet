@@ -82,6 +82,7 @@ system_names = [
     'numeric',
     'once',
     'real',
+    'repeat',
     'reverse',
     'select',
     'smaller',
@@ -425,6 +426,9 @@ def _bootstrap():
         X >> _ | Z << ~X & cut & Z,
         X >> Y | _ << X & Y,
 
+        repeat,
+        repeat << repeat,
+
         let(X, Y)[_let],
 
         call(Goal) << Goal,
@@ -502,7 +506,7 @@ def _bootstrap():
 
         arithmetic_equal(X, Y) <<
             let(Z, X) &
-            let(Z, Y) & cut,
+            let(Z, Y),
 
         arithmetic_not_equal(X, Y) <<
             let(Z, X) &
@@ -520,7 +524,6 @@ def _bootstrap():
         #length([H|T], Len) <<
             #length(T, Len0) &
             #let(Len, Len0 + 1),
-
 
     )
 
