@@ -232,13 +232,14 @@ class ASTFlattener(ast.NodeVisitor):
 
     def visit_Set(self, node):
         if len(node.elts) != 1:
-            raise ValueError('Only sets with exactly one item allowed!')
+            raise TypeError('Only sets with exactly one item allowed, not {}'
+                            .format(node))
         self.append(
             ast.Set(
                 elts=[_rearrange(each) for each in node.elts]))
 
     def visit_Dict(self, node):
-        raise ValueError('Dicts not allowed!')
+        raise TypeError('Dicts not allowed: ')
 
     def visit_AstWrapper(self, node):
         self.append(node)
@@ -262,13 +263,17 @@ class ASTFlattener(ast.NodeVisitor):
 
     def visit_Call(self, node):
         if not is_name(node.func):
-            raise TypeError
+            raise TypeError('{} is not a valid functor name.'
+                            .format(node.func))
         if node.keywords:
-            raise TypeError
+            raise TypeError('Keyword arguments are not allowed: {}'
+                            .format(node))
         if node.starargs:
-            raise TypeError
+            raise TypeError('Starred arguments are not allowed: {}'
+                            .format(node))
         if node.kwargs:
-            raise TypeError
+            raise TypeError('Starred keyword arguments are not allowed: {}'
+                            .format(node))
         self.append(
             ast.Call(
                 func=node.func,

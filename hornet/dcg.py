@@ -114,7 +114,7 @@ def dcg_list(node, tagged, cont=identity):
 
     else:
         raise TypeError(
-            'Non-terminal in DCG terrminal list found: {}'.format(left))
+            'Non-terminal in DCG terrminal list found: {}'.format(node))
 
 
 def dcg_body(node, tag, cont=identity):

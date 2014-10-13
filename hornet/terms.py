@@ -19,7 +19,7 @@ import string
 
 from .util import identity, noop, foldr, compose
 from .util import first_arg as get_self, rpartial
-from .expressions import is_bitor
+from .expressions import is_bitor, is_name
 from .operators import fy, xfx, xfy, yfx, make_token
 from .trampoline import trampoline, tco, land as failure, throw as success
 
@@ -623,7 +623,7 @@ class Builder(ast.NodeVisitor):
         self.append(Num(env=self.env, name=node.n))
 
     def visit_Tuple(self, node):
-        raise ValueError
+        raise TypeError('Tuples are not allowed: {}'.format(node))
 
     def cons(self, car, cdr):
         return List(env=self.env, params=[car, cdr])
@@ -656,21 +656,32 @@ class Builder(ast.NodeVisitor):
             self.append(NIL)
 
     def visit_Set(self, node):
-        raise ValueError
+        raise TypeError('Sets are not allowed: {}'.format(node))
 
     def visit_Dict(self, node):
-        raise ValueError
+        raise TypeError('Dicts are not allowed: {}'.format(node))
 
     def visit_AstWrapper(self, node):
-        raise ValueError
+        raise TypeError('Invalid node {} of type {} found'
+                        .format(node, type(node)))
 
     def visit_Subscript(self, node):
         self.visit(node.value)
         self.toptop().actions.extend(node.slice)
 
     def visit_Call(self, node):
-        if node.keywords or node.starargs or node.kwargs:
-            raise ValueError
+        if not is_name(node.func):
+            raise TypeError('{} is not a valid functor name.'
+                            .format(node.func))
+        if node.keywords:
+            raise TypeError('Keyword arguments are not allowed: {}'
+                            .format(node))
+        if node.starargs:
+            raise TypeError('Starred arguments are not allowed: {}'
+                            .format(node))
+        if node.kwargs:
+            raise TypeError('Starred keyword arguments are not allowed: {}'
+                            .format(node))
         self.push()
         for each in node.args:
             self.visit(each)
