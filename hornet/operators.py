@@ -36,6 +36,10 @@ class Token(collections.namedtuple('BaseToken', 'lbp rbp node')):
     def __gt__(self, other):
         return self.rbp > other.lbp
 
+    @classmethod
+    def op(cls, left, right):
+        return functools.partial(cls, left, right)
+
 
 class Nofix(Token):
 
@@ -80,21 +84,7 @@ def check_right(op, right, table):
             raise parse_error(op.rbp, right, right_token.lbp)
 
 
-def fixity(factory, left, right):
-    def apply_binding_power(bp, left=left, right=right):
-        return functools.partial(factory, left(bp), right(bp))
-    return apply_binding_power
-
-
-f = fixity(Nofix, identity, identity)
-fx = fixity(Prefix, identity, identity)
-fy = fixity(Prefix, identity, decrement)
-xfx = fixity(Infix, identity, identity)
-xfy = fixity(Infix, identity, decrement)
-yfx = fixity(Infix, decrement, identity)
-
-
-NON_OP = f(0)
+NON_OP = Nofix.op(left=0, right=0)
 END = NON_OP(None)
 
 
@@ -125,21 +115,21 @@ def pratt_parse(nodes, table):
 
 
 hornet_fixities = {
-    ast.BitOr: xfy(10),
-    ast.BitXor: xfy(20),
-    ast.BitAnd: xfy(30),
-    ast.LShift: xfx(4),
-    ast.RShift: xfx(7),
-    ast.Add: yfx(50),
-    ast.Sub: yfx(50),
-    ast.Mult: yfx(60),
-    ast.Div: yfx(60),
-    ast.FloorDiv: yfx(60),
-    ast.Mod: yfx(60),
-    ast.USub: fy(70),
-    ast.UAdd: fy(70),
-    ast.Invert: fy(70),
-    ast.Pow: xfy(80),
+    ast.BitOr: Infix.op(left=10, right=9),
+    ast.BitXor: Infix.op(left=20, right=19),
+    ast.BitAnd: Infix.op(left=30, right=29),
+    ast.LShift: Infix.op(left=4, right=4),
+    ast.RShift: Infix.op(left=7, right=7),
+    ast.Add: Infix.op(left=49, right=50),
+    ast.Sub: Infix.op(left=49, right=50),
+    ast.Mult: Infix.op(left=59, right=60),
+    ast.Div: Infix.op(left=59, right=60),
+    ast.FloorDiv: Infix.op(left=59, right=60),
+    ast.Mod: Infix.op(left=59, right=60),
+    ast.USub: Prefix.op(left=70, right=69),
+    ast.UAdd: Prefix.op(left=70, right=69),
+    ast.Invert: Prefix.op(left=70, right=69),
+    ast.Pow: Infix.op(left=80, right=79),
 }
 
 
@@ -149,21 +139,21 @@ def operator_fixity(table):
 
 # see: https://docs.python.org/3/reference/expressions.html#operator-precedence
 python_fixities = {
-    ast.BitOr: yfx(10),
-    ast.BitXor: yfx(20),
-    ast.BitAnd: yfx(30),
-    ast.LShift: xfx(45),  # yeah, i know that's cheating...
-    ast.RShift: xfx(40),
-    ast.Add: yfx(50),
-    ast.Sub: yfx(50),
-    ast.Mult: yfx(60),
-    ast.Div: yfx(60),
-    ast.FloorDiv: yfx(60),
-    ast.Mod: yfx(60),
-    ast.USub: fy(70),
-    ast.UAdd: fy(70),
-    ast.Invert: fy(70),
-    ast.Pow: xfy(80),
+    ast.BitOr: Infix.op(left=9, right=10),
+    ast.BitXor: Infix.op(left=19, right=20),
+    ast.BitAnd: Infix.op(left=29, right=30),
+    ast.LShift: Infix.op(left=45, right=45),  # yeah, i know that's cheating...
+    ast.RShift: Infix.op(left=40, right=40),
+    ast.Add: Infix.op(left=49, right=50),
+    ast.Sub: Infix.op(left=49, right=50),
+    ast.Mult: Infix.op(left=59, right=60),
+    ast.Div: Infix.op(left=59, right=60),
+    ast.FloorDiv: Infix.op(left=59, right=60),
+    ast.Mod: Infix.op(left=59, right=60),
+    ast.USub: Prefix.op(left=0, right=69),
+    ast.UAdd: Prefix.op(left=0, right=69),
+    ast.Invert: Prefix.op(left=0, right=69),
+    ast.Pow: Infix.op(left=80, right=79),
 }
 
 
