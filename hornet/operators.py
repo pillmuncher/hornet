@@ -259,6 +259,20 @@ class ASTFlattener(ast.NodeVisitor):
                 starargs=None,
                 kwargs=None))
 
+    def visit_UnaryOp(self, node):
+
+        op, operand = unaryop_fields(node)
+
+        op_fixity = make_token(PYTHON_FIXITIES, op)
+        operand_fixity = make_token(PYTHON_FIXITIES, operand)
+
+        self.append(op)
+
+        if op_fixity < operand_fixity:
+            self.visit(operand)
+        else:
+            self.append(_rearrange(operand))
+
     def visit_BinOp(self, node):
 
         left, op, right = binop_fields(node)
@@ -278,20 +292,6 @@ class ASTFlattener(ast.NodeVisitor):
             self.visit(right)
         else:
             self.append(_rearrange(right))
-
-    def visit_UnaryOp(self, node):
-
-        op, operand = unaryop_fields(node)
-
-        op_fixity = make_token(PYTHON_FIXITIES, op)
-        operand_fixity = make_token(PYTHON_FIXITIES, operand)
-
-        self.append(op)
-
-        if op_fixity < operand_fixity:
-            self.visit(operand)
-        else:
-            self.append(_rearrange(operand))
 
 
 def _rearrange(node):
