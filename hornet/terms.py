@@ -438,8 +438,8 @@ class PrefixOperator(Structure):
 
         operand = self.operand.deref
 
-        op_fixity = make_token(operator_fixities, self)
-        operand_fixity = make_token(operator_fixities, operand)
+        op_fixity = make_token(OPERATOR_FIXITIES, self)
+        operand_fixity = make_token(OPERATOR_FIXITIES, operand)
 
         if operand_fixity.lbp and op_fixity > operand_fixity:
             operand_str = parenthesized
@@ -464,9 +464,9 @@ class InfixOperator(Structure):
         left = self.left.deref
         right = self.right.deref
 
-        op_fixity = make_token(operator_fixities, self)
-        left_fixity = make_token(operator_fixities, left)
-        right_fixity = make_token(operator_fixities, right)
+        op_fixity = make_token(OPERATOR_FIXITIES, self)
+        left_fixity = make_token(OPERATOR_FIXITIES, left)
+        right_fixity = make_token(OPERATOR_FIXITIES, right)
 
         if left_fixity.rbp and left_fixity < op_fixity:
             left_str = parenthesized
@@ -571,22 +571,22 @@ class Negative(PrefixOperator):
     op = operator.neg
 
 
-operator_fixities = {
-    Adjunction: Infix.op(left=10, right=9),
-    Disjunction: Infix.op(left=20, right=19),
-    Conjunction: Infix.op(left=30, right=29),
-    Implication: Infix.op(left=4, right=4),
-    Conditional: Infix.op(left=7, right=7),
-    Addition: Infix.op(left=49, right=50),
-    Subtraction: Infix.op(left=49, right=50),
-    Multiplication: Infix.op(left=59, right=60),
-    Division: Infix.op(left=59, right=60),
-    FloorDivision: Infix.op(left=59, right=60),
-    Remainder: Infix.op(left=59, right=60),
-    Negative: Prefix.op(left=0, right=69),
-    Positive: Prefix.op(left=0, right=69),
-    Negation: Prefix.op(left=0, right=69),
-    Exponentiation: Infix.op(left=80, right=79),
+OPERATOR_FIXITIES = {
+    Adjunction: Infix.op(lbp=10, rbp=9),
+    Disjunction: Infix.op(lbp=20, rbp=19),
+    Conjunction: Infix.op(lbp=30, rbp=29),
+    Implication: Infix.op(lbp=4, rbp=4),
+    Conditional: Infix.op(lbp=7, rbp=7),
+    Addition: Infix.op(lbp=49, rbp=50),
+    Subtraction: Infix.op(lbp=49, rbp=50),
+    Multiplication: Infix.op(lbp=59, rbp=60),
+    Division: Infix.op(lbp=59, rbp=60),
+    FloorDivision: Infix.op(lbp=59, rbp=60),
+    Remainder: Infix.op(lbp=59, rbp=60),
+    Negative: Prefix.op(lbp=0, rbp=69),
+    Positive: Prefix.op(lbp=0, rbp=69),
+    Negation: Prefix.op(lbp=0, rbp=69),
+    Exponentiation: Infix.op(lbp=80, rbp=79),
 }
 
 

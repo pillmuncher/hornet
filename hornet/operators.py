@@ -15,8 +15,8 @@ import functools
 import operator
 
 from .util import pairwise, compose2 as compose, identity, decrement
-from .expressions import lift, promote, AstWrapper, is_tuple, is_astwrapper
-from .expressions import is_name, is_operator
+from .expressions import is_name, is_operator, is_tuple, is_astwrapper
+from .expressions import lift, promote, AstWrapper
 
 
 class ParseError(Exception):
@@ -37,15 +37,15 @@ class Token(collections.namedtuple('BaseToken', 'lbp rbp node')):
         return self.rbp > other.lbp
 
     @classmethod
-    def op(cls, left, right):
-        return functools.partial(cls, left, right)
+    def op(cls, lbp, rbp):
+        return functools.partial(cls, lbp, rbp)
 
 
 class Nofix(Token):
 
     __slots__ = ()
 
-    def nud(self, parse, table):
+    def nud(self, parse):
         return self.node
 
 
@@ -53,9 +53,9 @@ class Prefix(Token):
 
     __slots__ = ()
 
-    def nud(self, parse, table):
+    def nud(self, parse):
         right = parse(self.rbp)
-        check_right(self, right, table)
+        check_right(self, right)
         return ast.UnaryOp(self.node, right)
 
 
@@ -63,38 +63,57 @@ class Infix(Token):
 
     __slots__ = ()
 
-    def led(self, left, parse, table):
-        check_left(self, left, table)
+    def led(self, left, parse):
+        check_left(self, left)
         right = parse(self.rbp)
-        check_right(self, right, table)
+        check_right(self, right)
         return ast.BinOp(left, self.node, right)
 
 
-def check_left(op, left, table):
-    if is_operator(left):
-        left_token = make_token(table, left.op)
-        if left_token.rbp == op.lbp:
-            raise parse_error(left_token.rbp, op.node, op.lbp)
-
-
-def check_right(op, right, table):
-    if is_operator(right):
-        right_token = make_token(table, right.op)
-        if op.rbp == right_token.lbp:
-            raise parse_error(op.rbp, right, right_token.lbp)
-
-
-NON_OP = Nofix.op(left=0, right=0)
+NON_OP = Nofix.op(lbp=0, rbp=0)
 END = NON_OP(None)
 
 
-def make_token(table, node):
-    return table.get(type(node), NON_OP)(node)
+def make_token(fixities, node):
+    return fixities.get(type(node), NON_OP)(node)
 
 
-def pratt_parse(nodes, table):
+HORNET_FIXITIES = {
+    ast.BitOr: Infix.op(lbp=10, rbp=9),
+    ast.BitXor: Infix.op(lbp=20, rbp=19),
+    ast.BitAnd: Infix.op(lbp=30, rbp=29),
+    ast.LShift: Infix.op(lbp=4, rbp=4),
+    ast.RShift: Infix.op(lbp=7, rbp=7),
+    ast.Add: Infix.op(lbp=49, rbp=50),
+    ast.Sub: Infix.op(lbp=49, rbp=50),
+    ast.Mult: Infix.op(lbp=59, rbp=60),
+    ast.Div: Infix.op(lbp=59, rbp=60),
+    ast.FloorDiv: Infix.op(lbp=59, rbp=60),
+    ast.Mod: Infix.op(lbp=59, rbp=60),
+    ast.USub: Prefix.op(lbp=70, rbp=69),
+    ast.UAdd: Prefix.op(lbp=70, rbp=69),
+    ast.Invert: Prefix.op(lbp=70, rbp=69),
+    ast.Pow: Infix.op(lbp=80, rbp=79),
+}
 
-    tokens = (make_token(table, node) for node in nodes)
+
+def check_left(op, left_node):
+    if is_operator(left_node):
+        left = make_token(HORNET_FIXITIES, left_node.op)
+        if left.rbp == op.lbp:
+            raise parse_error(left.rbp, op.node, op.lbp)
+
+
+def check_right(op, right_node):
+    if is_operator(right_node):
+        right = make_token(HORNET_FIXITIES, right_node.op)
+        if op.rbp == right.lbp:
+            raise parse_error(op.rbp, right_node, right.lbp)
+
+
+def pratt_parse(nodes):
+
+    tokens = (make_token(HORNET_FIXITIES, node) for node in nodes)
     token_pairs = pairwise(tokens, fillvalue=END)
     token = None
 
@@ -103,62 +122,37 @@ def pratt_parse(nodes, table):
         nonlocal token
 
         t, token = next(token_pairs)
-        left = t.nud(parse, table)
+        left = t.nud(parse)
 
         while rbp < token.lbp:
             t, token = next(token_pairs)
-            left = t.led(left, parse, table)
+            left = t.led(left, parse)
 
         return left
 
     return parse(0)
 
 
-hornet_fixities = {
-    ast.BitOr: Infix.op(left=10, right=9),
-    ast.BitXor: Infix.op(left=20, right=19),
-    ast.BitAnd: Infix.op(left=30, right=29),
-    ast.LShift: Infix.op(left=4, right=4),
-    ast.RShift: Infix.op(left=7, right=7),
-    ast.Add: Infix.op(left=49, right=50),
-    ast.Sub: Infix.op(left=49, right=50),
-    ast.Mult: Infix.op(left=59, right=60),
-    ast.Div: Infix.op(left=59, right=60),
-    ast.FloorDiv: Infix.op(left=59, right=60),
-    ast.Mod: Infix.op(left=59, right=60),
-    ast.USub: Prefix.op(left=70, right=69),
-    ast.UAdd: Prefix.op(left=70, right=69),
-    ast.Invert: Prefix.op(left=70, right=69),
-    ast.Pow: Infix.op(left=80, right=79),
-}
-
-
-def operator_fixity(table):
-    return lambda node: make_token(table, node.op)
-
-
 # see: https://docs.python.org/3/reference/expressions.html#operator-precedence
-python_fixities = {
-    ast.BitOr: Infix.op(left=9, right=10),
-    ast.BitXor: Infix.op(left=19, right=20),
-    ast.BitAnd: Infix.op(left=29, right=30),
-    ast.LShift: Infix.op(left=45, right=45),  # yeah, i know that's cheating...
-    ast.RShift: Infix.op(left=40, right=40),
-    ast.Add: Infix.op(left=49, right=50),
-    ast.Sub: Infix.op(left=49, right=50),
-    ast.Mult: Infix.op(left=59, right=60),
-    ast.Div: Infix.op(left=59, right=60),
-    ast.FloorDiv: Infix.op(left=59, right=60),
-    ast.Mod: Infix.op(left=59, right=60),
-    ast.USub: Prefix.op(left=0, right=69),
-    ast.UAdd: Prefix.op(left=0, right=69),
-    ast.Invert: Prefix.op(left=0, right=69),
-    ast.Pow: Infix.op(left=80, right=79),
+PYTHON_FIXITIES = {
+    ast.BitOr: Infix.op(lbp=9, rbp=10),
+    ast.BitXor: Infix.op(lbp=19, rbp=20),
+    ast.BitAnd: Infix.op(lbp=29, rbp=30),
+    ast.LShift: Infix.op(lbp=45, rbp=45),  # yeah, i know that's cheating...
+    ast.RShift: Infix.op(lbp=40, rbp=40),
+    ast.Add: Infix.op(lbp=49, rbp=50),
+    ast.Sub: Infix.op(lbp=49, rbp=50),
+    ast.Mult: Infix.op(lbp=59, rbp=60),
+    ast.Div: Infix.op(lbp=59, rbp=60),
+    ast.FloorDiv: Infix.op(lbp=59, rbp=60),
+    ast.Mod: Infix.op(lbp=59, rbp=60),
+    ast.USub: Prefix.op(lbp=0, rbp=69),
+    ast.UAdd: Prefix.op(lbp=0, rbp=69),
+    ast.Invert: Prefix.op(lbp=0, rbp=69),
+    ast.Pow: Infix.op(lbp=80, rbp=79),
+    ast.UnaryOp: lambda node: make_token(PYTHON_FIXITIES, node.op),
+    ast.BinOp: lambda node: make_token(PYTHON_FIXITIES, node.op),
 }
-
-
-python_fixities[ast.UnaryOp] = operator_fixity(python_fixities)
-python_fixities[ast.BinOp] = operator_fixity(python_fixities)
 
 
 unaryop_fields = operator.attrgetter('op', 'operand')
@@ -167,9 +161,8 @@ binop_fields = operator.attrgetter('left', 'op', 'right')
 
 class ASTFlattener(ast.NodeVisitor):
 
-    def __init__(self, nodes, fixities):
+    def __init__(self, nodes):
         self.append = nodes.append
-        self.fixities = fixities
 
     def visit_Name(self, node):
         self.append(node)
@@ -254,9 +247,9 @@ class ASTFlattener(ast.NodeVisitor):
 
         left, op, right = binop_fields(node)
 
-        op_fixity = make_token(self.fixities, op)
-        left_fixity = make_token(self.fixities, left)
-        right_fixity = make_token(self.fixities, right)
+        op_fixity = make_token(PYTHON_FIXITIES, op)
+        left_fixity = make_token(PYTHON_FIXITIES, left)
+        right_fixity = make_token(PYTHON_FIXITIES, right)
 
         if left_fixity > op_fixity:
             self.visit(left)
@@ -274,8 +267,8 @@ class ASTFlattener(ast.NodeVisitor):
 
         op, operand = unaryop_fields(node)
 
-        op_fixity = make_token(self.fixities, op)
-        operand_fixity = make_token(self.fixities, operand)
+        op_fixity = make_token(PYTHON_FIXITIES, op)
+        operand_fixity = make_token(PYTHON_FIXITIES, operand)
 
         self.append(op)
 
@@ -287,8 +280,8 @@ class ASTFlattener(ast.NodeVisitor):
 
 def _rearrange(node):
     flattened = []
-    ASTFlattener(flattened, python_fixities).visit(node)
-    return pratt_parse(flattened, hornet_fixities)
+    ASTFlattener(flattened).visit(node)
+    return pratt_parse(flattened)
 
 
 rearrange = lift(_rearrange)
