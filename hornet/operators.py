@@ -14,7 +14,7 @@ import collections
 import functools
 import operator
 
-from .util import pairwise, compose2 as compose, identity, decrement
+from .util import pairwise, compose2 as compose, identity, const, decrement
 from .expressions import is_name, is_operator, is_tuple, is_astwrapper
 from .expressions import lift, promote, AstWrapper
 
@@ -35,10 +35,6 @@ class Token(collections.namedtuple('BaseToken', 'lbp rbp node')):
 
     def __gt__(self, other):
         return self.rbp > other.lbp
-
-    @classmethod
-    def op(cls, lbp, rbp):
-        return functools.partial(cls, lbp, rbp)
 
 
 class Nofix(Token):
@@ -70,7 +66,22 @@ class Infix(Token):
         return ast.BinOp(left, self.node, right)
 
 
-NON_OP = Nofix.op(lbp=0, rbp=0)
+def fixity(factory, left, right):
+    def apply_binding_power(bp):
+        return functools.partial(factory, left(bp), right(bp))
+    return apply_binding_power
+
+
+f = fixity(Nofix, left=identity, right=identity)
+fx = fixity(Prefix, left=identity, right=identity)
+fy = fixity(Prefix, left=identity, right=decrement)
+fz = fixity(Prefix, left=const(0), right=decrement)
+xfx = fixity(Infix, left=identity, right=identity)
+xfy = fixity(Infix, left=identity, right=decrement)
+yfx = fixity(Infix, left=decrement, right=identity)
+
+
+NON_OP = f(0)
 END = NON_OP(None)
 
 
@@ -79,21 +90,21 @@ def make_token(fixities, node):
 
 
 HORNET_FIXITIES = {
-    ast.BitOr: Infix.op(lbp=10, rbp=9),
-    ast.BitXor: Infix.op(lbp=20, rbp=19),
-    ast.BitAnd: Infix.op(lbp=30, rbp=29),
-    ast.LShift: Infix.op(lbp=4, rbp=4),
-    ast.RShift: Infix.op(lbp=7, rbp=7),
-    ast.Add: Infix.op(lbp=49, rbp=50),
-    ast.Sub: Infix.op(lbp=49, rbp=50),
-    ast.Mult: Infix.op(lbp=59, rbp=60),
-    ast.Div: Infix.op(lbp=59, rbp=60),
-    ast.FloorDiv: Infix.op(lbp=59, rbp=60),
-    ast.Mod: Infix.op(lbp=59, rbp=60),
-    ast.USub: Prefix.op(lbp=70, rbp=69),
-    ast.UAdd: Prefix.op(lbp=70, rbp=69),
-    ast.Invert: Prefix.op(lbp=70, rbp=69),
-    ast.Pow: Infix.op(lbp=80, rbp=79),
+    ast.BitOr: xfy(10),
+    ast.BitXor: xfy(20),
+    ast.BitAnd: xfy(30),
+    ast.LShift: xfx(4),
+    ast.RShift: xfx(7),
+    ast.Add: yfx(50),
+    ast.Sub: yfx(50),
+    ast.Mult: yfx(60),
+    ast.Div: yfx(60),
+    ast.FloorDiv: yfx(60),
+    ast.Mod: yfx(60),
+    ast.USub: fy(70),
+    ast.UAdd: fy(70),
+    ast.Invert: fy(70),
+    ast.Pow: xfy(80),
 }
 
 
@@ -135,21 +146,21 @@ def pratt_parse(nodes):
 
 # see: https://docs.python.org/3/reference/expressions.html#operator-precedence
 PYTHON_FIXITIES = {
-    ast.BitOr: Infix.op(lbp=9, rbp=10),
-    ast.BitXor: Infix.op(lbp=19, rbp=20),
-    ast.BitAnd: Infix.op(lbp=29, rbp=30),
-    ast.LShift: Infix.op(lbp=45, rbp=45),  # yeah, i know that's cheating...
-    ast.RShift: Infix.op(lbp=40, rbp=40),
-    ast.Add: Infix.op(lbp=49, rbp=50),
-    ast.Sub: Infix.op(lbp=49, rbp=50),
-    ast.Mult: Infix.op(lbp=59, rbp=60),
-    ast.Div: Infix.op(lbp=59, rbp=60),
-    ast.FloorDiv: Infix.op(lbp=59, rbp=60),
-    ast.Mod: Infix.op(lbp=59, rbp=60),
-    ast.USub: Prefix.op(lbp=0, rbp=69),
-    ast.UAdd: Prefix.op(lbp=0, rbp=69),
-    ast.Invert: Prefix.op(lbp=0, rbp=69),
-    ast.Pow: Infix.op(lbp=80, rbp=79),
+    ast.BitOr: yfx(10),
+    ast.BitXor: yfx(20),
+    ast.BitAnd: yfx(30),
+    ast.LShift: yfx(45),  # yeah, i know that's cheating...
+    ast.RShift: yfx(40),
+    ast.Add: yfx(50),
+    ast.Sub: yfx(50),
+    ast.Mult: yfx(60),
+    ast.Div: yfx(60),
+    ast.FloorDiv: yfx(60),
+    ast.Mod: yfx(60),
+    ast.USub: fz(70),
+    ast.UAdd: fz(70),
+    ast.Invert: fz(70),
+    ast.Pow: xfy(80),
     ast.UnaryOp: lambda node: make_token(PYTHON_FIXITIES, node.op),
     ast.BinOp: lambda node: make_token(PYTHON_FIXITIES, node.op),
 }

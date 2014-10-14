@@ -20,7 +20,7 @@ import string
 from .util import identity, const, noop, foldr, rpartial, compose
 from .util import first_arg as get_self
 from .expressions import is_bitor, is_name
-from .operators import Infix, Prefix, make_token
+from .operators import Infix, Prefix, make_token, fz, xfx, xfy, yfx
 
 
 __all__ = [
@@ -572,21 +572,21 @@ class Negative(PrefixOperator):
 
 
 OPERATOR_FIXITIES = {
-    Adjunction: Infix.op(lbp=10, rbp=9),
-    Disjunction: Infix.op(lbp=20, rbp=19),
-    Conjunction: Infix.op(lbp=30, rbp=29),
-    Implication: Infix.op(lbp=4, rbp=4),
-    Conditional: Infix.op(lbp=7, rbp=7),
-    Addition: Infix.op(lbp=49, rbp=50),
-    Subtraction: Infix.op(lbp=49, rbp=50),
-    Multiplication: Infix.op(lbp=59, rbp=60),
-    Division: Infix.op(lbp=59, rbp=60),
-    FloorDivision: Infix.op(lbp=59, rbp=60),
-    Remainder: Infix.op(lbp=59, rbp=60),
-    Negative: Prefix.op(lbp=0, rbp=69),
-    Positive: Prefix.op(lbp=0, rbp=69),
-    Negation: Prefix.op(lbp=0, rbp=69),
-    Exponentiation: Infix.op(lbp=80, rbp=79),
+    Adjunction: xfy(10),
+    Disjunction: xfy(20),
+    Conjunction: xfy(30),
+    Implication: xfx(4),
+    Conditional: xfx(7),
+    Addition: yfx(50),
+    Subtraction: yfx(50),
+    Multiplication: yfx(60),
+    Division: yfx(60),
+    FloorDivision: yfx(60),
+    Remainder: yfx(60),
+    Negative: fz(70),
+    Positive: fz(70),
+    Negation: fz(70),
+    Exponentiation: xfy(80),
 }
 
 
