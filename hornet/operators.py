@@ -11,7 +11,6 @@ __license__ = 'MIT'
 
 import ast
 import collections
-import functools
 import operator
 
 from .util import pairwise, compose2 as compose, identity, const, decrement
@@ -35,6 +34,18 @@ class Token(collections.namedtuple('BaseToken', 'lbp rbp node')):
 
     def __gt__(self, other):
         return self.rbp > other.lbp
+
+    @classmethod
+    def fixity(cls, left, right):
+
+        def get_binding_power(bp):
+
+            def get_node(node, _lbp=left(bp), _rbp=right(bp)):
+                return cls(_lbp, _rbp, node)
+
+            return get_node
+
+        return get_binding_power
 
 
 class Nofix(Token):
@@ -66,19 +77,13 @@ class Infix(Token):
         return ast.BinOp(left, self.node, right)
 
 
-def fixity(factory, left, right):
-    def apply_binding_power(bp):
-        return functools.partial(factory, left(bp), right(bp))
-    return apply_binding_power
-
-
-f = fixity(Nofix, left=identity, right=identity)
-fx = fixity(Prefix, left=identity, right=identity)
-fy = fixity(Prefix, left=identity, right=decrement)
-fz = fixity(Prefix, left=const(0), right=decrement)
-xfx = fixity(Infix, left=identity, right=identity)
-xfy = fixity(Infix, left=identity, right=decrement)
-yfx = fixity(Infix, left=decrement, right=identity)
+f = Nofix.fixity(left=identity, right=identity)
+fx = Prefix.fixity(left=identity, right=identity)
+fy = Prefix.fixity(left=identity, right=decrement)
+fz = Prefix.fixity(left=const(0), right=decrement)
+xfx = Infix.fixity(left=identity, right=identity)
+xfy = Infix.fixity(left=identity, right=decrement)
+yfx = Infix.fixity(left=decrement, right=identity)
 
 
 NON_OP = f(0)
