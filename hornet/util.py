@@ -18,6 +18,10 @@ noop = lambda *a, **k: None
 wrap = lambda f: wraps(f)(lambda *a, **k: f(*a, **k))
 flip = lambda f: wraps(f)(lambda *a: f(*reversed(a)))
 
+
+increment = lambda x: x + 1
+decrement = lambda x: x - 1
+
 identity = lambda x: x          # AKA: the I combinator
 const = lambda x: lambda _: x   # AKA: the K combinator
 

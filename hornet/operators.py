@@ -11,11 +11,10 @@ __license__ = 'MIT'
 
 import ast
 import collections
-import enum
 import functools
 import operator
 
-from .util import pairwise, compose2 as compose
+from .util import pairwise, compose2 as compose, identity, decrement
 from .expressions import lift, promote, AstWrapper, is_tuple, is_astwrapper
 from .expressions import is_name, is_operator
 
@@ -31,17 +30,11 @@ class Token(collections.namedtuple('BaseToken', 'lbp rbp node')):
 
     __slots__ = ()
 
-    def __lt__(left, right):
-        return left.rbp < right.lbp
+    def __lt__(self, other):
+        return self.rbp < other.lbp
 
-    def __gt__(left, right):
-        return left.rbp > right.lbp
-
-    def __le__(left, right):
-        return left.rbp <= right.lbp
-
-    def __ge__(left, right):
-        return left.rbp >= right.lbp
+    def __gt__(self, other):
+        return self.rbp > other.lbp
 
 
 class Nofix(Token):
@@ -55,9 +48,6 @@ class Nofix(Token):
 class Prefix(Token):
 
     __slots__ = ()
-
-    def __new__(cls, lbp, rbp, node):
-        return Token.__new__(cls, 0, rbp, node)
 
     def nud(self, parse, table):
         right = parse(self.rbp)
@@ -76,9 +66,6 @@ class Infix(Token):
         return ast.BinOp(left, self.node, right)
 
 
-END = Nofix(0, 0, None)
-
-
 def check_left(op, left, table):
     if is_operator(left):
         left_token = make_token(table, left.op)
@@ -93,39 +80,26 @@ def check_right(op, right, table):
             raise parse_error(op.rbp, right, right_token.lbp)
 
 
-class Fix(enum.IntEnum):
-
-    Left = -1
-    Non = 0
-    Right = 1
-
-    def __call__(self, num):
-        return self + num, num
-
-
-def fixity(factory, fix):
-    def apply_binding_power(bp):
-        return functools.partial(factory, *fix(bp))
+def fixity(factory, left, right):
+    def apply_binding_power(bp, left=left, right=right):
+        return functools.partial(factory, left(bp), right(bp))
     return apply_binding_power
 
 
-f = fixity(Nofix, Fix.Non)
-fx = fixity(Prefix, Fix.Non)
-fy = fixity(Prefix, Fix.Right)
-xfx = fixity(Infix, Fix.Non)
-xfy = fixity(Infix, Fix.Right)
-yfx = fixity(Infix, Fix.Left)
+f = fixity(Nofix, identity, identity)
+fx = fixity(Prefix, identity, identity)
+fy = fixity(Prefix, identity, decrement)
+xfx = fixity(Infix, identity, identity)
+xfy = fixity(Infix, identity, decrement)
+yfx = fixity(Infix, decrement, identity)
 
 
-F0 = f(0)
+NON_OP = f(0)
+END = NON_OP(None)
 
 
 def make_token(table, node):
-    return table.get(type(node), F0)(node)
-
-
-def operator_fixity(table):
-    return lambda node: make_token(table, node.op)
+    return table.get(type(node), NON_OP)(node)
 
 
 def pratt_parse(nodes, table):
@@ -150,13 +124,12 @@ def pratt_parse(nodes, table):
     return parse(0)
 
 
-# see: https://docs.python.org/3/reference/expressions.html#operator-precedence
-python_fixities = {
-    ast.BitOr: yfx(10),
-    ast.BitXor: yfx(20),
-    ast.BitAnd: yfx(30),
-    ast.LShift: xfx(45),  # yeah, i know that's cheating...
-    ast.RShift: xfx(40),
+hornet_fixities = {
+    ast.BitOr: xfy(10),
+    ast.BitXor: xfy(20),
+    ast.BitAnd: xfy(30),
+    ast.LShift: xfx(4),
+    ast.RShift: xfx(7),
     ast.Add: yfx(50),
     ast.Sub: yfx(50),
     ast.Mult: yfx(60),
@@ -170,12 +143,17 @@ python_fixities = {
 }
 
 
-hornet_fixities = {
-    ast.BitOr: xfy(10),
-    ast.BitXor: xfy(20),
-    ast.BitAnd: xfy(30),
-    ast.LShift: xfx(4),
-    ast.RShift: xfx(7),
+def operator_fixity(table):
+    return lambda node: make_token(table, node.op)
+
+
+# see: https://docs.python.org/3/reference/expressions.html#operator-precedence
+python_fixities = {
+    ast.BitOr: yfx(10),
+    ast.BitXor: yfx(20),
+    ast.BitAnd: yfx(30),
+    ast.LShift: xfx(45),  # yeah, i know that's cheating...
+    ast.RShift: xfx(40),
     ast.Add: yfx(50),
     ast.Sub: yfx(50),
     ast.Mult: yfx(60),

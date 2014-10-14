@@ -17,8 +17,8 @@ import itertools
 import operator
 import string
 
-from .util import identity, noop, foldr, compose
-from .util import first_arg as get_self, rpartial
+from .util import identity, const, noop, foldr, rpartial, compose
+from .util import first_arg as get_self
 from .expressions import is_bitor, is_name
 from .operators import fy, xfx, xfy, yfx, make_token
 
@@ -441,7 +441,7 @@ class PrefixOperator(Structure):
         op_fixity = make_token(operator_fixities, self)
         operand_fixity = make_token(operator_fixities, operand)
 
-        if operand_fixity.lbp and op_fixity >= operand_fixity:
+        if operand_fixity.lbp and op_fixity > operand_fixity:
             operand_str = parenthesized
         else:
             operand_str = str
@@ -583,9 +583,9 @@ operator_fixities = {
     Division: yfx(60),
     FloorDivision: yfx(60),
     Remainder: yfx(60),
-    Negative: fy(70),
-    Positive: fy(70),
-    Negation: fy(70),
+    Negative: fy(70, left=const(0)),
+    Positive: fy(70, left=const(0)),
+    Negation: fy(70, left=const(0)),
     Exponentiation: xfy(80),
 }
 

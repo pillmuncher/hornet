@@ -12,7 +12,7 @@ __license__ = 'MIT'
 from hornet import *
 
 from hornet.symbols import (
-    A, B, C, C1, F, G, H, Q, U, V, W, X, Y, Z, cos, d, exp, log, simp, sin, x, y,
+    A, B, C, C1, D, E, F, U, V, W, X, Y, Z, cos, d, exp, log, simp, sin, x, y,
 )
 
 
@@ -165,11 +165,11 @@ def simp_rules(db):
         simp(B + A + A, 2 * A + B) <<
             simp(2 * A + B, Y) & cut,
 
-        simp(A + (B + C), Q) <<
-            simp(A + B + C, Q) & cut,
+        simp(A + (B + C), D) <<
+            simp(A + B + C, D) & cut,
 
-        simp(A * (B * C), Q) <<
-            simp(A * B * C, Q) & cut,
+        simp(A * (B * C), D) <<
+            simp(A * B * C, D) & cut,
 
         simp(X * X, X ** 2) << cut,
 
@@ -262,18 +262,19 @@ def simp_rules(db):
 
 def diff_test(db):
     F = x ** -3 + 2 * x ** 2 + 7 * (x + 9)
+    #F = --x
     #F = 5 + x * 3 + 5 * x ** 4 * 5
     #F = (2 + x) ** 3
     #F = (x * y) * (x + 3)
     print(build_term(F))
 
-    for subst in db.ask(d(F, x, G) & simp(G, H)):
-        print(subst[G])
-        print(subst[H])
+    for subst in db.ask(simp(F, A) & d(A, x, B) & simp(B, C)):
+        print(subst[B])
+        print(subst[C])
         #env = dict(globals())
         #for i in range(1, 11):
             #env['x'] = i
-            #print(expr_eval(F, env), '-->', eval(str(subst[H]), env))
+            #print(expr_eval(F, env), '-->', eval(str(subst[C]), env))
 
 
 def expr_eval(expr, globals):
