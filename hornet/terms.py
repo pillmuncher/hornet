@@ -285,57 +285,43 @@ class Structure:
             for this, that in zip(self.params, other.params):
                 this.deref.unify(that.deref, trail)
 
-    def descend(self, db, trail):
-        choice_point = len(trail)
+    def descend(self, db):
+        trail = []
         for head, body in db.find_all(self.indicator):
             try:
-                #print('>>>', choice_point, len(trail), ':', self, ':', head, ':', body)
                 head.unify(self, trail)
                 head.action(db, trail)
                 self.action(db, trail)
             except UnificationFailed:
                 continue
             else:
-                #print('<<<', choice_point, len(trail), ':', self, ':', head, ':', body)
                 yield body
-            finally:
-                #print('???', choice_point, len(trail), ':', self, ':', head, ':', body)
-                #if choice_point > len(trail):
-                    #break
-                #assert choice_point <= len(trail), '4'
-                while choice_point < len(trail):
-                    trail.pop()()
-                #assert choice_point >= len(trail), '4'
-                #print('!!!', choice_point, len(trail), ':', self, ':', head, ':', body)
-
-    def resolve(self, db):
-
-        trail = []
-
-        @tco
-        def cleanup():
-            try:
-                return failure()
             finally:
                 while trail:
                     trail.pop()()
 
+    def resolve(self, db):
+
+
         return trampoline(
             self._resolve,
             db=db,
-            trail=trail,
+            trailing=[],
             yes=success,
             no=failure,
-            prune=cleanup,
+            prune=failure,
         )
 
-    def _resolve(self, *, db, trail, yes, no, prune):
+    def _resolve(self, *, db, trailing, yes, no, prune):
 
-        alternate_goals = self.descend(db, trail)
+        alternate_goals = self.descend(db)
+        choice_point = len(trailing)
+        trailing.append(alternate_goals)
 
         @tco
         def prune_here():
-            alternate_goals.close()
+            while choice_point < len(trailing):
+                trailing.pop().close()
             return no()
 
         @tco
@@ -349,7 +335,7 @@ class Structure:
             else:
                 return goal.deref._resolve(
                     db=db,
-                    trail=trail,
+                    trailing=trailing,
                     yes=yes,
                     no=try_next,
                     prune=prune_here,
@@ -521,7 +507,7 @@ class Implication(InfixOperator):
     __slots__ = ()
     op = lambda left, right: left or not right  # reverse implication: l << r
 
-    def _resolve(self, *, db, trail, yes, no, prune):
+    def _resolve(self, *, db, trailing, yes, no, prune):
         raise TypeError("Implication '{}' is not a valid goal.".format(self))
 
 
@@ -529,13 +515,13 @@ class Conjunction(InfixOperator):
     __slots__ = ()
     op = operator.and_
 
-    def _resolve(self, *, db, trail, yes, no, prune):
+    def _resolve(self, *, db, trailing, yes, no, prune):
 
         @tco
         def try_right(retry_left_then_right):
             return self.right.deref._resolve(
                 db=db,
-                trail=trail,
+                trailing=trailing,
                 yes=yes,
                 no=retry_left_then_right,
                 prune=prune,
@@ -545,7 +531,7 @@ class Conjunction(InfixOperator):
         def try_left_then_right():
             return self.left.deref._resolve(
                 db=db,
-                trail=trail,
+                trailing=trailing,
                 yes=try_right,
                 no=no,
                 prune=prune,
