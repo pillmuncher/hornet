@@ -290,7 +290,6 @@ class Structure:
         for head, body in db.find_all(self.indicator):
             try:
                 #print('>>>', choice_point, len(trail), ':', self, ':', head, ':', body)
-                assert choice_point == len(trail)
                 head.unify(self, trail)
                 head.action(db, trail)
                 self.action(db, trail)
@@ -298,17 +297,15 @@ class Structure:
                 continue
             else:
                 #print('<<<', choice_point, len(trail), ':', self, ':', head, ':', body)
-                assert choice_point <= len(trail)
                 yield body
-                assert choice_point <= len(trail)
             finally:
                 #print('???', choice_point, len(trail), ':', self, ':', head, ':', body)
                 #if choice_point > len(trail):
                     #break
-                assert choice_point <= len(trail)
+                #assert choice_point <= len(trail), '4'
                 while choice_point < len(trail):
                     trail.pop()()
-                assert choice_point == len(trail)
+                #assert choice_point >= len(trail), '4'
                 #print('!!!', choice_point, len(trail), ':', self, ':', head, ':', body)
 
     def resolve(self, db):
