@@ -32,7 +32,8 @@ def show(f=None, *, skip=False):
     if skip:
         @wraps(f)
         def wrapper(*a, **k):
-            print('\n\n' + f.__qualname__ + ': skipped\n')
+            pass
+            #print('\n\n' + f.__qualname__ + ': skipped\n')
     else:
         @wraps(f)
         def wrapper(*a, **k):
@@ -53,7 +54,7 @@ def show_db(db):
         break
 
 
-@show
+@show(skip=True)
 def xor_test(db):
     for each in fail ^ true, true ^ fail, fail ^ fail, true ^ true:
         for subst in db.ask(equal(each, X) & call(X)):
@@ -61,7 +62,7 @@ def xor_test(db):
     print()
 
 
-@show
+@show(skip=True)
 def eqtest(db):
     for subst in db.ask(equal(tom, X)):
         print(subst[X])
@@ -70,7 +71,7 @@ def eqtest(db):
     print()
 
 
-@show
+@show(skip=True)
 def barbara(db):
     db.tell(
         god(zeus),
@@ -85,7 +86,7 @@ def barbara(db):
     print()
 
 
-@show
+@show(skip=True)
 def varunify(db):
     for subst in db.ask(equal(X, Z) & equal(Y, Z) & (equal(man, Z) | true)):
         for k, v in sorted(subst.items()):
@@ -93,7 +94,7 @@ def varunify(db):
     print()
 
 
-@show
+@show(skip=True)
 def subtraction(db):
     q = equal(A, 5) & equal(B, 2) & equal(C, 1) & let(D, A - B - C)
     for subst in db.ask(q):
@@ -101,7 +102,7 @@ def subtraction(db):
     print()
 
 
-@show
+@show(skip=True)
 def stdtypes(db):
     for subst in db.ask(equal(10, X) & equal(X, 10)):
         print(sorted(subst.items()))
@@ -132,7 +133,7 @@ def stdtypes(db):
     print()
 
 
-@show
+@show(skip=True)
 def difflist(db):
     db.tell(
         appenddl(A - B, B - C, A - C),
@@ -158,7 +159,7 @@ def difflist(db):
     print()
 
 
-@show
+@show(skip=True)
 def unify_test(db):
 
     for subst in db.ask(join(['hallo', 'welt'], 'hallowelt')):
@@ -212,7 +213,7 @@ def tribes(db):
         patriarch(Z, Z),
 
         tribe(X, [X|Tribe]) <<
-            findall(Y, related(X, Y), Tribe),
+            findall(Y, related(Y, X), Tribe),
         #tribe(X, [Z | Tribe]) <<
             #patriarch(Z, X) &
             #findall(Y, descendant(Y, Z), Tribe),
@@ -224,7 +225,7 @@ def tribes(db):
     )
 
 
-@show
+@show(skip=False)
 def genealogy(db):
 
     tribes(db)
@@ -311,7 +312,7 @@ def genealogy(db):
     print()
 
 
-@show
+@show(skip=True)
 def member_test(db):
 
     for subst in db.ask(member(X, [a, b, c])):
@@ -326,7 +327,7 @@ def member_test(db):
         print(subst[W])
 
 
-@show
+@show(skip=True)
 def append_test(db):
 
     for subst in db.ask(append([], [a, b, c, d, e], X)):
@@ -361,14 +362,14 @@ def append_test(db):
         print(subst[X], subst[Y])
 
 
-@show
+@show(skip=True)
 def ignore_test(db):
 
     for subst in db.ask(ignore(true | true) & ignore(fail)):
         print('Yes, ignored.')
 
 
-@show
+@show(skip=True)
 def univ_test(db):
 
     for subst in db.ask(var(X)):
@@ -454,38 +455,57 @@ def univ_test(db):
         #print('No.')
 
 
-#def rec(db):
-    #for subst in db.ask(equal(X, a(X))):
-        #print(subst[X])
-    #print()
+@show(skip=True)
+def rec(db):
+    for subst in db.ask(equal(X, a(X))):
+        print('oh!')
+        break
 
 
-@show
+@show(skip=False)
 def cut_test(db):
 
     from ..symbols import branch, root, foo, bar, A, B, X, Y
+
+    #db.tell(
+
+        #root(X, Y) <<
+            #branch(X, Y),
+
+        #branch(X, Y) << foo(X) & bar(Y),
+        #branch(X, Y) << foo(Y) & bar(X),
+
+        #foo(1) << cut,
+        #foo(2),
+        #bar(3),
+        #bar(4),
+
+    #)
+
+    #for subst in db.ask(root(A, B)):
+        #print(subst)
 
     db.tell(
 
         root(X, Y) <<
             branch(X, Y),
+        root(Y, X) <<
+            writeln([X, Y]) &
+            branch(X, Y),
 
-        branch(X, Y) << foo(X) & bar(Y),
-        branch(X, Y) << foo(Y) & bar(X),
+        branch(X, Y) << equal(foo(1), X) & equal(bar(2), Y) & cut,
+        #branch(foo(1), bar(2)) << cut,
 
-        foo(1) << cut,
-        foo(2),
-        bar(3),
-        bar(4),
 
     )
 
+    #for subst in db.ask(root(foo(A), bar(B))):
     for subst in db.ask(root(A, B)):
         print(subst)
 
 
 
-@show
+@show(skip=True)
 def transpose_test(db):
 
     from ..symbols import a, b, c, d, e, f, g, h, i, j, k, l, X, L
@@ -496,14 +516,14 @@ def transpose_test(db):
         print(subst[X])
 
 
-@show
+@show(skip=True)
 def maplist_test(db):
 
     for subst in db.ask(maplist(writeln, [1, 2, 3, 4, 5])):
         pass
 
 
-#@show
+#@show(skip=True)
 #def length_test(db):
 
     #for subst in db.ask(length([1, 2, 3, 4, 5], X)):

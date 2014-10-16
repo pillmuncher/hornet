@@ -58,6 +58,7 @@ __all__ = [
 
 
 USE_TCO = True
+#USE_TCO = False
 
 if USE_TCO:
 
@@ -179,13 +180,14 @@ class Variable(collections.Counter):
         return env(self.name)
 
     def aliases(self):
+        yield self
         seen = {self}
         todo = self.keys() - seen
         while todo:
             variable = todo.pop()
             seen.add(variable)
             todo |= variable.keys() - seen
-        return seen
+            yield variable
 
     @property
     def deref(self):
@@ -211,7 +213,7 @@ class Variable(collections.Counter):
                 del other[self]
 
     def unify_structure(self, structure, trail):
-        variables = self.aliases()
+        variables = list(self.aliases())
         for variable in variables:
             variable.ref = structure
 
@@ -253,14 +255,16 @@ class Structure:
             env=deepcopy(self.env, memo),
             name=self.name,
             params=[deepcopy(each, memo) for each in self.params],
-            actions=self.actions)
+            actions=self.actions,
+        )
 
     def fresh(self, env):
         return type(self)(
             env=env,
             name=self.name,
             params=[each.fresh(env) for each in self.params],
-            actions=self.actions)
+            actions=self.actions,
+        )
 
     def action(self, db, trail):
         for action in self.actions:
@@ -281,27 +285,56 @@ class Structure:
             for this, that in zip(self.params, other.params):
                 this.deref.unify(that.deref, trail)
 
-    def descend(self, db):
-        trail = []
+    def descend(self, db, trail):
+        choice_point = len(trail)
         for head, body in db.find_all(self.indicator):
             try:
+                #print('>>>', choice_point, len(trail), ':', self, ':', head, ':', body)
+                assert choice_point == len(trail)
                 head.unify(self, trail)
                 head.action(db, trail)
                 self.action(db, trail)
             except UnificationFailed:
                 continue
             else:
+                #print('<<<', choice_point, len(trail), ':', self, ':', head, ':', body)
+                assert choice_point <= len(trail)
                 yield body
+                assert choice_point <= len(trail)
+            finally:
+                #print('???', choice_point, len(trail), ':', self, ':', head, ':', body)
+                #if choice_point > len(trail):
+                    #break
+                assert choice_point <= len(trail)
+                while choice_point < len(trail):
+                    trail.pop()()
+                assert choice_point == len(trail)
+                #print('!!!', choice_point, len(trail), ':', self, ':', head, ':', body)
+
+    def resolve(self, db):
+
+        trail = []
+
+        @tco
+        def cleanup():
+            try:
+                return failure()
             finally:
                 while trail:
                     trail.pop()()
 
-    def resolve(self, db):
-        return trampoline(self._resolve, db, success, failure, failure)
+        return trampoline(
+            self._resolve,
+            db=db,
+            trail=trail,
+            yes=success,
+            no=failure,
+            prune=cleanup,
+        )
 
-    def _resolve(self, db, yes, no, prune):
+    def _resolve(self, *, db, trail, yes, no, prune):
 
-        alternate_goals = self.descend(db)
+        alternate_goals = self.descend(db, trail)
 
         @tco
         def prune_here():
@@ -317,7 +350,13 @@ class Structure:
             if goal is None:
                 return yes(try_next)
             else:
-                return goal.deref._resolve(db, yes, try_next, prune_here)
+                return goal.deref._resolve(
+                    db=db,
+                    trail=trail,
+                    yes=yes,
+                    no=try_next,
+                    prune=prune_here,
+                )
 
         return try_next()
 
@@ -342,7 +381,7 @@ class Atom(Structure):
     __deepcopy__ = get_self
     __str__ = get_name
 
-    fresh = get_self
+    #fresh = get_self
 
 
 class String(Structure):
@@ -354,7 +393,7 @@ class String(Structure):
     __repr__ = compose(get_name, "'{}'".format)
     __deepcopy__ = get_self
 
-    fresh = get_self
+    #fresh = get_self
 
 
 class Num(Structure):
@@ -365,7 +404,7 @@ class Num(Structure):
     __str__ = compose(get_name, str)
     __deepcopy__ = get_self
 
-    fresh = get_self
+    #fresh = get_self
 
 
 class List(Structure):
@@ -485,7 +524,7 @@ class Implication(InfixOperator):
     __slots__ = ()
     op = lambda left, right: left or not right  # reverse implication: l << r
 
-    def _resolve(self, db, yes, no, prune):
+    def _resolve(self, *, db, trail, yes, no, prune):
         raise TypeError("Implication '{}' is not a valid goal.".format(self))
 
 
@@ -493,15 +532,27 @@ class Conjunction(InfixOperator):
     __slots__ = ()
     op = operator.and_
 
-    def _resolve(self, db, yes, no, prune):
+    def _resolve(self, *, db, trail, yes, no, prune):
 
         @tco
-        def try_right(retry_left):
-            return self.right.deref._resolve(db, yes, retry_left, prune)
+        def try_right(retry_left_then_right):
+            return self.right.deref._resolve(
+                db=db,
+                trail=trail,
+                yes=yes,
+                no=retry_left_then_right,
+                prune=prune,
+            )
 
         @tco
         def try_left_then_right():
-            return self.left.deref._resolve(db, try_right, no, prune)
+            return self.left.deref._resolve(
+                db=db,
+                trail=trail,
+                yes=try_right,
+                no=no,
+                prune=prune,
+            )
 
         return try_left_then_right()
 

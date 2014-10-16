@@ -119,6 +119,12 @@ class Environment(dict):
 
     __getattr__ = dict.__getitem__
 
+    def __deepcopy__(self, memo):
+        env = memo[id(self)] = Environment()
+        #for k, v in self.items():
+            #env[k] = copy.deepcopy(v, memo)
+        return env
+
     @property
     class proxy(collections.ChainMap):
 
@@ -164,6 +170,8 @@ class Clause(collections.namedtuple('BaseClause', 'head body term')):
     def __repr__(self):
         return repr(self.term)
 
+    #def __deepcopy__(self, memo):
+        #return type(self)(copy.deepcopy(self.term, memo))
 
 class Fact(Clause):
 
@@ -562,4 +570,5 @@ class Database(ClauseDict):
 
     def find_all(self, indicator):
         for clause in self.get(indicator, ()):
+            #yield copy.deepcopy(clause)[:2]
             yield clause.fresh(Environment())[:2]

@@ -38,14 +38,14 @@ class Token(collections.namedtuple('BaseToken', 'lbp rbp node')):
     @classmethod
     def fixity(cls, left, right):
 
-        def get_binding_power(bp):
+        def supply_binding_power(bp):
 
-            def get_node(node, _lbp=left(bp), _rbp=right(bp)):
+            def supply_node(node, _lbp=left(bp), _rbp=right(bp)):
                 return cls(_lbp, _rbp, node)
 
-            return get_node
+            return supply_node
 
-        return get_binding_power
+        return supply_binding_power
 
 
 class Nofix(Token):
