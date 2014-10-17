@@ -108,14 +108,7 @@ def comma_separated(items):
     return ', '.join(str(each) for each in items)
 
 
-#def action_str(term):
-    #if term.actions:
-        #return '[{}]'.format(', '.join(a.__name__ for a in term.actions))
-    #else:
-        #return ''
-
-
-class Indicator(collections.namedtuple('BaseIndicator', 'name arity')):
+class Indicator(collections.namedtuple('BaseIndicator', 'functor arity')):
 
     def __str__(self):
         return '{}/{}'.format(*self)
@@ -183,9 +176,9 @@ class Variable(collections.Counter):
         seen = {self}
         todo = self.keys() - seen
         while todo:
-            variable = todo.pop()
-            seen.add(variable)
-            todo |= variable.keys() - seen
+            alias = todo.pop()
+            seen.add(alias)
+            todo |= alias.keys() - seen
         return seen
 
     @property
@@ -200,6 +193,7 @@ class Variable(collections.Counter):
         other.unify_variable(self, trail)
 
     def unify_variable(self, other, trail):
+
         self[other] += 1
         other[self] += 1
 
@@ -212,6 +206,7 @@ class Variable(collections.Counter):
                 del other[self]
 
     def unify_structure(self, structure, trail):
+
         variables = list(self.aliases())
         for variable in variables:
             variable.ref = structure
@@ -231,10 +226,6 @@ class Structure:
     __slots__ = 'env', 'name', 'params', 'actions'
 
     deref = property(identity)
-
-    @property
-    def arity(self):
-        return len(self.params)
 
     @property
     def indicator(self):
@@ -312,7 +303,7 @@ class Structure:
         return trampoline(
             self._resolve,
             db=db,
-            trailing=[],
+            trailing=trailing,
             yes=success,
             no=failure,
             prune=cleanup,

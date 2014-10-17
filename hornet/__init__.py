@@ -43,7 +43,7 @@ system_names = [
     'ignore',
     'integer',
     'join',
-    #'length',
+    'length',
     'let',
     'listing',
     'lwriteln',
@@ -401,7 +401,7 @@ def _bootstrap():
 
     from .symbols import P, Q, X, Y, Z, Tail, Object, Goal, List, Rest
     from .symbols import Predicate, A, B, C, D, H, L, T, S, Arity, G, G1
-    from .symbols import Len, Len0
+    from .symbols import N, N1
 
     exprs = (
 
@@ -517,10 +517,10 @@ def _bootstrap():
             maplist(G, T),
         maplist(_, []),
 
-        #length([], 0),
-        #length([H|T], Len) <<
-            #length(T, Len0) &
-            #let(Len, Len0 + 1),
+        length([], 0),
+        length([_|T], N) <<
+            length(T, N1) &
+            let(N, N1 + 1),
 
     )
 

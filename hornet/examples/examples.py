@@ -326,6 +326,43 @@ def member_test(db):
     for subst in db.ask(equal(W, [X, Y, Z]) & member(a, W) & member(b, W)):
         print(subst[W])
 
+    for i, subst in enumerate(db.ask(member(a, W))):
+        print(subst[W])
+        if i == 5:
+            break
+
+    for i, subst in enumerate(db.ask(member(X, W) & equal(X, b))):
+        print(subst[W])
+        if i == 5:
+            break
+
+    for i, subst in enumerate(db.ask(member(X, W) & member(X, [a, b, c]))):
+        print(subst[W])
+        if i == 14:
+            break
+
+
+@show(skip=False)
+def length_test(db):
+
+    for subst in db.ask(length([1, 2, 3, 4, 5], X)):
+        print(subst[X])
+
+    for subst in db.ask(length(X, 3)):
+        print(subst[X])
+        break
+
+    for subst in db.ask(length([1, 2, 3, 4, 5], 5)):
+        print('Yes.')
+        break
+    else:
+        print('No.')
+
+    for i, subst in enumerate(db.ask(length(X, Y))):
+        print(subst[X], subst[Y])
+        if i == 5:
+            break
+
 
 @show(skip=False)
 def append_test(db):
@@ -521,28 +558,6 @@ def maplist_test(db):
 
     for subst in db.ask(maplist(writeln, [1, 2, 3, 4, 5])):
         pass
-
-
-#@show(skip=False)
-#def length_test(db):
-
-    #for subst in db.ask(length([1, 2, 3, 4, 5], X)):
-        #print(subst[X])
-
-    #for subst in db.ask(length(X, 3)):
-        #print(subst[X])
-        #break
-
-    #for subst in db.ask(length([1, 2, 3, 4, 5], 5)):
-        #print('Yes.')
-        #break
-    #else:
-        #print('No.')
-
-    #for i, subst in enumerate(db.ask(length(X, Y))):
-        #print(subst[X], subst[Y])
-        #if i == 5:
-            #break
 
 
 show_all(Database())

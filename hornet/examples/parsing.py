@@ -232,17 +232,17 @@ def grammar(db):
     #words = 'eine maus jagt viele katzen'.split()
     #words = [B, C, 'jagen']
     #words = ['manche', B, C]
-    #words = [B, C, D, 'die', F]
+    words = [B, C, D, 'die', F]
     #words = [B, 'hund', D, E, F]
     #words = [B, C, 'jagt', D, E]
-    words = [A, 'jagen' | E]
+    #words = [A, 'jagen' | E]
 
     #for i, subst in enumerate(db.ask(s(W) & join(W, S, ' '))):
     for subst in db.ask(equal(words, W) & s(W) & join(W, S, ' ')):
         print(subst[S]())
         #print('Yes.')
-    else:
-        print('No.')
+    #else:
+        #print('No.')
 
         #print(repr(subst[S]))
     #print(i)
