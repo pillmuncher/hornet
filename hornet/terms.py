@@ -302,6 +302,13 @@ class Structure:
 
     def resolve(self, db):
 
+        trailing = []
+
+        @tco
+        def cleanup():
+            while trailing:
+                trailing.pop().close()
+            return failure()
 
         return trampoline(
             self._resolve,
@@ -309,7 +316,7 @@ class Structure:
             trailing=[],
             yes=success,
             no=failure,
-            prune=failure,
+            prune=cleanup,
         )
 
     def _resolve(self, *, db, trailing, yes, no, prune):
