@@ -180,14 +180,13 @@ class Variable(collections.Counter):
         return env(self.name)
 
     def aliases(self):
-        yield self
         seen = {self}
         todo = self.keys() - seen
         while todo:
             variable = todo.pop()
             seen.add(variable)
             todo |= variable.keys() - seen
-            yield variable
+        return seen
 
     @property
     def deref(self):
@@ -322,12 +321,12 @@ class Structure:
     def _resolve(self, *, db, trailing, yes, no, prune):
 
         alternate_goals = self.descend(db)
-        choice_point = len(trailing)
         trailing.append(alternate_goals)
+        choice_point = len(trailing)
 
         @tco
         def prune_here():
-            while choice_point < len(trailing):
+            while choice_point <= len(trailing):
                 trailing.pop().close()
             return no()
 
@@ -534,17 +533,13 @@ class Conjunction(InfixOperator):
                 prune=prune,
             )
 
-        @tco
-        def try_left_then_right():
-            return self.left.deref._resolve(
-                db=db,
-                trailing=trailing,
-                yes=try_right,
-                no=no,
-                prune=prune,
-            )
-
-        return try_left_then_right()
+        return self.left.deref._resolve(
+            db=db,
+            trailing=trailing,
+            yes=try_right,
+            no=no,
+            prune=prune,
+        )
 
 
 class Disjunction(InfixOperator):
