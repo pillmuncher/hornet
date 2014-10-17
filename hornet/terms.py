@@ -364,7 +364,7 @@ class Atom(Structure):
     __deepcopy__ = get_self
     __str__ = get_name
 
-    #fresh = get_self
+    fresh = get_self
 
 
 class String(Structure):
@@ -376,7 +376,7 @@ class String(Structure):
     __repr__ = compose(get_name, "'{}'".format)
     __deepcopy__ = get_self
 
-    #fresh = get_self
+    fresh = get_self
 
 
 class Num(Structure):
@@ -387,7 +387,7 @@ class Num(Structure):
     __str__ = compose(get_name, str)
     __deepcopy__ = get_self
 
-    #fresh = get_self
+    fresh = get_self
 
 
 class List(Structure):
