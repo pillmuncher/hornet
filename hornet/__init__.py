@@ -399,9 +399,9 @@ def _throw(term, env, db, trail):
 
 def _bootstrap():
 
-    from .symbols import P, Q, X, Y, Z, Tail, Object, Goal, List, Rest
-    from .symbols import Predicate, A, B, C, D, H, L, T, S, Arity, G, G1
-    from .symbols import N, N1
+    from hornet.symbols import P, Q, X, Y, Z, Tail, Object, Goal, List, Rest
+    from hornet.symbols import Predicate, A, B, C, D, H, L, T, S, Arity, G, G1
+    from hornet.symbols import N, N1
 
     exprs = (
 
