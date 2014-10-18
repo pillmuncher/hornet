@@ -16,13 +16,13 @@ import importlib.machinery
 import sys
 import types
 
-from hornet.expressions import Name
+import hornet.expressions
 
 
 class SymbolsFactory(types.ModuleType):
     __all__ = []
     __file__ = __file__
-    __getattr__ = staticmethod(functools.lru_cache()(Name))
+    __getattr__ = staticmethod(functools.lru_cache()(hornet.expressions.Name))
 
 
 class SymbolsImporter(importlib.abc.MetaPathFinder, importlib.abc.Loader):
@@ -41,5 +41,5 @@ class SymbolsImporter(importlib.abc.MetaPathFinder, importlib.abc.Loader):
 sys.meta_path.insert(0, SymbolsImporter())
 
 
-from hornet.system import *
 from hornet.terms import *
+from hornet.system import *
