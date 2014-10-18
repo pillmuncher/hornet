@@ -13,9 +13,10 @@ import ast
 import collections
 import operator
 
-from .util import pairwise, compose2 as compose, identity, const, decrement
-from .expressions import is_name, is_operator, is_tuple, is_astwrapper
-from .expressions import lift, promote, AstWrapper
+from hornet.util import pairwise, identity, const, decrement
+from hornet.util import compose2 as compose
+from hornet.expressions import is_name, is_operator, is_tuple, is_astwrapper
+from hornet.expressions import lift, promote, AstWrapper
 
 
 class ParseError(Exception):
@@ -40,8 +41,11 @@ class Token(collections.namedtuple('BaseToken', 'lbp rbp node')):
 
         def supply_binding_power(bp):
 
-            def supply_node(node, _lbp=left(bp), _rbp=right(bp)):
-                return cls(_lbp, _rbp, node)
+            lbp = left(bp)
+            rbp = right(bp)
+
+            def supply_node(node):
+                return cls(lbp, rbp, node)
 
             return supply_node
 

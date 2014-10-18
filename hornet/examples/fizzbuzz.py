@@ -12,7 +12,7 @@ __license__ = 'MIT'
 from hornet import *
 
 from hornet.symbols import (
-    fizzbuzz, word, show, divisible, W, Ws, N, N1, Max, D, S,
+    fizzbuzz, word, show, divisible, W, Ws, N, N1, Max, D, R, S,
 )
 
 
@@ -42,7 +42,7 @@ def main():
 
     try:
         for subst in db.ask(fizzbuzz(1, 1111)):
-            break
+            print(subst[R])
     except RuntimeError:
         print('oops!')
 

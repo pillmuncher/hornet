@@ -17,10 +17,10 @@ import itertools
 import operator
 import string
 
-from .util import identity, const, noop, foldr, rpartial, compose
-from .util import first_arg as get_self
-from .expressions import is_bitor, is_name
-from .operators import Infix, Prefix, make_token, fz, xfx, xfy, yfx
+from hornet.util import identity, const, noop, foldr, rpartial, compose
+from hornet.util import first_arg as get_self
+from hornet.expressions import is_bitor, is_name
+from hornet.operators import Infix, Prefix, make_token, fz, xfx, xfy, yfx
 
 
 __all__ = [

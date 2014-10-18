@@ -20,7 +20,7 @@ def main():
 
     db = Database()
 
-    nums = list(range(1, 9))
+    nums = list(range(1, 7))
 
     db.tell(
 
@@ -44,8 +44,8 @@ def main():
 
     for subst in db.ask(queens(S)):
         print(subst[S])
-        #break
         #pass
+        #break
         #if not input('more? ').lower().strip().startswith('y'):
             #break
 

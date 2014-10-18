@@ -21,11 +21,11 @@ import pprint
 import sys
 import types
 
-from .util import rpartial, foldr, pairwise
-from .expressions import bind_compose, promote, Name
-from .operators import rearrange
-from .dcg import _C_, dcg_expand
-from .terms import *
+from hornet.util import rpartial, foldr, pairwise
+from hornet.expressions import bind_compose, promote, Name
+from hornet.operators import rearrange
+from hornet.dcg import _C_, dcg_expand
+from hornet.terms import *
 
 
 system_names = [

@@ -15,8 +15,8 @@ import ast
 import functools
 import numbers
 
-from .util import identity, flip, foldl, rpartial, qualname
-from .util import compose2 as compose
+from hornet.util import identity, flip, foldl, rpartial, qualname
+from hornet.util import compose2 as compose
 
 
 __all__ = [

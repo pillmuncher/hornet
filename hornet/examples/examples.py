@@ -502,7 +502,7 @@ def rec(db):
 @show(skip=False)
 def cut_test(db):
 
-    from ..symbols import branch, root, foo, bar, A, B, X, Y
+    from hornet.symbols import branch, root, foo, bar, A, B, X, Y
 
     #db.tell(
 
@@ -545,7 +545,7 @@ def cut_test(db):
 @show(skip=False)
 def transpose_test(db):
 
-    from ..symbols import a, b, c, d, e, f, g, h, i, j, k, l, X, L
+    from hornet.symbols import a, b, c, d, e, f, g, h, i, j, k, l, X, L
 
     L0 = [[a, b, c, d], [e, f, g, h], [i, j, k, l]]
     for subst in db.ask(equal(L0, L) & transpose(L, X)):
