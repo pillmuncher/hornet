@@ -10,35 +10,38 @@ __author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
 __license__ = 'MIT'
 
 
-import functools
-import importlib.abc
-import importlib.machinery
-import sys
-import types
+def __load__():
 
-import hornet.expressions
+    import sys
+    from functools import lru_cache
+    from importlib.abc import MetaPathFinder, Loader
+    from importlib.machinery import  ModuleSpec
+    from types import ModuleType
+    from hornet.expressions import Name
+
+    class SymbolsFactory(ModuleType):
+        __all__ = []
+        __file__ = __file__
+        __getattr__ = staticmethod(lru_cache()(Name))
+
+    class SymbolsImporter(MetaPathFinder, Loader):
+
+        def find_spec(self, fullname, path=None, target=None):
+            if fullname == 'hornet.symbols':
+                return ModuleSpec(fullname, self)
+
+        def create_module(self, spec):
+            return sys.modules.setdefault(spec.name, SymbolsFactory(spec.name))
+
+        def exec_module(self, module):
+            pass
+
+    sys.meta_path.insert(0, SymbolsImporter())
 
 
-class SymbolsFactory(types.ModuleType):
-    __all__ = []
-    __file__ = __file__
-    __getattr__ = staticmethod(functools.lru_cache()(hornet.expressions.Name))
+__load__()
 
-
-class SymbolsImporter(importlib.abc.MetaPathFinder, importlib.abc.Loader):
-
-    def find_spec(self, fullname, path=None, target=None):
-        if fullname == 'hornet.symbols':
-            return importlib.machinery.ModuleSpec(fullname, self)
-
-    def create_module(self, spec):
-        return sys.modules.setdefault(spec.name, SymbolsFactory(spec.name))
-
-    def exec_module(self, module):
-        pass
-
-
-sys.meta_path.insert(0, SymbolsImporter())
+del __load__
 
 
 from hornet.terms import *
