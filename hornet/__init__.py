@@ -44,5 +44,50 @@ __load__()
 del __load__
 
 
-from hornet.terms import *
 from hornet.system import *
+
+
+__all__ = [
+    '_',
+    'append',
+    'arithmetic_equal',
+    'arithmetic_not_equal',
+    'atomic',
+    'call',
+    'cut',
+    'equal',
+    'fail',
+    'findall',
+    'greater',
+    'ignore',
+    'integer',
+    'join',
+    'length',
+    'let',
+    'listing',
+    'lwriteln',
+    'maplist',
+    'member',
+    'nl',
+    'numeric',
+    'once',
+    'real',
+    'repeat',
+    'reverse',
+    'select',
+    'smaller',
+    'throw',
+    'transpose',
+    'true',
+    'unequal',
+    'univ',
+    'var',
+    'write',
+    'writeln',
+    'Database',
+    'build_term',
+    'expand_term',
+    'pyfunc',
+    'UnificationFailed',
+    '_C_',
+]

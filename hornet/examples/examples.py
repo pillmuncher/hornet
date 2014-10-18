@@ -13,6 +13,7 @@ from functools import wraps, partial
 
 
 from hornet import *
+from hornet import _
 from hornet.expressions import promote
 from hornet.util import noop
 
