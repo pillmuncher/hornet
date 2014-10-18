@@ -13,10 +13,12 @@ __license__ = 'MIT'
 def __load__():
 
     import sys
+
     from functools import lru_cache
     from importlib.abc import MetaPathFinder, Loader
     from importlib.machinery import  ModuleSpec
     from types import ModuleType
+
     from hornet.expressions import Name
 
     class SymbolsFactory(ModuleType):
