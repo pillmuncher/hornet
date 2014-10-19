@@ -10,7 +10,7 @@ __author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
 __license__ = 'MIT'
 
 
-def __load__():
+def _install_symbols_module():
 
     import sys
 
@@ -41,23 +41,28 @@ def __load__():
     sys.meta_path.insert(0, SymbolsImporter())
 
 
-__load__()
+_install_symbols_module()
 
-del __load__
+del _install_symbols_module
 
 
 from hornet.system import *
 
 
 __all__ = [
+    'Database',
+    'UnificationFailed',
     '_',
+    '_C_',
     'append',
     'arithmetic_equal',
     'arithmetic_not_equal',
     'atomic',
+    'build_term',
     'call',
     'cut',
     'equal',
+    'expand_term',
     'fail',
     'findall',
     'greater',
@@ -73,6 +78,7 @@ __all__ = [
     'nl',
     'numeric',
     'once',
+    'pyfunc',
     'real',
     'repeat',
     'reverse',
@@ -82,14 +88,9 @@ __all__ = [
     'transpose',
     'true',
     'unequal',
+    'unify',
     'univ',
     'var',
     'write',
     'writeln',
-    'Database',
-    'build_term',
-    'expand_term',
-    'pyfunc',
-    'UnificationFailed',
-    '_C_',
 ]

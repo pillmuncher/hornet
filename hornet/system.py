@@ -15,7 +15,7 @@ import copy
 import numbers
 import pprint
 
-from hornet.util import rpartial, foldr, pairwise
+from hornet.util import rpartial, foldr
 from hornet.expressions import bind_compose, promote, Name
 from hornet.operators import rearrange
 from hornet.dcg import _C_, dcg_expand
@@ -63,13 +63,14 @@ system_names = [
 
 
 __all__ = [
-    'Database',
+    '_C_',
     'build_term',
+    'Database',
     'expand_term',
+    'promote',
     'pyfunc',
     'UnificationFailed',
-    '_C_',
-    'promote',
+    'unify',
 ] + system_names
 
 
@@ -100,10 +101,6 @@ class Environment(dict):
 
         def __getitem__(self, key, _getitem=collections.ChainMap.__getitem__):
             return _getitem(self, str(key))
-
-
-def is_cut(term):
-    return isinstance(term, Atom) and term.name == 'cut'
 
 
 def build(node):
