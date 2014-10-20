@@ -12,6 +12,7 @@ __license__ = 'MIT'
 
 import collections
 import copy
+import itertools
 import numbers
 import pprint
 
@@ -44,6 +45,7 @@ system_names = [
     'maplist',
     'member',
     'nl',
+    'nonvar',
     'numeric',
     'once',
     'real',
@@ -78,7 +80,17 @@ globals().update((each, Name(each)) for each in system_names)
 
 
 def unify(this, that, trail):
-    this.deref.unify(that.deref, trail)
+    this.ref.unify(that.ref, trail)
+
+
+var_names = map('_{}?'.format, itertools.count())
+
+
+def rename_vars(env):
+    for variable, name in zip(list(env.values()), var_names):
+        if isinstance(variable, Variable):
+            variable.name = name
+            env[name] = variable
 
 
 class Environment(dict):
@@ -90,7 +102,8 @@ class Environment(dict):
             var = self[name] = Variable(env=self, name=name)
             return var
 
-    __getattr__ = dict.__getitem__
+    def __getattr__(self, name):
+        return self[name].ref
 
     def __deepcopy__(self, memo):
         env = memo[id(self)] = Environment()
@@ -167,7 +180,7 @@ class ClauseDict(collections.OrderedDict):
 
 def pyfunc(fn):
     def caller(term, env, db, trail):
-        fn(*(each.deref for each in term.params))
+        fn(*(each.ref for each in term.params))
     return caller
 
 
@@ -201,8 +214,8 @@ def flatten(L):
                         .format(type(L), L))
     acc = []
     while isinstance(L, List):
-        acc.append(L.car.deref)
-        L = L.cdr.deref
+        acc.append(L.car.ref)
+        L = L.cdr.ref
     if not is_nil(L):
         acc[-1] = Adjunction(env=L.env, name='|', params=[acc[-1], L])
     return acc
@@ -302,7 +315,7 @@ def flatten_strs(L):
     try:
         for each in flatten(L):
             expect(each, String)
-            yield each.deref()
+            yield each.ref()
     except UnificationFailed:
         raise TypeError('Expected String, found {}: {}'
                         .format(type(each), each))
@@ -317,7 +330,11 @@ def _join_3(term, env, db, trail):
 
 
 def _var(term, env, db, trail):
-    expect(env.X, Variable)
+    expect(env.X, (Variable, Wildcard))
+
+
+def _nonvar(term, env, db, trail):
+    expect(env.X, Structure)
 
 
 def _univ(term, env, db, trail):
@@ -332,14 +349,14 @@ def _univ(term, env, db, trail):
         unify(env.L, result, trail)
 
     elif isinstance(env.L, List):
-        functor = env.L.car.deref
+        functor = env.L.car.ref
         if not isinstance(functor, Atom):
             raise TypeError('First Element of List must be Atom, not {}: {}'
                             .format(type(functor), functor))
-        if isinstance(env.L.cdr.deref, Nil):
+        if isinstance(env.L.cdr.ref, Nil):
             unify(env.T, Atom(env=env, name=functor.name), trail)
         else:
-            params = flatten(env.L.cdr.deref)
+            params = flatten(env.L.cdr.ref)
             if isinstance(params[-1], Adjunction):
                 raise TypeError('Proper List expected, found {}'.format(env.L))
             result = Relation(env=env, name=functor.name, params=params)
@@ -351,7 +368,7 @@ def _univ(term, env, db, trail):
 
 def _transpose(term, env, db, trail):
     L0 = flatten(env.L)
-    Ls = [flatten(each.deref) for each in L0]
+    Ls = [flatten(each.ref) for each in L0]
     if len(set(map(len, Ls))) > 1:
         raise ValueError(
             'Cannot transpose a List of Lists of different lengths: {}'
@@ -370,7 +387,8 @@ def _bootstrap():
 
     from hornet.symbols import P, Q, X, Y, Z, Tail, Object, Goal, List, Rest
     from hornet.symbols import Predicate, A, B, C, D, H, L, T, S, Arity, G, G1
-    from hornet.symbols import N, N1
+    from hornet.symbols import M, N, length_given_L_, length_given_N_
+    from hornet.symbols import a, b, c, d
 
     exprs = (
 
@@ -380,17 +398,21 @@ def _bootstrap():
 
         fail[_fail],
 
+        # not:
         ~X << X & cut[_fail],
         ~_,
 
+        # or:
         X | _ << X,
         _ | Y << Y,
 
-        X ^ Y << ~X & cut & Y,
+        # xor:
         X ^ Y << X & ~Y,
+        X ^ Y << ~X & Y,
 
-        X >> _ | Z << ~X & cut & Z,
+        # if-then-else:
         X >> Y | _ << X & Y,
+        X >> _ | Z << ~X & Z,
 
         repeat,
         repeat << repeat,
@@ -468,6 +490,8 @@ def _bootstrap():
 
         var(X)[_var],
 
+        nonvar(X)[_nonvar],
+
         univ(T, L)[_univ],
 
         arithmetic_equal(X, Y) <<
@@ -486,10 +510,27 @@ def _bootstrap():
             maplist(G, T),
         maplist(_, []),
 
-        length([], 0),
-        length([_|T], N) <<
-            length(T, N1) &
-            let(N, N1 + 1),
+        length(L, N) <<
+            var(L) & var(N) & cut[_fail],
+        length(L, N) <<
+            nonvar(L) & var(N) & length_given_L_(L, N) & cut,
+        length(L, N) <<
+            var(L) & nonvar(N) & length_given_N_(L, N) & cut,
+        length([], 0) << cut,
+        length([H|T], N) <<
+            let(M, N - 1) &
+            length(T, M),
+
+        length_given_L_([], 0) << cut,
+        length_given_L_([H|T], N) <<
+            length_given_L_(T, M) &
+            let(N, M + 1),
+
+        length_given_N_([], 0) << cut,
+        length_given_N_([H|T], N) <<
+            ~smaller(N, 0) &
+            let(M, N - 1) &
+            length_given_N_(T, M),
 
     )
 
@@ -535,4 +576,7 @@ class Database(ClauseDict):
 
     def find_all(self, indicator):
         for clause in self.get(indicator, ()):
-            yield clause.fresh(Environment())[:2]
+            head, body, term = clause.fresh(Environment())
+            rename_vars(term.env)
+            yield head, body
+

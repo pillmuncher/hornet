@@ -336,8 +336,7 @@ def mudlang2(db):
 
     )
 
-    L = ['die', 'kabine', 'ist', 'ein', 'betretbarer', 'raum']
-    #S = ['die', 'kabine', 'ist', 'ein', 'raum']
+    L = 'die kabine ist ein betretbarer raum'.split()
     for subst in db.ask(equal(L, S) & s(S, T)):
         print(subst[S])
         print(subst[T])

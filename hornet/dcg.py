@@ -8,6 +8,8 @@ __date__ = '2014-09-27'
 __author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
 __license__ = 'MIT'
 
+test = 1
+test = 2
 
 import collections
 import copy

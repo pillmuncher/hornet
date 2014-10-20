@@ -13,11 +13,10 @@ import ast
 import collections
 import copy
 import functools
-import itertools
 import operator
 import string
 
-from hornet.util import identity, const, noop, foldr, rpartial, compose
+from hornet.util import identity, const, noop, foldr, rpartial, compose, wrap
 from hornet.util import first_arg as get_self
 from hornet.expressions import is_bitor, is_name
 from hornet.operators import Infix, Prefix, make_token, fz, xfx, xfy, yfx
@@ -28,6 +27,7 @@ __all__ = [
     'UnificationFailed',
     'Wildcard',
     'Variable',
+    'Structure',
     'Relation',
     'Atom',
     'String',
@@ -75,9 +75,9 @@ else:
         return
         yield
 
-    def success(cont):
+    def success(maybe_more_solutions):
         yield
-        yield from cont()
+        yield from maybe_more_solutions()
 
 
 def get_name(self):
@@ -127,7 +127,7 @@ class Wildcard:
     __repr__ = __str__
     __deepcopy__ = get_self
 
-    deref = property(identity)
+    ref = property(identity)
     fresh = get_self
 
     unify = noop
@@ -147,16 +147,16 @@ class Variable(collections.Counter):
         self.name = name
 
     def __call__(self):
-        return None if self.deref is self else self.deref()
+        return None if self.ref is self else self.ref()
 
     def __str__(self):
-        if self.deref is self:
+        if self.ref is self:
             return min(
                     variable.name
                     for variable in self.aliases()
                     if variable.env is self.env)
         else:
-            return str(self.deref)
+            return str(self.ref)
 
     __repr__ = __str__
     __eq__ = object.__eq__
@@ -182,10 +182,10 @@ class Variable(collections.Counter):
         return seen
 
     @property
-    def deref(self):
+    def ref(self):
         return self.env[self.name]
 
-    @deref.setter
+    @ref.setter
     def ref(self, structure):
         self.env[self.name] = structure
 
@@ -225,7 +225,7 @@ class Structure:
 
     __slots__ = 'env', 'name', 'params', 'actions'
 
-    deref = property(identity)
+    ref = property(identity)
 
     @property
     def indicator(self):
@@ -273,9 +273,9 @@ class Structure:
             raise UnificationFailed
         elif self.params:
             for this, that in zip(self.params, other.params):
-                this.deref.unify(that.deref, trail)
+                this.ref.unify(that.ref, trail)
 
-    def descend(self, db):
+    def choice_point(self, db):
         trail = []
         for head, body in db.find_all(self.indicator):
             try:
@@ -292,47 +292,47 @@ class Structure:
 
     def resolve(self, db):
 
-        trailing = []
+        choice_points = []
 
         @tco
         def cleanup():
-            while trailing:
-                trailing.pop().close()
+            while choice_points:
+                choice_points.pop().close()
             return failure()
 
         return trampoline(
             self._resolve,
             db=db,
-            trailing=trailing,
+            choice_points=choice_points,
             yes=success,
             no=failure,
             prune=cleanup,
         )
 
-    def _resolve(self, *, db, trailing, yes, no, prune):
+    def _resolve(self, *, db, choice_points, yes, no, prune):
 
-        alternate_goals = self.descend(db)
-        trailing.append(alternate_goals)
-        choice_point = len(trailing)
+        choice_point = self.choice_point(db)
+        choice_points.append(choice_point)
+        here = len(choice_points)
 
         @tco
         def prune_here():
-            while choice_point <= len(trailing):
-                trailing.pop().close()
+            while here <= len(choice_points):
+                choice_points.pop().close()
             return no()
 
         @tco
         def try_next():
-            for goal in alternate_goals:
+            for goal in choice_point:
                 break
             else:
                 return prune() if is_cut(self) else no()
             if goal is None:
                 return yes(try_next)
             else:
-                return goal.deref._resolve(
+                return goal.ref._resolve(
                     db=db,
-                    trailing=trailing,
+                    choice_points=choice_points,
                     yes=yes,
                     no=try_next,
                     prune=prune_here,
@@ -350,7 +350,7 @@ class Relation(Structure):
     def __str__(self):
         return '{}({})'.format(
             self.name,
-            comma_separated(str(each.deref) for each in self.params))
+            comma_separated(str(each.ref) for each in self.params))
 
 
 class Atom(Structure):
@@ -412,15 +412,15 @@ class List(Structure):
     def __call__(self):
         acc = []
         while isinstance(self, List):
-            acc.append(self.car.deref())
-            self = self.cdr.deref
+            acc.append(self.car.ref())
+            self = self.cdr.ref
         return acc if is_nil(self) else acc + [self]
 
     def __str__(self):
         acc = []
         while isinstance(self, List):
-            acc.append(self.car.deref)
-            self = self.cdr.deref
+            acc.append(self.car.ref)
+            self = self.cdr.ref
         if is_nil(self):
             return '[{}]'.format(comma_separated(acc))
         return '[{}|{}]'.format(comma_separated(acc), self)
@@ -451,11 +451,11 @@ class PrefixOperator(Structure):
     operand = first_param
 
     def __call__(self):
-        return self.op(self.operand.deref())
+        return self.op(self.operand.ref())
 
     def __str__(self):
 
-        operand = self.operand.deref
+        operand = self.operand.ref
 
         op_fixity = make_token(OPERATOR_FIXITIES, self)
         operand_fixity = make_token(OPERATOR_FIXITIES, operand)
@@ -476,12 +476,12 @@ class InfixOperator(Structure):
     right = second_param
 
     def __call__(self):
-        return self.op(self.left.deref(), self.right.deref())
+        return self.op(self.left.ref(), self.right.ref())
 
     def __str__(self):
 
-        left = self.left.deref
-        right = self.right.deref
+        left = self.left.ref
+        right = self.right.ref
 
         op_fixity = make_token(OPERATOR_FIXITIES, self)
         left_fixity = make_token(OPERATOR_FIXITIES, left)
@@ -504,7 +504,7 @@ class Implication(InfixOperator):
     __slots__ = ()
     op = lambda left, right: left or not right  # reverse implication: l << r
 
-    def _resolve(self, *, db, trailing, yes, no, prune):
+    def _resolve(self, *, db, choice_points, yes, no, prune):
         raise TypeError("Implication '{}' is not a valid goal.".format(self))
 
 
@@ -512,25 +512,29 @@ class Conjunction(InfixOperator):
     __slots__ = ()
     op = operator.and_
 
-    def _resolve(self, *, db, trailing, yes, no, prune):
+    def _resolve(self, *, db, choice_points, yes, no, prune):
 
         @tco
         def try_right(retry_left_then_right):
-            return self.right.deref._resolve(
+            return self.right.ref._resolve(
                 db=db,
-                trailing=trailing,
+                choice_points=choice_points,
                 yes=yes,
                 no=retry_left_then_right,
                 prune=prune,
             )
 
-        return self.left.deref._resolve(
-            db=db,
-            trailing=trailing,
-            yes=try_right,
-            no=no,
-            prune=prune,
-        )
+        @tco
+        def try_left_then_right():
+            return self.left.ref._resolve(
+                db=db,
+                choice_points=choice_points,
+                yes=try_right,
+                no=no,
+                prune=prune,
+            )
+
+        return try_left_then_right()
 
 
 class Disjunction(InfixOperator):

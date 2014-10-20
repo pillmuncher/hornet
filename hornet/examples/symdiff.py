@@ -265,10 +265,11 @@ def diff_test(db):
     #F = --x
     #F = 5 + x * 3 + 5 * x ** 4 * 5
     #F = (2 + x) ** 3
-    #F = (x * y) * (x + 3)
+    #F = x * y * (x + 3)
     print(build_term(F))
 
     for subst in db.ask(simp(F, A) & d(A, x, B) & simp(B, C)):
+        print(subst[A])
         print(subst[B])
         print(subst[C])
         #env = dict(globals())

@@ -21,7 +21,7 @@ def _install_symbols_module():
 
     from hornet.expressions import Name
 
-    class SymbolsFactory(ModuleType):
+    class SymbolsModule(ModuleType):
         __all__ = []
         __file__ = __file__
         __getattr__ = staticmethod(lru_cache()(Name))
@@ -33,7 +33,7 @@ def _install_symbols_module():
                 return ModuleSpec(fullname, self)
 
         def create_module(self, spec):
-            return sys.modules.setdefault(spec.name, SymbolsFactory(spec.name))
+            return sys.modules.setdefault(spec.name, SymbolsModule(spec.name))
 
         def exec_module(self, module):
             pass
@@ -47,50 +47,4 @@ del _install_symbols_module
 
 
 from hornet.system import *
-
-
-__all__ = [
-    'Database',
-    'UnificationFailed',
-    '_',
-    '_C_',
-    'append',
-    'arithmetic_equal',
-    'arithmetic_not_equal',
-    'atomic',
-    'build_term',
-    'call',
-    'cut',
-    'equal',
-    'expand_term',
-    'fail',
-    'findall',
-    'greater',
-    'ignore',
-    'integer',
-    'join',
-    'length',
-    'let',
-    'listing',
-    'lwriteln',
-    'maplist',
-    'member',
-    'nl',
-    'numeric',
-    'once',
-    'pyfunc',
-    'real',
-    'repeat',
-    'reverse',
-    'select',
-    'smaller',
-    'throw',
-    'transpose',
-    'true',
-    'unequal',
-    'unify',
-    'univ',
-    'var',
-    'write',
-    'writeln',
-]
+from hornet.system import __all__

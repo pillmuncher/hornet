@@ -10,6 +10,8 @@ __license__ = 'MIT'
 
 
 from functools import wraps, partial
+from itertools import islice
+
 
 
 from hornet import *
@@ -326,20 +328,14 @@ def member_test(db):
     for subst in db.ask(equal(W, [X, Y, Z]) & member(a, W) & member(b, W)):
         print(subst[W])
 
-    for i, subst in enumerate(db.ask(member(a, W))):
+    for subst in islice(db.ask(member(a, W)), 6):
         print(subst[W])
-        if i == 5:
-            break
 
-    for i, subst in enumerate(db.ask(member(X, W) & equal(X, b))):
+    for subst in islice(db.ask(member(X, W) & equal(X, b)), 6):
         print(subst[W])
-        if i == 5:
-            break
 
-    for i, subst in enumerate(db.ask(member(X, W) & member(X, [a, b, c]))):
+    for subst in islice(db.ask(member(X, W) & member(X, [a, b, c])), 15):
         print(subst[W])
-        if i == 14:
-            break
 
 
 @show(skip=False)
@@ -358,10 +354,15 @@ def length_test(db):
     else:
         print('No.')
 
-    for i, subst in enumerate(db.ask(length(X, Y))):
+    for subst in islice(db.ask(length(X, Y)), 6):
         print(subst[X], subst[Y])
-        if i == 5:
-            break
+
+
+@show(skip=False)
+def member_length_test(db):
+    for subst in db.ask(length(X, 3) & member(tom, X)):
+    #for subst in db.ask(member(tom, X) & length(X, 3)):
+        print(subst[X])
 
 
 @show(skip=False)
