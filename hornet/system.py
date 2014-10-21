@@ -86,13 +86,6 @@ def unify(this, that, trail):
 var_names = map('_{}?'.format, itertools.count())
 
 
-def rename_vars(env):
-    for variable, name in zip(list(env.values()), var_names):
-        if isinstance(variable, Variable):
-            variable.name = name
-            env[name] = variable
-
-
 class Environment(dict):
 
     def __call__(self, name):
@@ -108,6 +101,12 @@ class Environment(dict):
     def __deepcopy__(self, memo):
         env = memo[id(self)] = Environment()
         return env
+
+    def rename_vars(self):
+        for variable, name in zip(list(self.values()), var_names):
+            if isinstance(variable, Variable):
+                variable.name = name
+                self[name] = variable
 
     @property
     class proxy(collections.ChainMap):
@@ -274,15 +273,11 @@ def _listing(indicator, clauses):
 
 
 def _smaller(term, env, db, trail):
-    expect(env.X, Num)
-    expect(env.Y, Num)
     if not env.X() < env.Y():
         raise UnificationFailed
 
 
 def _greater(term, env, db, trail):
-    expect(env.X, Num)
-    expect(env.Y, Num)
     if not env.X() > env.Y():
         raise UnificationFailed
 
@@ -387,8 +382,7 @@ def _bootstrap():
 
     from hornet.symbols import P, Q, X, Y, Z, Tail, Object, Goal, List, Rest
     from hornet.symbols import Predicate, A, B, C, D, H, L, T, S, Arity, G, G1
-    from hornet.symbols import M, N, length_given_L_, length_given_N_
-    from hornet.symbols import a, b, c, d
+    from hornet.symbols import M, N, length_given_N_
 
     exprs = (
 
@@ -511,24 +505,14 @@ def _bootstrap():
         maplist(_, []),
 
         length(L, N) <<
-            var(L) & var(N) & cut[_fail],
-        length(L, N) <<
-            nonvar(L) & var(N) & length_given_L_(L, N) & cut,
-        length(L, N) <<
-            var(L) & nonvar(N) & length_given_N_(L, N) & cut,
-        length([], 0) << cut,
+            nonvar(N) & cut & ~smaller(N, 0) & length_given_N_(L, N),
+        length([], 0),
         length([H|T], N) <<
-            let(M, N - 1) &
-            length(T, M),
-
-        length_given_L_([], 0) << cut,
-        length_given_L_([H|T], N) <<
-            length_given_L_(T, M) &
+            length(T, M) &
             let(N, M + 1),
 
         length_given_N_([], 0) << cut,
         length_given_N_([H|T], N) <<
-            ~smaller(N, 0) &
             let(M, N - 1) &
             length_given_N_(T, M),
 
@@ -577,6 +561,6 @@ class Database(ClauseDict):
     def find_all(self, indicator):
         for clause in self.get(indicator, ()):
             head, body, term = clause.fresh(Environment())
-            rename_vars(term.env)
+            term.env.rename_vars()
             yield head, body
 

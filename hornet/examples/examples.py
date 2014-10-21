@@ -344,6 +344,12 @@ def length_test(db):
     for subst in db.ask(length([1, 2, 3, 4, 5], X)):
         print(subst[X])
 
+    for subst in db.ask(length(X, -1)):
+        print('Yes.')
+        break
+    else:
+        print('No.')
+
     for subst in db.ask(length(X, 3)):
         print(subst[X])
         break
