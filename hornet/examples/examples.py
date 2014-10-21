@@ -363,6 +363,9 @@ def length_test(db):
     for subst in islice(db.ask(length(X, Y)), 6):
         print(subst[X], subst[Y])
 
+    for subst in islice(db.ask(equal(X, [a, b|W]) & length(X, Y)), 6):
+        print(subst[X], subst[Y])
+
 
 @show(skip=False)
 def member_length_test(db):

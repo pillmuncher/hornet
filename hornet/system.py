@@ -83,7 +83,7 @@ def unify(this, that, trail):
     this.ref.unify(that.ref, trail)
 
 
-var_names = map('_{}?'.format, itertools.count())
+var_suffixes = map('_{}?'.format, itertools.count())
 
 
 class Environment(dict):
@@ -103,10 +103,10 @@ class Environment(dict):
         return env
 
     def rename_vars(self):
-        for variable, name in zip(list(self.values()), var_names):
+        for variable in list(self.values()):
             if isinstance(variable, Variable):
-                variable.name = name
-                self[name] = variable
+                variable.name += next(var_suffixes)
+                self[variable.name] = variable
 
     @property
     class proxy(collections.ChainMap):
@@ -207,6 +207,10 @@ def make_list(env, items, tail=NIL):
     return foldr(cons, items, tail)
 
 
+class TailPair(Adjunction):
+    pass
+
+
 def flatten(L):
     if not isinstance(L, (List, Nil)):
         raise TypeError('Expected List or Nil, found {}: {}.'
@@ -216,7 +220,7 @@ def flatten(L):
         acc.append(L.car.ref)
         L = L.cdr.ref
     if not is_nil(L):
-        acc[-1] = Adjunction(env=L.env, name='|', params=[acc[-1], L])
+        acc[-1] = TailPair(env=L.env, name='|', params=[acc[-1], L])
     return acc
 
 
@@ -352,7 +356,7 @@ def _univ(term, env, db, trail):
             unify(env.T, Atom(env=env, name=functor.name), trail)
         else:
             params = flatten(env.L.cdr.ref)
-            if isinstance(params[-1], Adjunction):
+            if isinstance(params[-1], TailPair):
                 raise TypeError('Proper List expected, found {}'.format(env.L))
             result = Relation(env=env, name=functor.name, params=params)
             unify(env.T, result, trail)
@@ -434,9 +438,9 @@ def _bootstrap():
         findall(Object, Goal, List)[_findall_3],
         findall(Object, Goal, List, Rest)[_findall_4],
 
-        member(H, [H|_]),
-        member(H, [_|T]) <<
-            member(H, T),
+        member(H, [H|T]),
+        member(G, [H|T]) <<
+            member(G, T),
 
         append([], A, A),
         append([A|B], C, [A|D]) <<
