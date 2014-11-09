@@ -11,7 +11,7 @@ __license__ = 'MIT'
 
 from functools import partial, wraps, reduce as foldl
 from inspect import signature, Signature
-from itertools import chain, tee, zip_longest
+from itertools import chain, count, tee, zip_longest
 
 
 noop = lambda *a, **k: None
@@ -26,6 +26,11 @@ identity = lambda x: x          # AKA: the I combinator
 const = lambda x: lambda _: x   # AKA: the K combinator
 
 first_arg = lambda x, *a, **k: x
+
+
+def tabulate(function, start=0):
+    "Return function(0), function(1), ..."
+    return map(function, count(start))
 
 
 def compose(*fs):

@@ -8,3 +8,5 @@ setuptools-*
 dist
 *.pyc
 *.pyo
+*.old
+ez_setup.py

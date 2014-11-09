@@ -12,11 +12,10 @@ __license__ = 'MIT'
 
 import collections
 import copy
-import itertools
 import numbers
 import pprint
 
-from hornet.util import rpartial, foldr
+from hornet.util import rpartial, foldr, tabulate
 from hornet.expressions import bind_compose, promote, Name
 from hornet.operators import rearrange
 from hornet.dcg import _C_, dcg_expand
@@ -83,8 +82,8 @@ def unify(this, that, trail):
     this.ref.unify(that.ref, trail)
 
 
-var_suffixes = map('_{}?'.format, itertools.count())
-
+#var_suffixes = tabulate('_{:02X}?'.format)
+var_suffix_map = collections.defaultdict(lambda: tabulate('_{:02X}?'.format))
 
 class Environment(dict):
 
@@ -105,7 +104,8 @@ class Environment(dict):
     def rename_vars(self):
         for variable in list(self.values()):
             if isinstance(variable, Variable):
-                variable.name += next(var_suffixes)
+                #variable.name += next(var_suffixes)
+                variable.name += next(var_suffix_map[variable.name])
                 self[variable.name] = variable
 
     @property
