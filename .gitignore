@@ -1,0 +1,10 @@
+*/__pycache__
+.coverage
+.ropeproject
+__pycache__
+build
+hornet.egg-info
+setuptools-*
+dist
+*.pyc
+*.pyo
