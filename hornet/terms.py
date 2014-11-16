@@ -62,7 +62,7 @@ USE_TCO = True
 
 if USE_TCO:
 
-    from .trampoline import tco, trampoline, land as failure, throw as success
+    from .tailcalls import tco, trampoline, land as failure, throw as success
 
 else:
 
