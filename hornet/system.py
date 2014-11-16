@@ -18,7 +18,7 @@ import pprint
 from hornet.util import rpartial, foldr, tabulate
 from hornet.expressions import bind_compose, promote, Name
 from hornet.operators import rearrange
-from hornet.dcg import _C_, dcg_expand
+from hornet.dcg import _C_, expand
 from hornet.terms import *
 
 
@@ -85,6 +85,7 @@ def unify(this, that, trail):
 #var_suffixes = tabulate('_{:02X}?'.format)
 var_suffix_map = collections.defaultdict(lambda: tabulate('_{:02X}?'.format))
 
+
 class Environment(dict):
 
     def __call__(self, name):
@@ -119,7 +120,7 @@ def build(node):
     return Builder(Environment()).build(node)
 
 
-expand_term = bind_compose(rearrange, dcg_expand, build)
+expand_term = bind_compose(rearrange, expand, build)
 build_term = bind_compose(rearrange, build)
 
 

@@ -14,7 +14,7 @@ import itertools
 
 from hornet.util import identity, foldr, pairwise, receive_missing_args
 from hornet.expressions import unit, Name, is_rshift, is_bitand, is_name
-from hornet.expressions import is_set, is_list, is_call, is_str
+from hornet.expressions import is_set, is_list, is_call, is_terminal
 
 
 _C_ = Name("'C'")
@@ -90,7 +90,7 @@ def conjunction(left, right):
         return left or right
 
 
-def dcg_call(node, tagged):
+def expand_call(node, tagged):
 
     if is_name(node):
         return tagged(unit(node)())
@@ -102,12 +102,12 @@ def dcg_call(node, tagged):
         raise TypeError('Name or Call node expected, not {}'.format(node))
 
 
-def dcg_list(node, tagged, cont=identity):
+def expand_list(node, tagged, cont=identity):
 
     if not node.elts:
         return cont(None)
 
-    elif all(is_name(each) or is_str(each) for each in node.elts):
+    elif all(is_terminal(each) for each in node.elts):
         *elts, last = (tagged(_C_(unit(each))) for each in node.elts)
         return foldr(conjunction, elts, cont(last))
 
@@ -116,29 +116,29 @@ def dcg_list(node, tagged, cont=identity):
             'Non-terminal in DCG terrminal list found: {}'.format(node))
 
 
-def dcg_body(node, tag, cont=identity):
+def expand_body(node, tag, cont=identity):
 
     if is_bitand(node):
 
         def right_side(rightmost_of_left_side):
             return conjunction(
                 rightmost_of_left_side,
-                dcg_body(node.right, tag, cont))
+                expand_body(node.right, tag, cont))
 
-        return dcg_body(node.left, tag, right_side)
+        return expand_body(node.left, tag, right_side)
 
     elif is_list(node):
-        return dcg_list(node, tag.as_terminal, cont)
+        return expand_list(node, tag.as_terminal, cont)
 
     elif is_set(node):
         assert len(node.elts) == 1
         return cont(unit(node.elts[0]))
 
     else:
-        return cont(dcg_call(node, tag.as_goal))
+        return cont(expand_call(node, tag.as_goal))
 
 
-def dcg_clause(node):
+def expand_clause(node):
 
     head, body = node.left, node.right
 
@@ -149,17 +149,17 @@ def dcg_clause(node):
             def pushback(rightmost_of_body):
                 return conjunction(
                     rightmost_of_body,
-                    dcg_list(head.right, tag.as_pushback))
+                    expand_list(head.right, tag.as_pushback))
 
             return rule(
-                dcg_call(head.left, tag.as_goal),
-                dcg_body(body, tag, pushback))
+                expand_call(head.left, tag.as_goal),
+                expand_body(body, tag, pushback))
 
         else:
             return rule(
-                dcg_call(head, tag.as_goal),
-                dcg_body(body, tag))
+                expand_call(head, tag.as_goal),
+                expand_body(body, tag))
 
 
-def dcg_expand(node):
-    return dcg_clause(node) if is_rshift(node) else unit(node)
+def expand(node):
+    return expand_clause(node) if is_rshift(node) else unit(node)
