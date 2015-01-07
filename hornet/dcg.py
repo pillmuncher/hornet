@@ -8,6 +8,7 @@ __date__ = '2014-09-27'
 __author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
 __license__ = 'MIT'
 
+
 import collections
 import copy
 import itertools
@@ -43,7 +44,7 @@ def pushback_setter(node, first, second):
     node.args.append(first)
 
 
-class NodeTagger:
+class NodeCollector:
 
     def __enter__(self):
         self.left_side = []
@@ -90,25 +91,25 @@ def conjunction(left, right):
         return left or right
 
 
-def expand_call(node, tagged):
+def expand_call(node, collect):
 
     if is_name(node):
-        return tagged(unit(node)())
+        return collect(unit(node)())
 
     elif is_call(node):
-        return tagged(unit(copy.deepcopy(node)))
+        return collect(unit(copy.deepcopy(node)))
 
     else:
         raise TypeError('Name or Call node expected, not {}'.format(node))
 
 
-def expand_list(node, tagged, cont=identity):
+def expand_list(node, collect, cont=identity):
 
     if not node.elts:
         return cont(None)
 
     elif all(is_terminal(each) for each in node.elts):
-        *elts, last = (tagged(_C_(unit(each))) for each in node.elts)
+        *elts, last = (collect(_C_(unit(each))) for each in node.elts)
         return foldr(conjunction, elts, cont(last))
 
     else:
@@ -116,49 +117,49 @@ def expand_list(node, tagged, cont=identity):
             'Non-terminal in DCG terrminal list found: {}'.format(node))
 
 
-def expand_body(node, tag, cont=identity):
+def expand_body(node, collect, cont=identity):
 
     if is_bitand(node):
 
         def right_side(rightmost_of_left_side):
             return conjunction(
                 rightmost_of_left_side,
-                expand_body(node.right, tag, cont))
+                expand_body(node.right, collect, cont))
 
-        return expand_body(node.left, tag, right_side)
+        return expand_body(node.left, collect, right_side)
 
     elif is_list(node):
-        return expand_list(node, tag.as_terminal, cont)
+        return expand_list(node, collect.as_terminal, cont)
 
     elif is_set(node):
         assert len(node.elts) == 1
         return cont(unit(node.elts[0]))
 
     else:
-        return cont(expand_call(node, tag.as_goal))
+        return cont(expand_call(node, collect.as_goal))
 
 
 def expand_clause(node):
 
     head, body = node.left, node.right
 
-    with NodeTagger() as tag:
+    with NodeCollector() as collect:
 
         if is_bitand(head):
 
             def pushback(rightmost_of_body):
                 return conjunction(
                     rightmost_of_body,
-                    expand_list(head.right, tag.as_pushback))
+                    expand_list(head.right, collect.as_pushback))
 
             return rule(
-                expand_call(head.left, tag.as_goal),
-                expand_body(body, tag, pushback))
+                expand_call(head.left, collect.as_goal),
+                expand_body(body, collect, pushback))
 
         else:
             return rule(
-                expand_call(head, tag.as_goal),
-                expand_body(body, tag))
+                expand_call(head, collect.as_goal),
+                expand_body(body, collect))
 
 
 def expand(node):

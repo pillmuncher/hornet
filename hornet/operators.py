@@ -16,7 +16,7 @@ import operator
 from hornet.util import pairwise, identity, const, decrement
 from hornet.util import compose2 as compose
 from hornet.expressions import is_name, is_operator, is_tuple, is_astwrapper
-from hornet.expressions import lift, promote, AstWrapper
+from hornet.expressions import lift, promote
 
 
 class ParseError(Exception):

@@ -3,7 +3,6 @@
 #
 # Copyright (C) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
-
 __version__ = '0.2.3a'
 __date__ = '2014-09-27'
 __author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
@@ -15,7 +14,7 @@ import copy
 import numbers
 import pprint
 
-from hornet.util import rpartial, foldr, tabulate
+from hornet.util import rpartial, foldr
 from hornet.expressions import bind_compose, promote, Name
 from hornet.operators import rearrange
 from hornet.dcg import _C_, expand
@@ -82,67 +81,39 @@ def unify(this, that, trail):
     this.ref.unify(that.ref, trail)
 
 
-#var_suffixes = tabulate('_{:02X}?'.format)
-var_suffix_map = collections.defaultdict(lambda: tabulate('_{:02X}?'.format))
-
-
-class Environment(dict):
-
-    def __call__(self, name):
-        try:
-            return self[name]
-        except KeyError:
-            var = self[name] = Variable(env=self, name=name)
-            return var
-
-    def __getattr__(self, name):
-        return self[name].ref
-
-    def __deepcopy__(self, memo):
-        env = memo[id(self)] = Environment()
-        return env
-
-    def rename_vars(self):
-        for variable in list(self.values()):
-            if isinstance(variable, Variable):
-                #variable.name += next(var_suffixes)
-                variable.name += next(var_suffix_map[variable.name])
-                self[variable.name] = variable
-
-    @property
-    class proxy(collections.ChainMap):
-
-        def __getitem__(self, key, _getitem=collections.ChainMap.__getitem__):
-            return _getitem(self, str(key))
-
-
-def build(node):
-    return Builder(Environment()).build(node)
-
-
 expand_term = bind_compose(rearrange, expand, build)
 build_term = bind_compose(rearrange, build)
 
 
 is_atomic = rpartial(isinstance, (Atom, String, Num))
-not_assertable = rpartial(
-    isinstance, (String, Num, Conjunction, Variable, Wildcard))
 
 
-class Clause(collections.namedtuple('BaseClause', 'head body term')):
+ASSERTABLE = (
+    Relation,
+    Atom,
+    List,
+    Nil,
+    Implication,
+    Disjunction,
+    Adjunction,
+    Conditional,
+    Addition,
+    Subtraction,
+    Multiplication,
+    Division,
+    FloorDivision,
+    Remainder,
+    Exponentiation,
+    Negation,
+    Positive,
+    Negative,
+)
 
-    __slots__ = ()
 
-    def fresh(self, env):
-        return type(self)(self.term.fresh(env))
+class Clause:
 
-    @property
-    def name(self):
-        return self.head.name
-
-    @property
-    def indicator(self):
-        return self.head.indicator
+    def __init__(self, term):
+        self.term = term
 
     def __str__(self):
         return str(self.term)
@@ -150,21 +121,41 @@ class Clause(collections.namedtuple('BaseClause', 'head body term')):
     def __repr__(self):
         return repr(self.term)
 
+    def fresh_term(self):
+        env = Environment()
+        term = self.term.fresh(env)
+        env.rename_vars()
+        return term
+
 
 class Fact(Clause):
 
-    __slots__ = ()
+    @property
+    def name(self):
+        return self.term.name
 
-    def __new__(cls, term):
-        return Clause.__new__(cls, head=term, body=None, term=term)
+    @property
+    def indicator(self):
+        return self.term.indicator
+
+    @property
+    def is_assertable(self):
+        return isinstance(self.term, ASSERTABLE)
 
 
 class Rule(Clause):
 
-    __slots__ = ()
+    @property
+    def name(self):
+        return self.term.left.name
 
-    def __new__(cls, term):
-        return Clause.__new__(cls, head=term.left, body=term.right, term=term)
+    @property
+    def indicator(self):
+        return self.term.left.indicator
+
+    @property
+    def is_assertable(self):
+        return True
 
 
 def make_clause(term):
@@ -550,9 +541,10 @@ class Database(ClauseDict):
         clauses = []
         for expression in exprs:
             clause = make_clause(expand_term(expression))
-            if not_assertable(clause.head):
-                raise TypeError("Clause '{}' cannot be asserted into database."
-                                .format(clause))
+            if not clause.is_assertable:
+                raise TypeError(
+                    "Clause '{}' of type {} cannot be asserted into database."
+                    .format(clause, type(clause.term)))
             clauses.append(clause)
         for clause in clauses:
             self[clause.indicator].append(clause)
@@ -565,7 +557,4 @@ class Database(ClauseDict):
 
     def find_all(self, indicator):
         for clause in self.get(indicator, ()):
-            head, body, term = clause.fresh(Environment())
-            term.env.rename_vars()
-            yield head, body
-
+            yield clause.fresh_term()

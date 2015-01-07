@@ -10,7 +10,6 @@ __license__ = 'MIT'
 
 
 import nose
-
 import ast
 
 from hornet.test import *
@@ -22,13 +21,6 @@ def test_symbols_module():
     from hornet.symbols import x
 
     ast_eq(x, Name('x'))
-
-
-#def test_strings_module():
-
-    #from hornet.strings import x
-
-    #assert x == 'x'
 
 
 if __name__ == '__main__':
