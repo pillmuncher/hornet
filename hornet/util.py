@@ -104,36 +104,15 @@ def qualname(fullname):
 
     return name_setter
 
-
-def coroutine(generator=None, *, clean_exit=True):
-
-    if generator is None:
-        return partial(coroutine, clean_exit=clean_exit)
-
-    @wraps(generator)
-    def starter(*args, **kwargs):
-        @wraps(generator)
-        def run():
-            yield from generator(*args, **kwargs)
-            if clean_exit:
-                yield
-        running = run()
-        running.send(None)
-        return running
-
-    return starter
+def rotate(iterable):
+    iterable = iter(iterable)
+    tmp = next(iterable)
+    yield from iterable
+    yield tmp
 
 
-def receive_missing_args(procedure):
-
-    @coroutine
-    @wraps(procedure)
-    def receiver(*args, **kwargs):
-        sig = signature(procedure)
-        ba = sig.bind_partial(*args, **kwargs)
-        for name in sig.parameters:
-            if name not in ba.arguments:
-                ba.arguments[name] = (yield)
-        procedure(*ba.args, **ba.kwargs)
-
-    return receiver
+def crocodile(iterable):
+    iterable = iter(iterable)
+    for left in iterable:
+        right = next(iterable)
+        yield left, right

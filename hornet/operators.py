@@ -90,14 +90,6 @@ xfy = Infix.fixity(left=identity, right=decrement)
 yfx = Infix.fixity(left=decrement, right=identity)
 
 
-NON_OP = f(0)
-END = NON_OP(None)
-
-
-def make_token(fixities, node):
-    return fixities.get(type(node), NON_OP)(node)
-
-
 HORNET_FIXITIES = {
     ast.BitOr: xfy(10),
     ast.BitXor: xfy(20),
@@ -115,6 +107,14 @@ HORNET_FIXITIES = {
     ast.Invert: fy(70),
     ast.Pow: xfy(80),
 }
+
+
+NON_OP = f(0)
+END = NON_OP(None)
+
+
+def make_token(fixities, node):
+    return fixities.get(type(node), NON_OP)(node)
 
 
 def check_left(op, left_node):

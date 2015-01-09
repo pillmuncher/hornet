@@ -380,7 +380,7 @@ def _bootstrap():
     from hornet.symbols import Predicate, A, B, C, D, H, L, T, S, Arity, G, G1
     from hornet.symbols import M, N, length_given_N_
 
-    exprs = (
+    expressions = (
 
         cut,
 
@@ -517,7 +517,7 @@ def _bootstrap():
     db = ClauseDict()
     indicators = collections.defaultdict(set)
 
-    for expression in exprs:
+    for expression in expressions:
         clause = make_clause(build_term(expression))
         db[clause.indicator].append(clause)
         indicators[clause.name].add(clause.indicator)
@@ -534,12 +534,12 @@ _system_db, _indicators = _bootstrap()
 class Database(ClauseDict):
 
     def __init__(self):
-        collections.OrderedDict.__init__(self, _system_db)
+        super().__init__(_system_db)
         self.indicators = collections.defaultdict(set, _indicators)
 
-    def tell(self, *exprs):
+    def tell(self, *expressions):
         clauses = []
-        for expression in exprs:
+        for expression in expressions:
             clause = make_clause(expand_term(expression))
             if not clause.is_assertable:
                 raise TypeError(

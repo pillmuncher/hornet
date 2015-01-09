@@ -359,8 +359,8 @@ class Atom(Structure):
     __slots__ = ()
 
     __call__ = get_name
-    __deepcopy__ = get_self
     __str__ = get_name
+    __deepcopy__ = get_self
 
     fresh = get_self
 
@@ -398,18 +398,6 @@ class List(Structure):
     def __init__(self, **kwargs):
         Structure.__init__(self, name='.', **kwargs)
 
-    def __deepcopy__(self, memo, _deepcopy=copy.deepcopy):
-        return List(
-            env=_deepcopy(self.env, memo),
-            params=[_deepcopy(each, memo) for each in self.params],
-            actions=self.actions)
-
-    def fresh(self, env):
-        return List(
-            env=env,
-            params=[each.fresh(env) for each in self.params],
-            actions=self.actions)
-
     def __call__(self):
         acc = []
         while isinstance(self, List):
@@ -426,6 +414,18 @@ class List(Structure):
             return '[{}]'.format(comma_separated(acc))
         return '[{}|{}]'.format(comma_separated(acc), self)
 
+    def __deepcopy__(self, memo, _deepcopy=copy.deepcopy):
+        return List(
+            env=_deepcopy(self.env, memo),
+            params=[_deepcopy(each, memo) for each in self.params],
+            actions=self.actions)
+
+    def fresh(self, env):
+        return List(
+            env=env,
+            params=[each.fresh(env) for each in self.params],
+            actions=self.actions)
+
 
 class Nil(Structure):
 
@@ -434,7 +434,7 @@ class Nil(Structure):
     def __init__(self):
         Structure.__init__(self, env={}, name='[]')
 
-    __call__ = const([])
+    __call__ = list
     __str__ = const('[]')
     __deepcopy__ = get_self
 

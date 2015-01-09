@@ -18,7 +18,7 @@ def test_dcg_transformation():
 
     from hornet.expressions import promote, mcompose
     from hornet.operators import rearrange
-    from hornet.dcg import dcg_expand, _C_
+    from hornet.dcg import expand, _C_
 
     from hornet.symbols import s, np, vp, _0, _1, _2, _3, _4, _5, _6, _7, _8
     from hornet.symbols import it_is, tell, me, it, aint, so, very, different
@@ -26,7 +26,7 @@ def test_dcg_transformation():
 
     ast_test_all(
         ast_eq,
-        mcompose(rearrange, dcg_expand),
+        mcompose(rearrange, expand),
         rearrange,
         (
             s >> vp,
