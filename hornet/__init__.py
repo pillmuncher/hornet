@@ -42,11 +42,8 @@ def _install_symbols_module():
 
 _install_symbols_module()
 
-del _install_symbols_module
 
 
-#from hornet.system import *
-#from hornet.system import __all__
 import collections
 import copy
 import numbers
