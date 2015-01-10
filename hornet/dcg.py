@@ -133,7 +133,8 @@ def expand_body(node, collector, cont=identity):
 
 def expand_clause(node, collector):
 
-    head, body = node.left, node.right
+    head = node.left
+    body = node.right
 
     if is_bitand(head):
 
