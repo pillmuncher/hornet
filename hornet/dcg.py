@@ -36,7 +36,7 @@ def node_collector():
 
     class NodeCollector:
 
-        def collect_goal(self, call):
+        def collect_functor(self, call):
             args = call.node.args
             from_left.append(args.append)
             from_left.append(args.append)
@@ -128,7 +128,7 @@ def expand_body(node, collector, cont=identity):
         return cont(unit(node.elts[0]))
 
     else:
-        return cont(expand_call(node, collector.collect_goal))
+        return cont(expand_call(node, collector.collect_functor))
 
 
 def expand_clause(node, collector):
@@ -143,12 +143,12 @@ def expand_clause(node, collector):
                 expand_list(head.right, collector.collect_pushback))
 
         return rule(
-            expand_call(head.left, collector.collect_goal),
+            expand_call(head.left, collector.collect_functor),
             expand_body(body, collector, pushback))
 
     else:
         return rule(
-            expand_call(head, collector.collect_goal),
+            expand_call(head, collector.collect_functor),
             expand_body(body, collector))
 
 
