@@ -61,6 +61,9 @@ def node_collector():
         set_left(var)
         set_right(var)
 
+    del from_left
+    del from_right
+
 
 def rule(head, body):
 
