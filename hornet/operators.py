@@ -153,6 +153,10 @@ def pratt_parse(nodes):
     return parse(0)
 
 
+def inherit_fixity(node):
+    return make_token(PYTHON_FIXITIES, node.op)
+
+
 # see: https://docs.python.org/3/reference/expressions.html#operator-precedence
 PYTHON_FIXITIES = {
     ast.BitOr: yfx(10),
@@ -170,8 +174,8 @@ PYTHON_FIXITIES = {
     ast.UAdd: fz(70),
     ast.Invert: fz(70),
     ast.Pow: xfy(80),
-    ast.UnaryOp: lambda node: make_token(PYTHON_FIXITIES, node.op),
-    ast.BinOp: lambda node: make_token(PYTHON_FIXITIES, node.op),
+    ast.UnaryOp: inherit_fixity,
+    ast.BinOp: inherit_fixity,
 }
 
 
