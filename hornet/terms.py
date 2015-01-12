@@ -88,8 +88,11 @@ def get_name(self):
 is_wildcard_name = '_'.__eq__
 
 
-def is_variable_name(name, _first_chars=set(string.ascii_uppercase + '_')):
-    return name[0] in _first_chars
+FIRST_VARIABLE_CHARS = frozenset(string.ascii_uppercase + '_')
+
+
+def is_variable_name(name):
+    return name[0] in FIRST_VARIABLE_CHARS
 
 
 @property
@@ -414,10 +417,10 @@ class List(Structure):
             return '[{}]'.format(comma_separated(acc))
         return '[{}|{}]'.format(comma_separated(acc), self)
 
-    def __deepcopy__(self, memo, _deepcopy=copy.deepcopy):
+    def __deepcopy__(self, memo):
         return List(
-            env=_deepcopy(self.env, memo),
-            params=[_deepcopy(each, memo) for each in self.params],
+            env=copy.deepcopy(self.env, memo),
+            params=[copy.deepcopy(each, memo) for each in self.params],
             actions=self.actions)
 
     def fresh(self, env):
@@ -636,8 +639,8 @@ class Environment(dict):
     @property
     class proxy(collections.ChainMap):
 
-        def __getitem__(self, key, _getitem=collections.ChainMap.__getitem__):
-            return _getitem(self, str(key))
+        def __getitem__(self, key):
+            return collections.ChainMap.__getitem__(self, str(key))
 
 
 OPERATOR_FIXITIES = {
