@@ -207,7 +207,7 @@ class Variable(collections.Counter):
 
     def unify_structure(self, structure, trail):
 
-        variables = list(self.aliases())
+        variables = self.aliases()
         for variable in variables:
             variable.ref = structure
 
