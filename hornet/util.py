@@ -10,7 +10,6 @@ __license__ = 'MIT'
 
 
 from functools import partial, wraps, reduce as foldl
-from inspect import signature, Signature
 from itertools import chain, count, tee, zip_longest
 
 

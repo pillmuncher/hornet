@@ -12,7 +12,7 @@ __license__ = 'MIT'
 from hornet import *
 
 from hornet.symbols import (
-    queens, solution, noattack, Rest, S, X, Y, X1, Y1, Xs, Ys, Y0s, Qs,
+    queens, solution, noattack, Rest, Ns, S, X, Y, X1, Y1, Xs, Ys, Y0s, Qs,
 )
 
 
@@ -20,12 +20,12 @@ def main():
 
     db = Database()
 
-    nums = promote(list(range(1, 9)))
 
     db.tell(
 
         queens(S) <<
-            solution(nums, nums, [], S),
+            let(Ns, promote(list(range(1, 6)))) &
+            solution(Ns, Ns, [], S),
 
         solution([X|Xs], Y0s, Qs, [X/Y|S]) <<
             select(Y, Y0s, Ys) &
@@ -44,10 +44,6 @@ def main():
 
     for subst in db.ask(queens(S)):
         print(subst[S])
-        #pass
-        #break
-        #if not input('more? ').lower().strip().startswith('y'):
-            #break
 
 
 if __name__ == '__main__':

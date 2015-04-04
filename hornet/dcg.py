@@ -24,45 +24,8 @@ _C_ = Name("'C'")
 
 
 def numbered_vars(prefix):
-    for n in itertools.count():
-        yield Name(prefix + str(n)).node
-
-
-@contextlib.contextmanager
-def node_collector():
-
-    from_left = []
-    from_right = collections.deque()
-
-    class NodeCollector:
-
-        def collect_functor(self, call):
-            args = call.node.args
-            from_left.append(args.append)
-            from_left.append(args.append)
-            return call
-
-        def collect_terminal(self, call):
-            args = call.node.args
-            from_left.append(functools.partial(args.insert, -1))
-            from_left.append(args.append)
-            return call
-
-        def collect_pushback(self, call):
-            args = call.node.args
-            from_right.appendleft(functools.partial(args.insert, -2))
-            from_right.appendleft(args.append)
-            return call
-
-    yield NodeCollector()
-
-    pairs = crocodile(rotate(itertools.chain(from_left, from_right)))
-    for (set_left, set_right), var in zip(pairs, numbered_vars('_')):
-        set_left(var)
-        set_right(var)
-
-    del from_left
-    del from_right
+    for i in itertools.count():
+        yield Name(prefix + str(i)).node
 
 
 def rule(head, body):
@@ -83,79 +46,117 @@ def conjunction(left, right):
         return left or right
 
 
-def expand_call(node, collect):
-
-    if is_name(node):
-        return collect(unit(node)())
-
-    elif is_call(node):
-        return collect(unit(copy.deepcopy(node)))
-
-    else:
-        raise TypeError('Name or Call node expected, not {}'.format(node))
-
-
-def expand_list(node, collect, cont=identity):
-
-    if not node.elts:
-        return cont(None)
-
-    elif all(is_terminal(each) for each in node.elts):
-        *elts, last = (collect(_C_(unit(each))) for each in node.elts)
-        return foldr(conjunction, elts, cont(last))
-
-    else:
-        raise TypeError(
-            'Non-terminal in DCG terrminal list found: {}'.format(node))
-
-
-def expand_body(node, collector, cont=identity):
-
-    if is_bitand(node):
-
-        def right_side(rightmost_of_left_side):
-            return conjunction(
-                rightmost_of_left_side,
-                expand_body(node.right, collector, cont))
-
-        return expand_body(node.left, collector, right_side)
-
-    elif is_list(node):
-        return expand_list(node, collector.collect_terminal, cont)
-
-    elif is_set(node):
-        assert len(node.elts) == 1
-        return cont(unit(node.elts[0]))
-
-    else:
-        return cont(expand_call(node, collector.collect_functor))
-
-
-def expand_clause(node, collector):
-
-    head = node.left
-    body = node.right
-
-    if is_bitand(head):
-
-        def pushback(rightmost_of_body):
-            return conjunction(
-                rightmost_of_body,
-                expand_list(head.right, collector.collect_pushback))
-
-        return rule(
-            expand_call(head.left, collector.collect_functor),
-            expand_body(body, collector, pushback))
-
-    else:
-        return rule(
-            expand_call(head, collector.collect_functor),
-            expand_body(body, collector))
-
-
 def expand(node):
-    if is_rshift(node):
-        with node_collector() as collector:
-            return expand_clause(node, collector)
-    else:
+
+    if not is_rshift(node):
         return unit(node)
+
+    def expand_call(node):
+
+        if is_name(node):
+            return collect_functor(unit(node)())
+
+        elif is_call(node):
+            return collect_functor(unit(copy.deepcopy(node)))
+
+        else:
+            raise TypeError('Name or Call node expected, not {}'.format(node))
+
+    def expand_terminals(node, cont):
+
+        if not node.elts:
+            return cont(None)
+
+        elif all(is_terminal(each) for each in node.elts):
+            *elts, last = (
+                    collect_terminal(_C_(unit(each))) for each in node.elts)
+            return foldr(conjunction, elts, cont(last))
+
+        else:
+            raise TypeError(
+                'Non-terminal in DCG terrminal list found: {}'.format(node))
+
+    def expand_pushbacks(node):
+
+        if not node.elts:
+            return None
+
+        elif all(is_terminal(each) for each in node.elts):
+            elts = [collect_pushback(_C_(unit(each))) for each in node.elts]
+            return foldr(conjunction, elts)
+
+        else:
+            raise TypeError(
+                'Non-terminal in DCG pushback list found: {}'.format(node))
+
+    def expand_body(node, cont):
+
+        if is_bitand(node):
+
+            def right_side(rightmost_of_left_side):
+                return conjunction(
+                    rightmost_of_left_side,
+                    expand_body(node.right, cont))
+
+            return expand_body(node.left, right_side)
+
+        elif is_list(node):
+            return expand_terminals(node, cont)
+
+        elif is_set(node):
+            assert len(node.elts) == 1
+            return cont(unit(node.elts[0]))
+
+        else:
+            return cont(expand_call(node))
+
+    def expand_clause(node):
+
+        head = node.left
+        body = node.right
+
+        if is_bitand(head):
+
+            def pushback(rightmost_of_body):
+                return conjunction(
+                    rightmost_of_body,
+                    expand_pushbacks(head.right))
+
+            return rule(
+                expand_call(head.left),
+                expand_body(body, pushback))
+
+        else:
+            return rule(
+                expand_call(head),
+                expand_body(body, identity))
+
+    from_left = []
+    from_right = collections.deque()
+
+    def collect_functor(call):
+        args = call.node.args
+        from_left.append(args.append)
+        from_left.append(args.append)
+        return call
+
+    def collect_terminal(call):
+        args = call.node.args
+        from_left.append(functools.partial(args.insert, -1))
+        from_left.append(args.append)
+        return call
+
+    def collect_pushback(call):
+        args = call.node.args
+        from_right.appendleft(functools.partial(args.insert, -2))
+        from_right.appendleft(args.append)
+        return call
+
+    clause = expand_clause(node)
+
+    pairs = crocodile(rotate(itertools.chain(from_left, from_right)))
+    for (set_left, set_right), var in zip(pairs, numbered_vars('_')):
+        set_left(var)
+        set_right(var)
+
+    return clause

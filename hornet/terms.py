@@ -287,7 +287,7 @@ class Structure:
                 term.head.action(db, trail)
                 self.action(db, trail)
             except UnificationFailed:
-                continue
+                pass
             else:
                 yield term.body
             finally:
