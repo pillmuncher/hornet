@@ -9,7 +9,7 @@ __author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
 __license__ = 'MIT'
 
 
-from hornet import *
+from hornet import Database, let, select, _, arithmetic_not_equal
 
 from hornet.symbols import (
     queens, solution, noattack, Rest, Ns, S, X, Y, X1, Y1, Xs, Ys, Y0s, Qs,
