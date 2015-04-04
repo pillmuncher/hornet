@@ -12,14 +12,13 @@ __license__ = 'MIT'
 import ast
 import collections
 import copy
-import functools
 import operator
 import string
 
-from hornet.util import identity, const, noop, foldr, rpartial, compose, wrap
-from hornet.util import first_arg as get_self
+from hornet.util import identity, noop, foldr, rpartial, compose, tabulate
+from hornet.util import const, first_arg as get_self
 from hornet.expressions import is_bitor, is_name
-from hornet.operators import Infix, Prefix, make_token, fz, xfx, xfy, yfx
+from hornet.operators import make_token, fz, xfx, xfy, yfx
 
 
 __all__ = [
@@ -54,6 +53,8 @@ __all__ = [
     'success',
     'failure',
     'is_nil',
+    'Environment',
+    'build',
 ]
 
 
@@ -87,8 +88,11 @@ def get_name(self):
 is_wildcard_name = '_'.__eq__
 
 
-def is_variable_name(name, _first_chars=set(string.ascii_uppercase + '_')):
-    return name[0] in _first_chars
+FIRST_VARIABLE_CHARS = frozenset(string.ascii_uppercase + '_')
+
+
+def is_variable_name(name):
+    return name[0] in FIRST_VARIABLE_CHARS
 
 
 @property
@@ -108,10 +112,8 @@ def comma_separated(items):
     return ', '.join(str(each) for each in items)
 
 
-class Indicator(collections.namedtuple('BaseIndicator', 'functor arity')):
-
-    def __str__(self):
-        return '{}/{}'.format(*self)
+Indicator = collections.namedtuple('Indicator', 'functor arity')
+Indicator.__str__ = lambda self: '{}/{}'.format(*self)
 
 
 class UnificationFailed(Exception):
@@ -123,7 +125,7 @@ class Wildcard:
     __slots__ = ()
 
     __call__ = noop
-    __str__ = '_'.__str__
+    __str__ = const('_')
     __repr__ = __str__
     __deepcopy__ = get_self
 
@@ -226,6 +228,8 @@ class Structure:
     __slots__ = 'env', 'name', 'params', 'actions'
 
     ref = property(identity)
+    head = property(get_self)
+    body = property(noop)
 
     @property
     def indicator(self):
@@ -277,15 +281,15 @@ class Structure:
 
     def choice_point(self, db):
         trail = []
-        for head, body in db.find_all(self.indicator):
+        for term in db.find_all(self.indicator):
             try:
-                head.unify(self, trail)
-                head.action(db, trail)
+                term.head.unify(self, trail)
+                term.head.action(db, trail)
                 self.action(db, trail)
             except UnificationFailed:
-                continue
+                pass
             else:
-                yield body
+                yield term.body
             finally:
                 while trail:
                     trail.pop()()
@@ -358,8 +362,8 @@ class Atom(Structure):
     __slots__ = ()
 
     __call__ = get_name
-    __deepcopy__ = get_self
     __str__ = get_name
+    __deepcopy__ = get_self
 
     fresh = get_self
 
@@ -397,18 +401,6 @@ class List(Structure):
     def __init__(self, **kwargs):
         Structure.__init__(self, name='.', **kwargs)
 
-    def __deepcopy__(self, memo, deepcopy=copy.deepcopy):
-        return List(
-            env=deepcopy(self.env, memo),
-            params=[deepcopy(each, memo) for each in self.params],
-            actions=self.actions)
-
-    def fresh(self, env):
-        return List(
-            env=env,
-            params=[each.fresh(env) for each in self.params],
-            actions=self.actions)
-
     def __call__(self):
         acc = []
         while isinstance(self, List):
@@ -425,6 +417,18 @@ class List(Structure):
             return '[{}]'.format(comma_separated(acc))
         return '[{}|{}]'.format(comma_separated(acc), self)
 
+    def __deepcopy__(self, memo):
+        return List(
+            env=copy.deepcopy(self.env, memo),
+            params=[copy.deepcopy(each, memo) for each in self.params],
+            actions=self.actions)
+
+    def fresh(self, env):
+        return List(
+            env=env,
+            params=[each.fresh(env) for each in self.params],
+            actions=self.actions)
+
 
 class Nil(Structure):
 
@@ -434,7 +438,7 @@ class Nil(Structure):
         Structure.__init__(self, env={}, name='[]')
 
     __call__ = list
-    __str__ = '[]'.__str__
+    __str__ = const('[]')
     __deepcopy__ = get_self
 
     fresh = get_self
@@ -501,14 +505,19 @@ class InfixOperator(Structure):
 
 
 class Implication(InfixOperator):
+
     __slots__ = ()
     op = lambda left, right: left or not right  # reverse implication: l << r
+
+    head = first_param
+    body = second_param
 
     def _resolve(self, *, db, choice_points, yes, no, prune):
         raise TypeError("Implication '{}' is not a valid goal.".format(self))
 
 
 class Conjunction(InfixOperator):
+
     __slots__ = ()
     op = operator.and_
 
@@ -600,6 +609,38 @@ class Positive(PrefixOperator):
 class Negative(PrefixOperator):
     __slots__ = ()
     op = operator.neg
+
+
+var_suffix_map = collections.defaultdict(lambda: tabulate('_{:02X}?'.format))
+
+
+class Environment(dict):
+
+    def __call__(self, name):
+        try:
+            return self[name]
+        except KeyError:
+            var = self[name] = Variable(env=self, name=name)
+            return var
+
+    def __getattr__(self, name):
+        return self[name].ref
+
+    def __deepcopy__(self, memo):
+        env = memo[id(self)] = Environment()
+        return env
+
+    def rename_vars(self):
+        for variable in list(self.values()):
+            if isinstance(variable, Variable):
+                variable.name += next(var_suffix_map[variable.name])
+                self[variable.name] = variable
+
+    @property
+    class proxy(collections.ChainMap):
+
+        def __getitem__(self, key):
+            return collections.ChainMap.__getitem__(self, str(key))
 
 
 OPERATOR_FIXITIES = {
@@ -765,3 +806,7 @@ class Builder(ast.NodeVisitor):
     visit_BitAnd = visit_op(Conjunction, '&')
     visit_BitXor = visit_op(Disjunction, '^')
     visit_BitOr = visit_op(Adjunction, '|')
+
+
+def build(node):
+    return Builder(Environment()).build(node)

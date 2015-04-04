@@ -16,7 +16,7 @@ import operator
 from hornet.util import pairwise, identity, const, decrement
 from hornet.util import compose2 as compose
 from hornet.expressions import is_name, is_operator, is_tuple, is_astwrapper
-from hornet.expressions import lift, promote, AstWrapper
+from hornet.expressions import lift, promote
 
 
 class ParseError(Exception):
@@ -90,14 +90,6 @@ xfy = Infix.fixity(left=identity, right=decrement)
 yfx = Infix.fixity(left=decrement, right=identity)
 
 
-NON_OP = f(0)
-END = NON_OP(None)
-
-
-def make_token(fixities, node):
-    return fixities.get(type(node), NON_OP)(node)
-
-
 HORNET_FIXITIES = {
     ast.BitOr: xfy(10),
     ast.BitXor: xfy(20),
@@ -115,6 +107,14 @@ HORNET_FIXITIES = {
     ast.Invert: fy(70),
     ast.Pow: xfy(80),
 }
+
+
+NON_OP = f(0)
+END = NON_OP(None)
+
+
+def make_token(fixities, node):
+    return fixities.get(type(node), NON_OP)(node)
 
 
 def check_left(op, left_node):
@@ -153,6 +153,10 @@ def pratt_parse(nodes):
     return parse(0)
 
 
+def inherit_fixity(node):
+    return make_token(PYTHON_FIXITIES, node.op)
+
+
 # see: https://docs.python.org/3/reference/expressions.html#operator-precedence
 PYTHON_FIXITIES = {
     ast.BitOr: yfx(10),
@@ -170,8 +174,8 @@ PYTHON_FIXITIES = {
     ast.UAdd: fz(70),
     ast.Invert: fz(70),
     ast.Pow: xfy(80),
-    ast.UnaryOp: lambda node: make_token(PYTHON_FIXITIES, node.op),
-    ast.BinOp: lambda node: make_token(PYTHON_FIXITIES, node.op),
+    ast.UnaryOp: inherit_fixity,
+    ast.BinOp: inherit_fixity,
 }
 
 
