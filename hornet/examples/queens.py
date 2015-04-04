@@ -20,7 +20,6 @@ def main():
 
     db = Database()
 
-
     db.tell(
 
         queens(S) <<
