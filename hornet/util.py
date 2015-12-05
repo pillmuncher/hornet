@@ -110,7 +110,7 @@ def rotate(iterable):
     yield tmp
 
 
-def crocodile(iterable):
+def splitpairs(iterable):
     iterable = iter(iterable)
     for left in iterable:
         right = next(iterable)

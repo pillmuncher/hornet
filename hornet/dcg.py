@@ -15,9 +15,11 @@ import copy
 import functools
 import itertools
 
-from hornet.util import identity, foldr, rotate, crocodile
-from hornet.expressions import unit, Name, is_rshift, is_bitand, is_name
-from hornet.expressions import is_set, is_list, is_call, is_terminal
+from hornet.util import identity, foldr, rotate, splitpairs
+from hornet.expressions import (
+    unit, Name, is_rshift, is_bitand, is_name, is_set, is_list, is_call,
+    is_terminal
+)
 
 
 _C_ = Name("'C'")
@@ -46,10 +48,10 @@ def conjunction(left, right):
         return left or right
 
 
-def expand(node):
+def expand(root):
 
-    if not is_rshift(node):
-        return unit(node)
+    if not is_rshift(root):
+        return unit(root)
 
     def expand_call(node):
 
@@ -69,7 +71,7 @@ def expand(node):
 
         elif all(is_terminal(each) for each in node.elts):
             *elts, last = (
-                    collect_terminal(_C_(unit(each))) for each in node.elts)
+                collect_terminal(_C_(unit(each))) for each in node.elts)
             return foldr(conjunction, elts, cont(last))
 
         else:
@@ -152,9 +154,9 @@ def expand(node):
         from_right.appendleft(args.append)
         return call
 
-    clause = expand_clause(node)
+    clause = expand_clause(root)
 
-    pairs = crocodile(rotate(itertools.chain(from_left, from_right)))
+    pairs = splitpairs(rotate(itertools.chain(from_left, from_right)))
     for (set_left, set_right), var in zip(pairs, numbered_vars('_')):
         set_left(var)
         set_right(var)

@@ -9,16 +9,14 @@ __author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
 __license__ = 'MIT'
 
 
-import nose
-
-from hornet.test import *
+# from hornet.test import *
 
 
 def test_builder():
 
     from hornet import build_term
 
-    from hornet.symbols import _, f, g, h, a, b, c, d, e, X, Y, Z, s, vp, np, S0, S1
+    from hornet.symbols import _, f, a, b, c, d, e, X, Y, Z
 
     print(build_term(a))
     print(build_term(f(a, b) << b & c & d))
@@ -26,15 +24,6 @@ def test_builder():
     print(build_term(f(X, Y) << b(X) & c(Y) & d(_, Z, [e, d | a])))
     print(build_term(f(X, Y) << b(X) & c(Y) & d(_, Z, [e, d | [a]])))
     print(build_term(a * (b + c)))
-    #ast_test_all(
-        #ast_eq,
-        #build_term,
-        #rearrange,
-        #(
-            #s >> vp,
-            #s(S0, S1) << vp(S0, S1),
-        #),
-    #)
 
 
 def test_resolver():
@@ -42,7 +31,7 @@ def test_resolver():
     from pprint import pprint
 
     from hornet import Database
-    from hornet.symbols import _, f, g, h, a, b, c, d, e, X, Y, Z, U, V, W
+    from hornet.symbols import _, f, g, h, a, b, c, X, Y, Z
 
     db = Database()
     db.tell(
@@ -70,3 +59,7 @@ def test_resolver():
 
     for subst in db.ask(~g(a, b, Y)):
         print(subst)
+
+if __name__ == '__main__':
+    test_builder()
+    test_resolver()

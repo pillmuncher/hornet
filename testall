@@ -1,0 +1,2 @@
+#!/usr/bin/env zsh
+nosetests --with-coverage --cover-package=hornet --with-doctest **/test_*.py

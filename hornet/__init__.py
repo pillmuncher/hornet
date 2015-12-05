@@ -22,7 +22,7 @@ def _install_symbols_module():
 
     class SymbolsModule(ModuleType):
         __all__ = []
-        __file__ = __file__
+        __file__ = None  # needed so nose doesn't barf at us
         __getattr__ = staticmethod(lru_cache()(Name))
 
     class SymbolsImporter(MetaPathFinder, Loader):
@@ -120,7 +120,7 @@ expand_term = bind_compose(rearrange, expand, build)
 build_term = bind_compose(rearrange, build)
 
 
-is_atomic = rpartial(isinstance, (Atom, String, Num))
+is_atomic = rpartial(isinstance, (Atom, String, Number))
 
 
 ASSERTABLE = (
@@ -291,7 +291,7 @@ def _listing_1(term, env, db, trail):
 
 def _listing_2(term, env, db, trail):
     expect(env.Predicate, Atom)
-    expect(env.Arity, Num)
+    expect(env.Arity, Number)
     indicator = Indicator(env.Predicate(), env.Arity())
     _listing(indicator, db.get(indicator))
 
@@ -323,17 +323,17 @@ def _atomic(term, env, db, trail):
 
 
 def _integer(term, env, db, trail):
-    expect(env.X, Num)
+    expect(env.X, Number)
     expect(env.X(), int)
 
 
 def _real(term, env, db, trail):
-    expect(env.X, Num)
+    expect(env.X, Number)
     expect(env.X(), float)
 
 
 def _numeric(term, env, db, trail):
-    expect(env.X, Num)
+    expect(env.X, Number)
     expect(env.X(), numbers.Number)
 
 

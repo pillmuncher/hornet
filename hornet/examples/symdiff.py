@@ -269,13 +269,13 @@ def diff_test(db):
     print(build_term(F))
 
     for subst in db.ask(simp(F, A) & d(A, x, B) & simp(B, C)):
+        pass
         print(subst[A])
         print(subst[B])
         print(subst[C])
-        #env = dict(globals())
-        #for i in range(1, 11):
-            #env['x'] = i
-            #print(expr_eval(F, env), '-->', eval(str(subst[C]), env))
+        # for i in range(1, 11):
+            # env = dict(x=i)
+            # print(expr_eval(F, env), '-->', eval(str(subst[C]), env))
 
 
 def expr_eval(expr, globals):

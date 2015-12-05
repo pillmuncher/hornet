@@ -30,7 +30,7 @@ __all__ = [
     'Relation',
     'Atom',
     'String',
-    'Num',
+    'Number',
     'List',
     'Nil',
     'NIL',
@@ -114,6 +114,7 @@ def comma_separated(items):
 
 Indicator = collections.namedtuple('Indicator', 'functor arity')
 Indicator.__str__ = lambda self: '{}/{}'.format(*self)
+Indicator.__repr__ = Indicator.__str__
 
 
 class UnificationFailed(Exception):
@@ -238,7 +239,7 @@ class Structure:
     def __init__(self, *, env, name, params=(), actions=()):
         self.env = env
         self.name = name
-        self.params = params
+        self.params = tuple(params)
         self.actions = list(actions)
 
     def __repr__(self):
@@ -327,14 +328,16 @@ class Structure:
 
         @tco
         def try_next():
-            for goal in choice_point:
+            for goals in choice_point:
                 break
             else:
                 return prune() if is_cut(self) else no()
-            if goal is None:
+            if goals is None:
+                #  goals is the empty body of a fact
                 return yes(try_next)
             else:
-                return goal.ref._resolve(
+                # goals is a rule body, we need to recurse
+                return goals.ref._resolve(
                     db=db,
                     choice_points=choice_points,
                     yes=yes,
@@ -380,7 +383,7 @@ class String(Structure):
     fresh = get_self
 
 
-class Num(Structure):
+class Number(Structure):
 
     __slots__ = ()
 
@@ -642,6 +645,11 @@ class Environment(dict):
         def __getitem__(self, key):
             return collections.ChainMap.__getitem__(self, str(key))
 
+        def __repr__(self):
+            return 'Environment.{}'.format(super().__repr__())
+
+        __str__ = __repr__
+
 
 OPERATOR_FIXITIES = {
     Adjunction: xfy(10),
@@ -711,7 +719,7 @@ class Builder(ast.NodeVisitor):
         self.append(Bytes(env=self.env, name=node.s))
 
     def visit_Num(self, node):
-        self.append(Num(env=self.env, name=node.n))
+        self.append(Number(env=self.env, name=node.n))
 
     def visit_Tuple(self, node):
         raise TypeError('Tuples are not allowed: {}'.format(node))
@@ -810,3 +818,75 @@ class Builder(ast.NodeVisitor):
 
 def build(node):
     return Builder(Environment()).build(node)
+
+
+# class PythonBuilder:
+
+    # def build_Wildcard(self, node):
+        # pass
+
+    # def build_Variable(self, node):
+        # pass
+
+    # def build_Relation(self, node):
+        # pass
+
+    # def build_Atom(self, node):
+        # pass
+
+    # def build_String(self, node):
+        # pass
+
+    # def build_Num(self, node):
+        # pass
+
+    # def build_List(self, node):
+        # pass
+
+    # def build_Nil(self, node):
+        # pass
+
+    # def build_Implication(self, node):
+        # pass
+
+    # def build_Conjunction(self, node):
+        # pass
+
+    # def build_Disjunction(self, node):
+        # pass
+
+    # def build_Adjunction(self, node):
+        # pass
+
+    # def build_Conditional(self, node):
+        # pass
+
+    # def build_Addition(self, node):
+        # pass
+
+    # def build_Subtraction(self, node):
+        # pass
+
+    # def build_Multiplication(self, node):
+        # pass
+
+    # def build_Division(self, node):
+        # pass
+
+    # def build_FloorDivision(self, node):
+        # pass
+
+    # def build_Remainder(self, node):
+        # pass
+
+    # def build_Exponentiation(self, node):
+        # pass
+
+    # def build_Negation(self, node):
+        # pass
+
+    # def build_Positive(self, node):
+        # pass
+
+    # def build_Negative(self, node):
+        # pass
