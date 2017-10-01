@@ -64,7 +64,7 @@ USE_TCO = True
 
 if USE_TCO:
 
-    from .tailcalls import tco, trampoline, abort as failure, throw as success
+    from .tailcalls import tco, trampoline, abort as failure, emit as success
 
 else:
 

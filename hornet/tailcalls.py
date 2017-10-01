@@ -22,7 +22,7 @@ def abort(*args, **kwargs):
     return None, (), args, kwargs
 
 
-def throw(cont, *args, _=None, **kwargs):
+def emit(cont, *args, _=None, **kwargs):
     return cont, [_], args, kwargs
 
 
