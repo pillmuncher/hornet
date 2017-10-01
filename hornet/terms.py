@@ -685,7 +685,7 @@ class Builder(ast.NodeVisitor):
         assert self.stack == []
         self.push()
         self.visit(node)
-        assert len(self.stack) == 1 == len(self.stack[0])
+        assert 1 == len(self.stack) == len(self.stack[0])
         return self.pop().pop()
 
     def visit_Name(self, node):
