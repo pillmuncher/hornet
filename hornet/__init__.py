@@ -269,7 +269,7 @@ def _writeln(term, env, db, trail):
 
 
 def _findall_3(term, env, db, trail):
-    results = [copy.deepcopy(env.Object) for _ in env.Goal.resolve(db)]
+    results = [copy.deepcopy(env.Object.ref) for _ in env.Goal.resolve(db)]
     unify(env.List, make_list(env, results), trail)
 
 

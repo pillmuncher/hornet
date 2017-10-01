@@ -23,7 +23,7 @@ def main():
     db.tell(
 
         queens(S) <<
-            let(Ns, [i + 1 for i in range(8)]) &
+            let(Ns, [i + 1 for i in range(6)]) &
             solution(Ns, Ns, [], S),
 
         solution([X|Xs], Y0s, Qs, [X/Y|S]) <<

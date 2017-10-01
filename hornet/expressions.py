@@ -190,11 +190,11 @@ def Wrapper(wrapped):
     return AstWrapper(wrapped=wrapped)
 
 
-# The last set of factory functions are used as operator methods of  Expression
+# The last set of factory functions are used as operator methods of Expression
 # objects.  They are bound to the Expression class below.
 #
 # When trying to understand what's going on in these functions, some questions
-# may arise: Where come the arguments from and, if   these are supposed to be
+# may arise: Where come the arguments from and, if these are supposed to be
 # operator methods in the Expression class, then where the heck is self?
 #
 # Let's see an example:
@@ -209,7 +209,7 @@ def Wrapper(wrapped):
 # x + 3 triggers Expression.__add__ to be called with arguments x and 3.
 # Expression.__add__ is bound to the Add factory function which has two
 # parameters left and right.  So, x gets passed as left and 3 gets passed as
-# right.  Add now calles astify on each argument. For left this just extracts
+# right.  Add now calls astify on each argument. For left this just extracts
 # the already existing AST node, but for right (which is 3), astify first calls
 # the factory function Num, which in turn creates an Expression wrapped around
 # an AST node ast.Num(n=3) and then unwraps it again and returns just the AST.
@@ -340,22 +340,18 @@ Expression.__ror__ = flip(BitOr)
 # Any Python object 'item' will be turned into an Expression object with its
 # AST created if necessary:
 
-_promotions = [
-    (Expression, identity),
-    (bytes, Bytes),
-    (str, Str),
-    (numbers.Number, Num),
-    (tuple, Tuple),
-    (list, List),
-    (set, Set),
-    (object, Wrapper),
-]
-
-
+@functools.singledispatch
 def promote(item):
-    for T, F in _promotions:
-        if isinstance(item, T):
-            return F(item)
+    return Wrapper(item)
+
+
+promote.register(Expression)(identity)
+promote.register(bytes)(Bytes)
+promote.register(str)(Str)
+promote.register(numbers.Number)(Num)
+promote.register(tuple)(Tuple)
+promote.register(list)(List)
+promote.register(set)(Set)
 
 
 # Given any Python object 'item', return its AST (and create it if necessary):

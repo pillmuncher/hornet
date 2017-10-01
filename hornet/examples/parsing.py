@@ -228,12 +228,12 @@ def grammar(db):
     #words = [B, 'hunde', 'jagen', C, 'katzen']
     #words = ['manche', 'maeuse', 'jagen' | B]
     #words = [D, 'kater', 'jagen' | B]
-    #words = 'manche maeuse jagen viele katzen'.split()
-    #words = 'eine maus jagt viele katzen'.split()
-    #words = [B, C, 'jagen']
-    #words = ['manche', B, C]
-    words = [B, C, D, 'die', F]
-    #words = [B, 'hund', D, E, F]
+    # words = 'manche maeuse jagen viele katze'.split()
+    # words = 'eine maus jagt viele katzen'.split()
+    # words = [B, C, 'jagen']
+    words = ['manche', B, C]
+    # words = ['der', C, D, 'die', F]
+    # words = [B, 'hund', D, E, F]
     #words = [B, C, 'jagt', D, E]
     #words = [A, 'jagen' | E]
 

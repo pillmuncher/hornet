@@ -249,7 +249,7 @@ class Structure:
         return type(self)(
             env=deepcopy(self.env, memo),
             name=self.name,
-            params=[deepcopy(each, memo) for each in self.params],
+            params=[deepcopy(each.ref, memo) for each in self.params],
             actions=self.actions,
         )
 
@@ -348,6 +348,41 @@ class Structure:
         return try_next()
 
 
+class Atomic(Structure):
+    __slots__ = ()
+    __call__ = get_name
+    __str__ = get_name
+    __deepcopy__ = get_self
+    fresh = get_self
+
+
+class Atom(Atomic):
+    __slots__ = ()
+
+
+class String(Atomic):
+    __slots__ = ()
+    __repr__ = compose(get_name, "'{}'".format)
+
+
+class Number(Atomic):
+    __slots__ = ()
+    __str__ = compose(get_name, str)
+
+
+class Nil(Atomic):
+    __slots__ = ()
+    __call__ = list
+    __str__ = const('[]')
+
+    def __init__(self):
+        Atomic.__init__(self, env={}, name='[]')
+
+
+NIL = Nil()
+is_nil = rpartial(isinstance, Nil)
+
+
 class Relation(Structure):
 
     __slots__ = ()
@@ -358,40 +393,6 @@ class Relation(Structure):
         return '{}({})'.format(
             self.name,
             comma_separated(str(each.ref) for each in self.params))
-
-
-class Atom(Structure):
-
-    __slots__ = ()
-
-    __call__ = get_name
-    __str__ = get_name
-    __deepcopy__ = get_self
-
-    fresh = get_self
-
-
-class String(Structure):
-
-    __slots__ = ()
-
-    __call__ = get_name
-    __str__ = get_name
-    __repr__ = compose(get_name, "'{}'".format)
-    __deepcopy__ = get_self
-
-    fresh = get_self
-
-
-class Number(Structure):
-
-    __slots__ = ()
-
-    __call__ = get_name
-    __str__ = compose(get_name, str)
-    __deepcopy__ = get_self
-
-    fresh = get_self
 
 
 class List(Structure):
@@ -423,7 +424,7 @@ class List(Structure):
     def __deepcopy__(self, memo):
         return List(
             env=copy.deepcopy(self.env, memo),
-            params=[copy.deepcopy(each, memo) for each in self.params],
+            params=[copy.deepcopy(each.ref, memo) for each in self.params],
             actions=self.actions)
 
     def fresh(self, env):
@@ -431,24 +432,6 @@ class List(Structure):
             env=env,
             params=[each.fresh(env) for each in self.params],
             actions=self.actions)
-
-
-class Nil(Structure):
-
-    __slots__ = ()
-
-    def __init__(self):
-        Structure.__init__(self, env={}, name='[]')
-
-    __call__ = list
-    __str__ = const('[]')
-    __deepcopy__ = get_self
-
-    fresh = get_self
-
-
-NIL = Nil()
-is_nil = rpartial(isinstance, Nil)
 
 
 class PrefixOperator(Structure):
