@@ -673,6 +673,12 @@ class Builder(ast.NodeVisitor):
         assert len(self.stack) == 1 == len(self.stack[0])
         return self.pop().pop()
 
+    def push(self):
+        self.stack.append([])
+
+    def pop(self):
+        return self.stack.pop()
+
     def top(self):
         return self.stack[-1]
 
@@ -681,12 +687,6 @@ class Builder(ast.NodeVisitor):
 
     def append(self, item):
         self.top().append(item)
-
-    def push(self):
-        self.stack.append([])
-
-    def pop(self):
-        return self.stack.pop()
 
     def visit_Name(self, node):
         if is_wildcard_name(node.id):
