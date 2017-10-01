@@ -18,7 +18,7 @@ def trampoline(bouncing, *args, **kwargs):
         yield from result
 
 
-def land(*args, **kwargs):
+def abort(*args, **kwargs):
     return None, (), args, kwargs
 
 
