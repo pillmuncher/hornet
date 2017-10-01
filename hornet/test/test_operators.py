@@ -13,7 +13,7 @@ import nose
 
 from hornet.test import *
 from hornet.util import identity
-from hornet.expressions import bind, lift
+from hornet.expressions import bind, mlift
 
 
 def test_rearrange():
@@ -25,7 +25,7 @@ def test_rearrange():
     ast_test_all(
         ast_eq,
         rearrange,
-        lift(identity),
+        mlift(identity),
         (a, a),
         ((((a & b) & c) & d) & e, a & (b & (c & (d & e)))),
         ((((a << b) & c) & d) & e, a << (b & (c & (d & e)))),

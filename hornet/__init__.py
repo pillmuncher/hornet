@@ -50,7 +50,7 @@ import numbers
 import pprint
 
 from hornet.util import rpartial, foldr
-from hornet.expressions import bind_compose, promote, Name
+from hornet.expressions import mcompose, promote, Name
 from hornet.operators import rearrange
 from hornet.dcg import _C_, expand
 from hornet.terms import *
@@ -116,11 +116,11 @@ def unify(this, that, trail):
     this.ref.unify(that.ref, trail)
 
 
-expand_term = bind_compose(rearrange, expand, build)
-build_term = bind_compose(rearrange, build)
+expand_term = mcompose(rearrange, expand, build)
+build_term = mcompose(rearrange, build)
 
 
-is_atomic = rpartial(isinstance, (Atom, String, Number))
+is_atomic = rpartial(isinstance, Atomic)
 
 
 ASSERTABLE = (

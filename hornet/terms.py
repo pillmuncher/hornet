@@ -28,6 +28,7 @@ __all__ = [
     'Variable',
     'Structure',
     'Relation',
+    'Atomic',
     'Atom',
     'String',
     'Number',

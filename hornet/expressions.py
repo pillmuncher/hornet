@@ -25,8 +25,7 @@ __all__ = [
     # monadic functions:
     'unit',
     'bind',
-    'lift',
-    'bind_compose',
+    'mlift',
     'mcompose',
     # helper functions:
     'promote',
@@ -109,53 +108,49 @@ def bind(expr, mfunc):
     return mfunc(expr.node)
 
 
-# The function lift(func:T --> AST) --> (T --> Expression) "lifts" a normal
+# The function mlift(func:T --> AST) --> (T --> Expression) "lifts" a normal
 # function that returns an AST into a function that returns an Expression.
 # It is also used as a function decorator.
 
-def lift(func):
+def mlift(func):
     return compose(func, unit)
-
-
-def bind_compose(*mfuncs):
-    return functools.partial(foldl, bind, mfuncs)
 
 
 # Make monadic functions mf:AST --> Expression composable:
 
 def mcompose(*mfuncs):
-    return compose(unit, bind_compose(*mfuncs))
+    return functools.partial(foldl, bind, mfuncs)
 
 
 # Here come the Expression factory functions.
 #
 # The arguments they take are converted to AST objects if necessary. They
-# return an AST node that gets wrapped in an Expression object by the lift
+# return an AST node that gets wrapped in an Expression object by the mlift
 # decorator.
 # Their names don't conform to PEP-8 because they reflect the AST node types
 # they represent.
 
-@lift
+@mlift
 def Name(name, **kwargs):
     return ast.Name(id=name, ctx=ast.Load(), **kwargs)
 
 
-@lift
+@mlift
 def Str(str_):
     return ast.Str(s=str_)
 
 
-@lift
+@mlift
 def Bytes(bytes_):
     return ast.Bytes(s=bytes_)
 
 
-@lift
+@mlift
 def Num(num):
     return ast.Num(n=num)
 
 
-@lift
+@mlift
 def Tuple(tuple_):
     return ast.Tuple(
         elts=[astify(each) for each in tuple_],
@@ -163,7 +158,7 @@ def Tuple(tuple_):
     )
 
 
-@lift
+@mlift
 def List(list_):
     return ast.List(
         elts=[astify(each) for each in list_],
@@ -171,7 +166,7 @@ def List(list_):
     )
 
 
-@lift
+@mlift
 def Set(set_):
     return ast.Set(elts=[astify(each) for each in set_])
 
@@ -185,7 +180,7 @@ class AstWrapper(ast.AST):
     pass
 
 
-@lift
+@mlift
 def Wrapper(wrapped):
     return AstWrapper(wrapped=wrapped)
 
@@ -214,7 +209,7 @@ def Wrapper(wrapped):
 # the factory function Num, which in turn creates an Expression wrapped around
 # an AST node ast.Num(n=3) and then unwraps it again and returns just the AST.
 # Then Add attaches both AST nodes as children to an ast.BinOp node which it
-# returns.  Since Add was decorated with the lift function, the result gets
+# returns.  Since Add was decorated with the mlift function, the result gets
 # wrapped in an Expression node, which is returned.  The return value then gets
 # bound to y.  In the next line, y + 5 triggers Expression.__add__ again and
 # the same thing as before happens, but with arguments y and 5.
@@ -247,7 +242,7 @@ def Wrapper(wrapped):
 # Then this expression is the same as ((x - (y * z)) + 1).
 
 @qualname('Expression.__getitem__')
-@lift
+@mlift
 def Subscript(target, subscript):
     return ast.Subscript(
         value=astify(target),
@@ -257,7 +252,7 @@ def Subscript(target, subscript):
 
 
 @qualname('Expression.__call__')
-@lift
+@mlift
 def Call(target, *args):
     return ast.Call(
         func=astify(target),
@@ -270,7 +265,7 @@ def Call(target, *args):
 
 def _unary_op(op, name):
     @qualname(name)
-    @lift
+    @mlift
     def op_method(right):
         return ast.UnaryOp(op(), astify(right))
     return op_method
@@ -283,7 +278,7 @@ Invert = _unary_op(ast.Invert, 'Expression.__invert__')
 
 def _binary_op(op, name):
     @qualname(name)
-    @lift
+    @mlift
     def op_method(left, right):
         return ast.BinOp(astify(left), op(), astify(right))
     return op_method

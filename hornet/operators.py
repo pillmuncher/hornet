@@ -16,7 +16,7 @@ import operator
 from hornet.util import pairwise, identity, const, decrement
 from hornet.util import compose2 as compose
 from hornet.expressions import is_name, is_operator, is_tuple, is_astwrapper
-from hornet.expressions import lift, promote
+from hornet.expressions import mlift, promote
 
 
 class ParseError(Exception):
@@ -308,4 +308,4 @@ def _rearrange(node):
     return pratt_parse(flattened)
 
 
-rearrange = lift(_rearrange)
+rearrange = mlift(_rearrange)

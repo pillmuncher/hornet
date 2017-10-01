@@ -53,6 +53,27 @@ def expand(root):
     if not is_rshift(root):
         return unit(root)
 
+    from_left = []
+    from_right = collections.deque()
+
+    def collect_functor(call):
+        args = call.node.args
+        from_left.append(args.append)
+        from_left.append(args.append)
+        return call
+
+    def collect_terminal(call):
+        args = call.node.args
+        from_left.append(functools.partial(args.insert, -1))
+        from_left.append(args.append)
+        return call
+
+    def collect_pushback(call):
+        args = call.node.args
+        from_right.appendleft(functools.partial(args.insert, -2))
+        from_right.appendleft(args.append)
+        return call
+
     def expand_call(node):
 
         if is_name(node):
@@ -76,7 +97,7 @@ def expand(root):
 
         else:
             raise TypeError(
-                'Non-terminal in DCG terrminal list found: {}'.format(node))
+                'Non-terminal in DCG terminal list found: {}'.format(node))
 
     def expand_pushbacks(node):
 
@@ -132,27 +153,6 @@ def expand(root):
             return rule(
                 expand_call(head),
                 expand_body(body, identity))
-
-    from_left = []
-    from_right = collections.deque()
-
-    def collect_functor(call):
-        args = call.node.args
-        from_left.append(args.append)
-        from_left.append(args.append)
-        return call
-
-    def collect_terminal(call):
-        args = call.node.args
-        from_left.append(functools.partial(args.insert, -1))
-        from_left.append(args.append)
-        return call
-
-    def collect_pushback(call):
-        args = call.node.args
-        from_right.appendleft(functools.partial(args.insert, -2))
-        from_right.appendleft(args.append)
-        return call
 
     clause = expand_clause(root)
 

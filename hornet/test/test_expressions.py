@@ -26,7 +26,7 @@ load = ast.Load()
 def test_monad_laws():
     "Test if the basic monadic functions conform to the three Monad Laws."
 
-    from hornet.expressions import unit, bind, lift
+    from hornet.expressions import unit, bind, mlift
 
     x = ast.Name(id='x', ctx=load)
     y = ast.Name(id='y', ctx=load)
@@ -38,7 +38,7 @@ def test_monad_laws():
     or_z = lambda u: binop(u, ast.BitOr, z)
     y_and = lambda v: binop(y, ast.BitAnd, v)
     z_or = lambda v: binop(z, ast.BitOr, v)
-    mfuncs = [unit, lift(identity), and_y, or_z, y_and, z_or]
+    mfuncs = [unit, mlift(identity), and_y, or_z, y_and, z_or]
 
     # left identity:
     for mf in mfuncs:
