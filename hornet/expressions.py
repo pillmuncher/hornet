@@ -342,8 +342,8 @@ def promote(item):
 
 promote.register(Expression)(identity)
 promote.register(bytes)(Bytes)
-promote.register(str)(Str)
 promote.register(numbers.Number)(Num)
+promote.register(str)(Str)
 promote.register(tuple)(Tuple)
 promote.register(list)(List)
 promote.register(set)(Set)
