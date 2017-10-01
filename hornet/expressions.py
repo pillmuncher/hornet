@@ -332,12 +332,12 @@ Expression.__or__ = BitOr
 Expression.__ror__ = flip(BitOr)
 
 
-# Any Python object 'item' will be turned into an Expression object with its
+# Any Python object 'obj' will be turned into an Expression object with its
 # AST created if necessary:
 
 @functools.singledispatch
-def promote(item):
-    return Wrapper(item)
+def promote(obj):
+    return Wrapper(obj)
 
 
 promote.register(Expression)(identity)
