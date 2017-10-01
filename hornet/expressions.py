@@ -349,10 +349,10 @@ promote.register(list)(List)
 promote.register(set)(Set)
 
 
-# Given any Python object 'item', return its AST (and create it if necessary):
+# Given any Python object 'obj', return its AST (and create it if necessary):
 
-def astify(item):
-    return promote(item).node
+def astify(obj):
+    return promote(obj).node
 
 
 def is_binop(node, op):
