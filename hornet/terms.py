@@ -156,9 +156,10 @@ class Variable(collections.Counter):
     def __str__(self):
         if self.ref is self:
             return min(
-                    variable.name
-                    for variable in self.aliases()
-                    if variable.env is self.env)
+                variable.name
+                for variable in self.aliases()
+                if variable.env is self.env
+            )
         else:
             return str(self.ref)
 
