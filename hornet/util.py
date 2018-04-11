@@ -34,11 +34,13 @@ def decrement(x):
 
 
 def identity(x):
-    return x          # AKA: the I combinator
+    "The I combinator"
+    return x
 
 
 def const(x):
-    return lambda _: x   # AKA: the K combinator
+    "The K combinator"
+    return lambda _: x
 
 
 def first_arg(x, *a, **k):
