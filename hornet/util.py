@@ -13,18 +13,36 @@ from functools import partial, wraps, reduce as foldl
 from itertools import chain, count, tee, zip_longest
 
 
-noop = lambda *a, **k: None
-wrap = lambda f: wraps(f)(lambda *a, **k: f(*a, **k))
-flip = lambda f: wraps(f)(lambda *a: f(*reversed(a)))
+def noop(*a, **k):
+    return None
 
 
-increment = lambda x: x + 1
-decrement = lambda x: x - 1
+def wrap(f):
+    return wraps(f)(lambda *a, **k: f(*a, **k))
 
-identity = lambda x: x          # AKA: the I combinator
-const = lambda x: lambda _: x   # AKA: the K combinator
 
-first_arg = lambda x, *a, **k: x
+def flip(f):
+    return wraps(f)(lambda *a: f(*reversed(a)))
+
+
+def increment(x):
+    return x + 1
+
+
+def decrement(x):
+    return x - 1
+
+
+def identity(x):
+    return x          # AKA: the I combinator
+
+
+def const(x):
+    return lambda _: x   # AKA: the K combinator
+
+
+def first_arg(x, *a, **k):
+    return x
 
 
 def tabulate(function, start=0):
@@ -35,8 +53,8 @@ def tabulate(function, start=0):
 def compose(*fs):
 
     # make me monoidal:
-    #if not fs:
-        #return identity
+    # if not fs:
+        # return identity
 
     f, *gs = fs
 
@@ -50,8 +68,12 @@ def compose(*fs):
 
 
 rcompose = flip(compose)
-compose2 = lambda f, g: lambda *a, **k: g(f(*a, **k))
-rcompose2 = lambda f, g: lambda *a, **k: f(g(*a, **k))
+
+
+def compose2(f, g): return lambda *a, **k: g(f(*a, **k))
+
+
+def rcompose2(f, g): return lambda *a, **k: f(g(*a, **k))
 
 
 _sentinel = object()
@@ -75,7 +97,8 @@ def rfoldr(func, seq, start=_sentinel):
     return foldl(func, reversed(seq), start)
 
 
-rpartial = lambda f, *args, **kwargs: partial(flip(f), *args, **kwargs)
+def rpartial(f, *args, **kwargs):
+    return partial(flip(f), *args, **kwargs)
 
 
 def pairwise(iterable, *, rotate=False, fillvalue=_sentinel):
@@ -102,6 +125,7 @@ def qualname(fullname):
         return func
 
     return name_setter
+
 
 def rotate(iterable):
     iterable = iter(iterable)

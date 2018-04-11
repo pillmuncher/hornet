@@ -12,12 +12,10 @@ __license__ = 'MIT'
 # import nose
 
 import ast
-import collections
 import itertools
-import operator
 
-from hornet.test import *
-from hornet.util import identity, compose2 as compose
+from hornet.test import ast_eq
+from hornet.util import identity
 
 
 load = ast.Load()
@@ -33,11 +31,21 @@ def test_monad_laws():
     z = ast.Name(id='z', ctx=load)
     mx = unit(x)
 
-    binop = lambda u, op, v: unit(ast.BinOp(left=u, op=op(), right=v))
-    and_y = lambda u: binop(u, ast.BitAnd, y)
-    or_z = lambda u: binop(u, ast.BitOr, z)
-    y_and = lambda v: binop(y, ast.BitAnd, v)
-    z_or = lambda v: binop(z, ast.BitOr, v)
+    def binop(u, op, v):
+        return unit(ast.BinOp(left=u, op=op(), right=v))
+
+    def and_y(u):
+        return binop(u, ast.BitAnd, y)
+
+    def or_z(u):
+        return binop(u, ast.BitOr, z)
+
+    def y_and(v):
+        return binop(y, ast.BitAnd, v)
+
+    def z_or(v):
+        return binop(z, ast.BitOr, v)
+
     mfuncs = [unit, mlift(identity), and_y, or_z, y_and, z_or]
 
     # left identity:
@@ -70,7 +78,6 @@ def test_expression_factories():
     name = 'joe'
     num = 123
     keys = [Str('a'), Str('b'), Str('c')]
-    values = [Num(1), Num(2), Num(3)]
     pairs = (
         [Name(name), ast.Name(id=name, ctx=load)],
         [Str(name), ast.Str(s=name)],
@@ -93,8 +100,6 @@ def test_expression_operators():
 
     x_name = x.node
     y_name = y.node
-    name = 'joe'
-    num = 123
     items = [Num(1), Num(2), Num(3)]
 
     pairs = (

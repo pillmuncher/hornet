@@ -9,9 +9,6 @@ __author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
 __license__ = 'MIT'
 
 
-# from hornet.test import *
-
-
 def test_builder():
 
     from hornet import build_term
@@ -59,6 +56,7 @@ def test_resolver():
 
     for subst in db.ask(~g(a, b, Y)):
         print(subst)
+
 
 if __name__ == '__main__':
     test_builder()

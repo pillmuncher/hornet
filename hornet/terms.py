@@ -274,7 +274,7 @@ class Structure:
         variable.unify_structure(self, trail)
 
     def unify_structure(self, other, trail):
-        if type(self) != type(other):
+        if not isinstance(self, type(other)):
             raise UnificationFailed
         elif self.indicator != other.indicator:
             raise UnificationFailed
@@ -495,7 +495,9 @@ class InfixOperator(Structure):
 class Implication(InfixOperator):
 
     __slots__ = ()
-    op = lambda left, right: left or not right  # reverse implication: l << r
+
+    # reverse implication: l << r
+    def op(left, right): return left or not right
 
     head = first_param
     body = second_param
@@ -808,70 +810,70 @@ def build(node):
 # class PythonBuilder:
 
     # def build_Wildcard(self, node):
-        # pass
+    # pass
 
     # def build_Variable(self, node):
-        # pass
+    # pass
 
     # def build_Relation(self, node):
-        # pass
+    # pass
 
     # def build_Atom(self, node):
-        # pass
+    # pass
 
     # def build_String(self, node):
-        # pass
+    # pass
 
     # def build_Num(self, node):
-        # pass
+    # pass
 
     # def build_List(self, node):
-        # pass
+    # pass
 
     # def build_Nil(self, node):
-        # pass
+    # pass
 
     # def build_Implication(self, node):
-        # pass
+    # pass
 
     # def build_Conjunction(self, node):
-        # pass
+    # pass
 
     # def build_Disjunction(self, node):
-        # pass
+    # pass
 
     # def build_Adjunction(self, node):
-        # pass
+    # pass
 
     # def build_Conditional(self, node):
-        # pass
+    # pass
 
     # def build_Addition(self, node):
-        # pass
+    # pass
 
     # def build_Subtraction(self, node):
-        # pass
+    # pass
 
     # def build_Multiplication(self, node):
-        # pass
+    # pass
 
     # def build_Division(self, node):
-        # pass
+    # pass
 
     # def build_FloorDivision(self, node):
-        # pass
+    # pass
 
     # def build_Remainder(self, node):
-        # pass
+    # pass
 
     # def build_Exponentiation(self, node):
-        # pass
+    # pass
 
     # def build_Negation(self, node):
-        # pass
+    # pass
 
     # def build_Positive(self, node):
-        # pass
+    # pass
 
     # def build_Negative(self, node):
-        # pass
+    # pass

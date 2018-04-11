@@ -28,7 +28,7 @@ def expression_all(test, mf_result, mf_expected, *term_pairs):
         expected = bind(expected, mf_expected)
         try:
             test(result, expected)
-        except:
+        except BaseException:
             print(term)
             print(result)
             print(expected)
@@ -41,6 +41,6 @@ def expression_all_raise(error, test, *invalid):
         try:
             with pytest.raises(error):
                 bind(each, test)
-        except:
+        except BaseException:
             print(each)
             raise

@@ -15,7 +15,7 @@ def _install_symbols_module():
 
     from functools import lru_cache
     from importlib.abc import MetaPathFinder, Loader
-    from importlib.machinery import  ModuleSpec
+    from importlib.machinery import ModuleSpec
     from types import ModuleType
 
     from hornet.expressions import Name
@@ -41,7 +41,6 @@ def _install_symbols_module():
 
 
 _install_symbols_module()
-
 
 
 import collections
@@ -465,30 +464,30 @@ def _bootstrap():
         findall(Object, Goal, List)[_findall_3],
         findall(Object, Goal, List, Rest)[_findall_4],
 
-        member(H, [H|T]),
-        member(G, [H|T]) <<
-            member(G, T),
+        member(H, [H | T]),
+        member(G, [H | T]) <<
+        member(G, T),
 
         append([], A, A),
-        append([A|B], C, [A|D]) <<
-                append(B, C, D),
+        append([A | B], C, [A | D]) <<
+        append(B, C, D),
 
         reverse(X, Y) <<
-            reverse(X, [], Y),
+        reverse(X, [], Y),
 
         reverse([], Y, Y),
-        reverse([X|P], Q, Y) <<
-            reverse(P, [X|Q], Y),
+        reverse([X | P], Q, Y) <<
+        reverse(P, [X | Q], Y),
 
-        select(X, [X|T], T),
-        select(X, [H|T], [H|Rest]) <<
-            select(X, T, Rest),
+        select(X, [X | T], T),
+        select(X, [H | T], [H | Rest]) <<
+        select(X, T, Rest),
 
         write(X)[_write],
 
         writeln(X)[_writeln],
 
-        lwriteln([H|T]) << writeln(H) & lwriteln(T),
+        lwriteln([H | T]) << writeln(H) & lwriteln(T),
         lwriteln([]) << nl,
 
         nl[lambda *a: print()],
@@ -499,7 +498,7 @@ def _bootstrap():
 
         listing(Predicate, Arity)[_listing_2],
 
-        _C_([X|L], X, L),
+        _C_([X | L], X, L),
 
         atomic(X)[_atomic],
 
@@ -520,32 +519,32 @@ def _bootstrap():
         univ(T, L)[_univ],
 
         arithmetic_equal(X, Y) <<
-            let(Z, X) &
-            let(Z, Y),
+        let(Z, X) &
+        let(Z, Y),
 
         arithmetic_not_equal(X, Y) <<
-            let(Z, X) &
-            let(Z, Y) & cut[_fail],
+        let(Z, X) &
+        let(Z, Y) & cut[_fail],
         arithmetic_not_equal(_, _),
 
         transpose(L, T)[_transpose],
 
-        maplist(G, [H|T]) <<
-            cut & univ(G1, [G, H]) & G1 &
-            maplist(G, T),
+        maplist(G, [H | T]) <<
+        cut & univ(G1, [G, H]) & G1 &
+        maplist(G, T),
         maplist(_, []),
 
         length(L, N) <<
-            nonvar(N) & cut & ~smaller(N, 0) & length_given_N_(L, N),
+        nonvar(N) & cut & ~smaller(N, 0) & length_given_N_(L, N),
         length([], 0),
-        length([H|T], N) <<
-            length(T, M) &
-            let(N, M + 1),
+        length([H | T], N) <<
+        length(T, M) &
+        let(N, M + 1),
 
         length_given_N_([], 0) << cut,
-        length_given_N_([H|T], N) <<
-            let(M, N - 1) &
-            length_given_N_(T, M),
+        length_given_N_([H | T], N) <<
+        let(M, N - 1) &
+        length_given_N_(T, M),
 
     )
 
