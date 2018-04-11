@@ -32,7 +32,6 @@ __all__ = [
     'astify',
     # Expression factory functions:
     'Name',
-    'Bytes',
     'Str',
     'Num',
     'Tuple',

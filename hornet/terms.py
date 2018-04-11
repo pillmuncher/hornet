@@ -60,7 +60,6 @@ __all__ = [
 
 
 USE_TCO = True
-#USE_TCO = False
 
 if USE_TCO:
 
@@ -497,7 +496,8 @@ class Implication(InfixOperator):
     __slots__ = ()
 
     # reverse implication: l << r
-    def op(left, right): return left or not right
+    def op(left, right):
+        return left or not right
 
     head = first_param
     body = second_param
@@ -702,8 +702,8 @@ class Builder(ast.NodeVisitor):
     def visit_Str(self, node):
         self.append(String(env=self.env, name=node.s))
 
-    def visit_Bytes(self, node):
-        self.append(Bytes(env=self.env, name=node.s))
+    # def visit_Bytes(self, node):
+        # self.append(Bytes(env=self.env, name=node.s))
 
     def visit_Num(self, node):
         self.append(Number(env=self.env, name=node.n))

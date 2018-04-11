@@ -72,10 +72,12 @@ def compose(*fs):
 rcompose = flip(compose)
 
 
-def compose2(f, g): return lambda *a, **k: g(f(*a, **k))
+def compose2(f, g):
+    return lambda *a, **k: g(f(*a, **k))
 
 
-def rcompose2(f, g): return lambda *a, **k: f(g(*a, **k))
+def rcompose2(f, g):
+    return lambda *a, **k: f(g(*a, **k))
 
 
 _sentinel = object()
