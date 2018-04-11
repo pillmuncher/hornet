@@ -9,7 +9,7 @@ __author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
 __license__ = 'MIT'
 
 
-import nose
+# import nose
 
 import ast
 import collections

@@ -9,11 +9,9 @@ __author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
 __license__ = 'MIT'
 
 
-import nose
-
-from hornet.test import *
+from hornet.test import expression_all, expression_all_raise, ast_eq
 from hornet.util import identity
-from hornet.expressions import bind, mlift
+from hornet.expressions import mlift
 
 
 def test_rearrange():
@@ -22,39 +20,33 @@ def test_rearrange():
 
     from hornet.symbols import a, b, c, d, e
 
-    ast_test_all(
+    expression_all(
         ast_eq,
         rearrange,
         mlift(identity),
-        (a, a),
-        ((((a & b) & c) & d) & e, a & (b & (c & (d & e)))),
-        ((((a << b) & c) & d) & e, a << (b & (c & (d & e)))),
-        #(a & (b | c), a & (b | c)),
+        (
+            a,
+            a
+        ),
+        (
+            (((a & b) & c) & d) & e,
+            a & (b & (c & (d & e)))
+        ),
+        (
+            (((a << b) & c) & d) & e,
+            a << (b & (c & (d & e)))
+        ),
+        (
+            a & (b | c),
+            a & (b | c)
+        ),
     )
 
-    #ast_test_all_raise(
-        #ValueError,
-        #rearrange,
-        #a.foo,
-        #a(1).foo[b, 2].bar,
-        #c({a:1, b:2}),
-    #)
-    #ast_test_all_raise(
-        #TypeError,
-        #rearrange,
-        #a.foo.bar((b & c) & d),
-        #a.foo[(b & c) & d],
-        #a[1],
-    #)
-    ast_test_all_raise(
+    expression_all_raise(
         ParseError,
         rearrange,
         a << b << c,
-        #a << b >> c,
         a >> b >> c,
-        #a >> b << c,
-        #a << b & c | d << e,
-        #a << b & c | d >> e,
-        #a >> b & c | d >> e,
-        #a >> b & c | d << e,
+        a << b & c | d << e,
+        a >> b & c | d >> e,
     )

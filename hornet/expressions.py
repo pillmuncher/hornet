@@ -118,8 +118,12 @@ def mlift(func):
 
 # Make monadic functions mf:AST --> Expression composable:
 
-def mcompose(*mfuncs):
+def ecompose(*mfuncs):
     return functools.partial(foldl, bind, mfuncs)
+
+
+def mcompose(*mfuncs):
+    return compose(unit, ecompose(*mfuncs))
 
 
 # Here come the Expression factory functions.

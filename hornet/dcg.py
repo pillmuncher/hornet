@@ -10,16 +10,13 @@ __license__ = 'MIT'
 
 
 import collections
-import contextlib
 import copy
 import functools
 import itertools
 
 from hornet.util import identity, foldr, rotate, splitpairs
-from hornet.expressions import (
-    unit, Name, is_rshift, is_bitand, is_name, is_set, is_list, is_call,
-    is_terminal
-)
+from hornet.expressions import unit, Name, is_rshift, is_bitand, is_name
+from hornet.expressions import is_set, is_list, is_call, is_terminal
 
 
 _C_ = Name("'C'")
@@ -48,92 +45,91 @@ def conjunction(left, right):
         return left or right
 
 
-def expand(root):
+class Expander:
 
-    if not is_rshift(root):
-        return unit(root)
+    def __init__(self):
+        self.left = []
+        self.right = collections.deque()
 
-    from_left = []
-    from_right = collections.deque()
-
-    def collect_functor(call):
+    def collect_functor(self, call):
         args = call.node.args
-        from_left.append(args.append)
-        from_left.append(args.append)
+        self.left.append(args.append)
+        self.left.append(args.append)
         return call
 
-    def collect_terminal(call):
+    def collect_terminal(self, call):
         args = call.node.args
-        from_left.append(functools.partial(args.insert, -1))
-        from_left.append(args.append)
+        self.left.append(functools.partial(args.insert, -1))
+        self.left.append(args.append)
         return call
 
-    def collect_pushback(call):
+    def collect_pushback(self, call):
         args = call.node.args
-        from_right.appendleft(functools.partial(args.insert, -2))
-        from_right.appendleft(args.append)
+        self.right.appendleft(functools.partial(args.insert, -2))
+        self.right.appendleft(args.append)
         return call
 
-    def expand_call(node):
+    def expand_call(self, node):
 
         if is_name(node):
-            return collect_functor(unit(node)())
+            return self.collect_functor(unit(node)())
 
         elif is_call(node):
-            return collect_functor(unit(copy.deepcopy(node)))
+            return self.collect_functor(unit(copy.deepcopy(node)))
 
         else:
             raise TypeError('Name or Call node expected, not {}'.format(node))
 
-    def expand_terminals(node, cont):
+    def expand_terminals(self, node, cont):
 
         if not node.elts:
             return cont(None)
 
         elif all(is_terminal(each) for each in node.elts):
             *elts, last = (
-                collect_terminal(_C_(unit(each))) for each in node.elts)
+                self.collect_terminal(_C_(unit(each))) for each in node.elts)
             return foldr(conjunction, elts, cont(last))
 
         else:
             raise TypeError(
                 'Non-terminal in DCG terminal list found: {}'.format(node))
 
-    def expand_pushbacks(node):
+    def expand_pushbacks(self, node):
 
         if not node.elts:
             return None
 
         elif all(is_terminal(each) for each in node.elts):
-            elts = [collect_pushback(_C_(unit(each))) for each in node.elts]
+            elts = [self.collect_pushback(_C_(unit(each)))
+                    for each in node.elts]
             return foldr(conjunction, elts)
 
         else:
             raise TypeError(
                 'Non-terminal in DCG pushback list found: {}'.format(node))
 
-    def expand_body(node, cont):
+    def expand_body(self, node, cont):
 
         if is_bitand(node):
 
             def right_side(rightmost_of_left_side):
                 return conjunction(
                     rightmost_of_left_side,
-                    expand_body(node.right, cont))
+                    self.expand_body(node.right, cont))
 
-            return expand_body(node.left, right_side)
+            return self.expand_body(node.left, right_side)
 
         elif is_list(node):
-            return expand_terminals(node, cont)
+            return self.expand_terminals(node, cont)
 
         elif is_set(node):
             assert len(node.elts) == 1
             return cont(unit(node.elts[0]))
 
         else:
-            return cont(expand_call(node))
+            return cont(self.expand_call(node))
 
-    def expand_clause(node):
+    def expand_clause(self, node):
 
         head = node.left
         body = node.right
@@ -143,22 +139,34 @@ def expand(root):
             def pushback(rightmost_of_body):
                 return conjunction(
                     rightmost_of_body,
-                    expand_pushbacks(head.right))
+                    self.expand_pushbacks(head.right))
 
             return rule(
-                expand_call(head.left),
-                expand_body(body, pushback))
+                self.expand_call(head.left),
+                self.expand_body(body, pushback))
 
         else:
             return rule(
-                expand_call(head),
-                expand_body(body, identity))
+                self.expand_call(head),
+                self.expand_body(body, identity))
 
-    clause = expand_clause(root)
+    def __call__(self, root):
 
-    pairs = splitpairs(rotate(itertools.chain(from_left, from_right)))
-    for (set_left, set_right), var in zip(pairs, numbered_vars('_')):
-        set_left(var)
-        set_right(var)
+        clause = self.expand_clause(root)
 
-    return clause
+        pairs = splitpairs(rotate(itertools.chain(self.left, self.right)))
+
+        for (set_left, set_right), var in zip(pairs, numbered_vars('_')):
+            set_left(var)
+            set_right(var)
+
+        return clause
+
+
+def expand(root):
+
+    if not is_rshift(root):
+        return unit(root)
+
+    else:
+        return Expander()(root)

@@ -9,10 +9,9 @@ __author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
 __license__ = 'MIT'
 
 
-import nose
-import ast
+import pytest
 
-from hornet.test import *
+from hornet.test import ast_eq
 
 
 def test_symbols_module():
@@ -24,4 +23,4 @@ def test_symbols_module():
 
 
 if __name__ == '__main__':
-    nose.main()
+    pytest.main()

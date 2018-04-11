@@ -9,21 +9,20 @@ __author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
 __license__ = 'MIT'
 
 
-from nose.tools import eq_, nottest, assert_raises
+import pytest
 
 from hornet.expressions import bind
 
 
 def ast_eq(a, b):
-    return eq_(repr(a), repr(b))
+    assert repr(a) == repr(b)
 
 
 def ast_neq(a, b):
     assert repr(a) != repr(b)
 
 
-@nottest
-def ast_test_all(test, mf_result, mf_expected, *term_pairs):
+def expression_all(test, mf_result, mf_expected, *term_pairs):
     for term, expected in term_pairs:
         result = bind(term, mf_result)
         expected = bind(expected, mf_expected)
@@ -37,11 +36,10 @@ def ast_test_all(test, mf_result, mf_expected, *term_pairs):
             raise
 
 
-@nottest
-def ast_test_all_raise(error, test, *invalid):
+def expression_all_raise(error, test, *invalid):
     for each in invalid:
         try:
-            with assert_raises(error):
+            with pytest.raises(error):
                 bind(each, test)
         except:
             print(each)
