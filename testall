@@ -1,2 +1,2 @@
 #!/usr/bin/env zsh
-nosetests --with-coverage --cover-package=hornet --with-doctest **/test_*.py
+py.test --cov=hornet --mccabe **/test_*.py

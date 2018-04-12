@@ -9,40 +9,6 @@ __author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
 __license__ = 'MIT'
 
 
-def _install_symbols_module():
-
-    import sys
-
-    from functools import lru_cache
-    from importlib.abc import MetaPathFinder, Loader
-    from importlib.machinery import ModuleSpec
-    from types import ModuleType
-
-    from hornet.expressions import Name
-
-    class SymbolsModule(ModuleType):
-        __all__ = []
-        __file__ = None  # needed so nose doesn't barf at us
-        __getattr__ = staticmethod(lru_cache()(Name))
-
-    class SymbolsImporter(MetaPathFinder, Loader):
-
-        def find_spec(self, fullname, path=None, target=None):
-            if fullname == 'hornet.symbols':
-                return ModuleSpec(fullname, self)
-
-        def create_module(self, spec):
-            return sys.modules.setdefault(spec.name, SymbolsModule(spec.name))
-
-        def exec_module(self, module):
-            pass
-
-    sys.meta_path.insert(0, SymbolsImporter())
-
-
-_install_symbols_module()
-
-
 import collections
 import copy
 import numbers
@@ -52,7 +18,38 @@ from hornet.util import rpartial, foldr
 from hornet.expressions import ecompose, promote, Name
 from hornet.operators import rearrange
 from hornet.dcg import _C_, expand
-from hornet.terms import *
+from hornet.terms import (
+    Addition,
+    Adjunction,
+    Atom,
+    Atomic,
+    Conditional,
+    Disjunction,
+    Division,
+    Environment,
+    Exponentiation,
+    FloorDivision,
+    Implication,
+    Indicator,
+    List,
+    Multiplication,
+    NIL,
+    Negation,
+    Negative,
+    Nil,
+    Number,
+    Positive,
+    Relation,
+    Remainder,
+    String,
+    Structure,
+    Subtraction,
+    UnificationFailed,
+    Variable,
+    Wildcard,
+    build,
+    is_nil,
+)
 
 
 system_names = [
@@ -97,18 +94,40 @@ system_names = [
 
 
 __all__ = [
+    'Database',
+    'UnificationFailed',
     '_C_',
     'build_term',
-    'Database',
     'expand_term',
     'promote',
     'pyfunc',
-    'UnificationFailed',
     'unify',
 ] + system_names
 
 
 globals().update((each, Name(each)) for each in system_names)
+
+
+ASSERTABLE = (
+    Addition,
+    Adjunction,
+    Atom,
+    Conditional,
+    Disjunction,
+    Division,
+    Exponentiation,
+    FloorDivision,
+    Implication,
+    List,
+    Multiplication,
+    Negation,
+    Negative,
+    Nil,
+    Positive,
+    Relation,
+    Remainder,
+    Subtraction,
+)
 
 
 def unify(this, that, trail):
@@ -120,28 +139,6 @@ build_term = ecompose(rearrange, build)
 
 
 is_atomic = rpartial(isinstance, Atomic)
-
-
-ASSERTABLE = (
-    Relation,
-    Atom,
-    List,
-    Nil,
-    Implication,
-    Disjunction,
-    Adjunction,
-    Conditional,
-    Addition,
-    Subtraction,
-    Multiplication,
-    Division,
-    FloorDivision,
-    Remainder,
-    Exponentiation,
-    Negation,
-    Positive,
-    Negative,
-)
 
 
 class Clause:
@@ -408,9 +405,43 @@ def _throw(term, env, db, trail):
     raise Exception
 
 
+def _install_symbols_module():
+
+    import sys
+
+    from functools import lru_cache
+    from importlib.abc import MetaPathFinder, Loader
+    from importlib.machinery import ModuleSpec
+    from types import ModuleType
+
+    from hornet.expressions import Name
+
+    class SymbolsModule(ModuleType):
+        __all__ = []
+        __file__ = None  # needed so nose doesn't barf at us
+        __getattr__ = staticmethod(lru_cache()(Name))
+
+    class SymbolsImporter(MetaPathFinder, Loader):
+
+        def find_spec(self, fullname, path=None, target=None):
+            if fullname == 'hornet.symbols':
+                return ModuleSpec(fullname, self)
+
+        def create_module(self, spec):
+            return sys.modules.setdefault(spec.name, SymbolsModule(spec.name))
+
+        def exec_module(self, module):
+            pass
+
+    sys.meta_path.insert(0, SymbolsImporter())
+
+
+_install_symbols_module()
+
+
 def _bootstrap():
 
-    from hornet.symbols import P, Q, X, Y, Z, Tail, Object, Goal, List, Rest
+    from hornet.symbols import P, Q, X, Y, Z, Object, Goal, List, Rest
     from hornet.symbols import Predicate, A, B, C, D, H, L, T, S, Arity, G, G1
     from hornet.symbols import M, N, length_given_N_
 
