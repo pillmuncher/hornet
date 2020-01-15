@@ -311,7 +311,7 @@ class Structure:
             db=db,
             choice_points=choice_points,
             yes=success,
-            no=failure,
+            no=cleanup,
             prune=cleanup,
         )
 
