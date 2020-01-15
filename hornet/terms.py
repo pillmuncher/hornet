@@ -298,21 +298,13 @@ class Structure:
 
     def resolve(self, db):
 
-        choice_points = []
-
-        @tco
-        def cleanup():
-            while choice_points:
-                choice_points.pop().close()
-            return failure()
-
         return trampoline(
             self._resolve,
             db=db,
-            choice_points=choice_points,
+            choice_points=[],
             yes=success,
-            no=cleanup,
-            prune=cleanup,
+            no=failure,
+            prune=failure,
         )
 
     def _resolve(self, *, db, choice_points, yes, no, prune):
