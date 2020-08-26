@@ -496,23 +496,18 @@ def _bootstrap():
         findall(Object, Goal, List, Rest)[_findall_4],
 
         member(H, [H | T]),
-        member(G, [H | T]) <<
-        member(G, T),
+        member(G, [H | T]) << member(G, T),
 
         append([], A, A),
-        append([A | B], C, [A | D]) <<
-        append(B, C, D),
+        append([A | B], C, [A | D]) << append(B, C, D),
 
-        reverse(X, Y) <<
-        reverse(X, [], Y),
+        reverse(X, Y) << reverse(X, [], Y),
 
         reverse([], Y, Y),
-        reverse([X | P], Q, Y) <<
-        reverse(P, [X | Q], Y),
+        reverse([X | P], Q, Y) << reverse(P, [X | Q], Y),
 
         select(X, [X | T], T),
-        select(X, [H | T], [H | Rest]) <<
-        select(X, T, Rest),
+        select(X, [H | T], [H | Rest]) << select(X, T, Rest),
 
         write(X)[_write],
 
@@ -549,33 +544,22 @@ def _bootstrap():
 
         univ(T, L)[_univ],
 
-        arithmetic_equal(X, Y) <<
-        let(Z, X) &
-        let(Z, Y),
+        arithmetic_equal(X, Y) << let(Z, X) & let(Z, Y),
 
-        arithmetic_not_equal(X, Y) <<
-        let(Z, X) &
-        let(Z, Y) & cut[_fail],
+        arithmetic_not_equal(X, Y) << let(Z, X) & let(Z, Y) & cut[_fail],
         arithmetic_not_equal(_, _),
 
         transpose(L, T)[_transpose],
 
-        maplist(G, [H | T]) <<
-        cut & univ(G1, [G, H]) & G1 &
-        maplist(G, T),
+        maplist(G, [H | T]) << cut & univ(G1, [G, H]) & G1 & maplist(G, T),
         maplist(_, []),
 
-        length(L, N) <<
-        nonvar(N) & cut & ~smaller(N, 0) & length_given_N_(L, N),
+        length(L, N) << nonvar(N) & cut & ~smaller(N, 0) & length_given_N_(L, N),
         length([], 0),
-        length([H | T], N) <<
-        length(T, M) &
-        let(N, M + 1),
+        length([H | T], N) << length(T, M) & let(N, M + 1),
 
         length_given_N_([], 0) << cut,
-        length_given_N_([H | T], N) <<
-        let(M, N - 1) &
-        length_given_N_(T, M),
+        length_given_N_([H | T], N) << let(M, N - 1) & length_given_N_(T, M),
 
     )
 
