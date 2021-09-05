@@ -4,6 +4,7 @@ __pycache__
 hornet.egg-info
 setuptools-*
 ez_setup.py
+env
 build
 dist
 *.pyc
