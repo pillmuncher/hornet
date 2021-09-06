@@ -9,17 +9,14 @@ __author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
 __license__ = 'MIT'
 
 
-from functools import partial, wraps, reduce as foldl
+from functools import partial, reduce as foldl
 from itertools import chain, count, tee, zip_longest
 
 from toolz.functoolz import flip
 
+
 def noop(*a, **k):
     return None
-
-
-def wrap(f):
-    return wraps(f)(lambda *a, **k: f(*a, **k))
 
 
 def increment(x):
@@ -51,18 +48,6 @@ def foldr(func, seq, start=_sentinel):
     if start is _sentinel:
         return foldl(flip(func), reversed(seq))
     return foldl(flip(func), reversed(seq), start)
-
-
-def rfoldl(func, seq, start=_sentinel):
-    if start is _sentinel:
-        return foldl(flip(func), seq)
-    return foldl(flip(func), seq, start)
-
-
-def rfoldr(func, seq, start=_sentinel):
-    if start is _sentinel:
-        return foldl(func, reversed(seq))
-    return foldl(func, reversed(seq), start)
 
 
 def rpartial(f, *args, **kwargs):
