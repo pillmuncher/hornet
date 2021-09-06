@@ -249,7 +249,7 @@ def Wrapper(wrapped):
 def Subscript(target, subscript):
     return ast.Subscript(
         value=astify(target),
-        slice=ast.Index(value=astify(subscript)),
+        slice=ast.Slice(lower=astify(subscript)),
         ctx=ast.Load(),
     )
 

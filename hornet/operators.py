@@ -230,14 +230,14 @@ class ASTFlattener(ast.NodeVisitor):
         self.append(node)
 
     def visit_Subscript(self, node):
-        if is_tuple(node.slice.value):
-            elts = node.slice.value.elts
+        if is_tuple(node.slice.lower):
+            elts = node.slice.lower.elts
             if all(callable(each.wrapped) for each in elts):
                 actions = [each.wrapped for each in elts]
             else:
                 raise TypeError('Subscript must be one or more callables!')
-        elif is_astwrapper(node.slice.value):
-            actions = [node.slice.value.wrapped]
+        elif is_astwrapper(node.slice.lower):
+            actions = [node.slice.lower.wrapped]
         else:
             raise TypeError('Subscript must be one or more callables!')
         self.append(
