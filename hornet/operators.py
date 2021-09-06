@@ -12,11 +12,12 @@ __license__ = 'MIT'
 import ast
 import collections
 import operator
+import typing
 
 from hornet.util import pairwise, identity, const, decrement
 from hornet.util import compose2 as compose
 from hornet.expressions import is_name, is_operator, is_tuple, is_astwrapper
-from hornet.expressions import mlift, promote
+from hornet.expressions import mlift, promote, Expression
 
 
 class ParseError(Exception):
@@ -26,9 +27,11 @@ class ParseError(Exception):
 parse_error = compose('Precedence conflict: ({}) {} ({})'.format, ParseError)
 
 
-class Token(collections.namedtuple('BaseToken', 'lbp rbp node')):
+class Token(typing.NamedTuple):
 
-    __slots__ = ()
+    lbp: int
+    rbp: int
+    node: Expression
 
     def __lt__(self, other):
         return self.rbp < other.lbp
