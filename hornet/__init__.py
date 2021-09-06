@@ -14,8 +14,8 @@ import copy
 import numbers
 import pprint
 
-from hornet.util import rpartial, foldr
-from hornet.expressions import ecompose, promote, Name
+from hornet.util import rpartial, foldr, install_symbols_module
+from hornet.expressions import mcompose, promote, Name
 from hornet.operators import rearrange
 from hornet.dcg import _C_, expand
 from hornet.terms import (
@@ -130,12 +130,15 @@ ASSERTABLE = (
 )
 
 
+install_symbols_module('hornet.symbols', Name)
+
+
 def unify(this, that, trail):
     this.ref.unify(that.ref, trail)
 
 
-expand_term = ecompose(rearrange, expand, build)
-build_term = ecompose(rearrange, build)
+expand_term = mcompose(rearrange, expand, build)
+build_term = mcompose(rearrange, build)
 
 
 is_atomic = rpartial(isinstance, Atomic)
@@ -403,40 +406,6 @@ def _transpose(term, env, db, trail):
 
 def _throw(term, env, db, trail):
     raise Exception
-
-
-def _install_symbols_module():
-
-    import sys
-
-    from functools import lru_cache
-    from importlib.abc import MetaPathFinder, Loader
-    from importlib.machinery import ModuleSpec
-    from types import ModuleType
-
-    from hornet.expressions import Name
-
-    class SymbolsModule(ModuleType):
-        __all__ = []
-        __file__ = None  # needed so nose doesn't barf at us
-        __getattr__ = staticmethod(lru_cache()(Name))
-
-    class SymbolsImporter(MetaPathFinder, Loader):
-
-        def find_spec(self, fullname, path=None, target=None):
-            if fullname == 'hornet.symbols':
-                return ModuleSpec(fullname, self)
-
-        def create_module(self, spec):
-            return sys.modules.setdefault(spec.name, SymbolsModule(spec.name))
-
-        def exec_module(self, module):
-            pass
-
-    sys.meta_path.insert(0, SymbolsImporter())
-
-
-_install_symbols_module()
 
 
 def _bootstrap():

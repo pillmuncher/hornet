@@ -15,8 +15,10 @@ import copy
 import operator
 import string
 
-from hornet.util import identity, noop, foldr, rpartial, compose, tabulate
-from hornet.util import const, first_arg as get_self
+from toolz.functoolz import compose, identity
+
+from hornet.util import noop, foldr, rpartial, tabulate, const
+from hornet.util import first_arg as get_self
 from hornet.expressions import is_bitor, is_name
 from hornet.operators import make_token, fz, xfx, xfy, yfx
 
@@ -355,12 +357,12 @@ class Atom(Atomic):
 
 class String(Atomic):
     __slots__ = ()
-    __repr__ = compose(get_name, "'{}'".format)
+    __repr__ = compose("'{}'".format, get_name)
 
 
 class Number(Atomic):
     __slots__ = ()
-    __str__ = compose(get_name, str)
+    __str__ = compose(str, get_name)
 
 
 class Nil(Atomic):

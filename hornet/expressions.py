@@ -15,8 +15,9 @@ import ast
 import functools
 import numbers
 
-from hornet.util import identity, flip, foldl, rpartial, qualname
-from hornet.util import compose2 as compose
+from toolz.functoolz import compose, flip, identity
+
+from hornet.util import foldl, rpartial, qualname
 
 
 __all__ = [
@@ -109,20 +110,16 @@ def bind(expr, mfunc):
 
 # The function mlift(func:T --> AST) --> (T --> Expression) "lifts" a normal
 # function that returns an AST into a function that returns an Expression.
-# It is also used as a function decorator.
+# It is mostly used as a function decorator.
 
 def mlift(func):
-    return compose(func, unit)
+    return compose(unit, func)
 
 
 # Make monadic functions mf:AST --> Expression composable:
 
-def ecompose(*mfuncs):
-    return functools.partial(foldl, bind, mfuncs)
-
-
 def mcompose(*mfuncs):
-    return compose(unit, ecompose(*mfuncs))
+    return functools.partial(foldl, bind, mfuncs)
 
 
 # Here come the Expression factory functions.
@@ -244,8 +241,8 @@ def Wrapper(wrapped):
 # we rely on the priority and associativity rules that Python imposes on us.
 # Then this expression is the same as ((x - (y * z)) + 1).
 
-@qualname('Expression.__getitem__')
 @mlift
+@qualname('Expression.__getitem__')
 def Subscript(target, subscript):
     return ast.Subscript(
         value=astify(target),
@@ -254,8 +251,8 @@ def Subscript(target, subscript):
     )
 
 
-@qualname('Expression.__call__')
 @mlift
+@qualname('Expression.__call__')
 def Call(target, *args):
     return ast.Call(
         func=astify(target),
@@ -267,8 +264,8 @@ def Call(target, *args):
 
 
 def _unary_op(op, name):
-    @qualname(name)
     @mlift
+    @qualname(name)
     def op_method(right):
         return ast.UnaryOp(op(), astify(right))
     return op_method
@@ -280,8 +277,8 @@ Invert = _unary_op(ast.Invert, 'Expression.__invert__')
 
 
 def _binary_op(op, name):
-    @qualname(name)
     @mlift
+    @qualname(name)
     def op_method(left, right):
         return ast.BinOp(astify(left), op(), astify(right))
     return op_method

@@ -14,7 +14,9 @@ import copy
 import functools
 import itertools
 
-from hornet.util import identity, foldr, rotate, splitpairs
+from toolz.functoolz import compose, curry, identity
+
+from hornet.util import foldr, rotate, splitpairs
 from hornet.expressions import unit, Name, is_rshift, is_bitand, is_name
 from hornet.expressions import is_set, is_list, is_call, is_terminal
 

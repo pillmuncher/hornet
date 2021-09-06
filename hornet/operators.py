@@ -14,8 +14,9 @@ import collections
 import operator
 import typing
 
-from hornet.util import pairwise, identity, const, decrement
-from hornet.util import compose2 as compose
+from toolz.functoolz import compose, curry, identity
+
+from hornet.util import pairwise, const, decrement
 from hornet.expressions import is_name, is_operator, is_tuple, is_astwrapper
 from hornet.expressions import mlift, promote, Expression
 
@@ -24,7 +25,7 @@ class ParseError(Exception):
     pass
 
 
-parse_error = compose('Precedence conflict: ({}) {} ({})'.format, ParseError)
+parse_error = compose(ParseError, 'Precedence conflict: ({}) {} ({})'.format)
 
 
 class Token(typing.NamedTuple):
@@ -40,19 +41,9 @@ class Token(typing.NamedTuple):
         return self.rbp > other.lbp
 
     @classmethod
-    def fixity(cls, left, right):
-
-        def supply_binding_power(bp):
-
-            lbp = left(bp)
-            rbp = right(bp)
-
-            def supply_node(node):
-                return cls(lbp, rbp, node)
-
-            return supply_node
-
-        return supply_binding_power
+    @curry
+    def fixity(cls, left, right, bp, node):
+        return cls(left(bp), right(bp), node)
 
 
 class Nofix(Token):
@@ -84,13 +75,13 @@ class Infix(Token):
         return ast.BinOp(left, self.node, right)
 
 
-f = Nofix.fixity(left=identity, right=identity)
-fx = Prefix.fixity(left=identity, right=identity)
-fy = Prefix.fixity(left=identity, right=decrement)
-fz = Prefix.fixity(left=const(0), right=decrement)
-xfx = Infix.fixity(left=identity, right=identity)
-xfy = Infix.fixity(left=identity, right=decrement)
-yfx = Infix.fixity(left=decrement, right=identity)
+f = Nofix.fixity(identity, identity)
+fx = Prefix.fixity(identity, identity)
+fy = Prefix.fixity(identity, decrement)
+fz = Prefix.fixity(const(0), decrement)
+xfx = Infix.fixity(identity, identity)
+xfy = Infix.fixity(identity, decrement)
+yfx = Infix.fixity(decrement, identity)
 
 
 HORNET_FIXITIES = {

@@ -25,7 +25,7 @@ setup(
     keywords="logic-programming prolog",
     url="https://github.com/pillmuncher/hornet",
     packages=['hornet', 'hornet.examples'],
-    install_requires=['codegen'],
+    install_requires=['codegen', 'cytoolz'],
     package_data={'hornet': ['../*.md']},
     long_description=read('README.md'),
     classifiers=[

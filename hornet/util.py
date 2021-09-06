@@ -12,6 +12,7 @@ __license__ = 'MIT'
 from functools import partial, wraps, reduce as foldl
 from itertools import chain, count, tee, zip_longest
 
+from toolz.functoolz import flip
 
 def noop(*a, **k):
     return None
@@ -21,21 +22,12 @@ def wrap(f):
     return wraps(f)(lambda *a, **k: f(*a, **k))
 
 
-def flip(f):
-    return wraps(f)(lambda *a: f(*reversed(a)))
-
-
 def increment(x):
     return x + 1
 
 
 def decrement(x):
     return x - 1
-
-
-def identity(x):
-    "The I combinator"
-    return x
 
 
 def const(x):
@@ -50,34 +42,6 @@ def first_arg(x, *a, **k):
 def tabulate(function, start=0):
     "Return function(0), function(1), ..."
     return map(function, count(start))
-
-
-def compose(*fs):
-
-    # make me monoidal:
-    # if not fs:
-        # return identity
-
-    f, *gs = fs
-
-    def composed(*a, **k):
-        x = f(*a, **k)
-        for g in gs:
-            x = g(x)
-        return x
-
-    return composed
-
-
-rcompose = flip(compose)
-
-
-def compose2(f, g):
-    return lambda *a, **k: g(f(*a, **k))
-
-
-def rcompose2(f, g):
-    return lambda *a, **k: f(g(*a, **k))
 
 
 _sentinel = object()
@@ -143,3 +107,32 @@ def splitpairs(iterable):
     for left in iterable:
         right = next(iterable)
         yield left, right
+
+
+def install_symbols_module(name, factory):
+
+    import sys
+
+    from functools import lru_cache
+    from importlib.abc import MetaPathFinder, Loader
+    from importlib.machinery import ModuleSpec
+    from types import ModuleType
+
+    class SymbolsModule(ModuleType):
+        __all__ = []
+        __file__ = None  # needed so nose doesn't barf at us
+        __getattr__ = staticmethod(lru_cache()(factory))
+
+    class SymbolsImporter(MetaPathFinder, Loader):
+
+        def find_spec(self, fullname, path=None, target=None):
+            if fullname == name:
+                return ModuleSpec(fullname, self)
+
+        def create_module(self, spec):
+            return sys.modules.setdefault(spec.name, SymbolsModule(spec.name))
+
+        def exec_module(self, module):
+            pass
+
+    sys.meta_path.insert(0, SymbolsImporter())
