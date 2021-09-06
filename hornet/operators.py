@@ -12,7 +12,7 @@ __license__ = 'MIT'
 import ast
 import collections
 import operator
-import typing
+from dataclasses import dataclass
 
 from toolz.functoolz import compose, curry, identity
 
@@ -28,7 +28,8 @@ class ParseError(Exception):
 parse_error = compose(ParseError, 'Precedence conflict: ({}) {} ({})'.format)
 
 
-class Token(typing.NamedTuple):
+@dataclass(frozen=True)
+class Token:
 
     left_rank: int
     right_rank: int
