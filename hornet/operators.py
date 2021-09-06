@@ -30,20 +30,20 @@ parse_error = compose(ParseError, 'Precedence conflict: ({}) {} ({})'.format)
 
 class Token(typing.NamedTuple):
 
-    lbp: int
-    rbp: int
+    left_rank: int
+    right_rank: int
     node: Expression
 
     def __lt__(self, other):
-        return self.rbp < other.lbp
+        return self.right_rank < other.left_rank
 
     def __gt__(self, other):
-        return self.rbp > other.lbp
+        return self.right_rank > other.left_rank
 
     @classmethod
     @curry
-    def fixity(cls, left, right, bp, node):
-        return cls(left(bp), right(bp), node)
+    def fixity(cls, left, right, rank, node):
+        return cls(left(rank), right(rank), node)
 
 
 class Nofix(Token):
@@ -59,7 +59,7 @@ class Prefix(Token):
     __slots__ = ()
 
     def nud(self, parse):
-        right = parse(self.rbp)
+        right = parse(self.right_rank)
         check_right(self, right)
         return ast.UnaryOp(self.node, right)
 
@@ -70,7 +70,7 @@ class Infix(Token):
 
     def led(self, left, parse):
         check_left(self, left)
-        right = parse(self.rbp)
+        right = parse(self.right_rank)
         check_right(self, right)
         return ast.BinOp(left, self.node, right)
 
@@ -114,15 +114,15 @@ def make_token(fixities, node):
 def check_left(op, left_node):
     if is_operator(left_node):
         left = make_token(HORNET_FIXITIES, left_node.op)
-        if left.rbp == op.lbp:
-            raise parse_error(left.rbp, op.node, op.lbp)
+        if left.right_rank == op.left_rank:
+            raise parse_error(left.right_rank, op.node, op.left_rank)
 
 
 def check_right(op, right_node):
     if is_operator(right_node):
         right = make_token(HORNET_FIXITIES, right_node.op)
-        if op.rbp == right.lbp:
-            raise parse_error(op.rbp, right_node, right.lbp)
+        if op.right_rank == right.left_rank:
+            raise parse_error(op.right_rank, right_node, right.left_rank)
 
 
 def pratt_parse(nodes):
@@ -131,14 +131,14 @@ def pratt_parse(nodes):
     token_pairs = pairwise(tokens, fillvalue=END)
     token = None
 
-    def parse(rbp):
+    def parse(right_rank):
 
         nonlocal token
 
         t, token = next(token_pairs)
         left = t.nud(parse)
 
-        while rbp < token.lbp:
+        while right_rank < token.left_rank:
             t, token = next(token_pairs)
             left = t.led(left, parse)
 
