@@ -445,7 +445,7 @@ class PrefixOperator(Structure):
         op_fixity = make_token(OPERATOR_FIXITIES, self)
         operand_fixity = make_token(OPERATOR_FIXITIES, operand)
 
-        if operand_fixity.lbp and op_fixity > operand_fixity:
+        if operand_fixity.left_rank and op_fixity > operand_fixity:
             operand_str = parenthesized
         else:
             operand_str = str
@@ -472,12 +472,12 @@ class InfixOperator(Structure):
         left_fixity = make_token(OPERATOR_FIXITIES, left)
         right_fixity = make_token(OPERATOR_FIXITIES, right)
 
-        if left_fixity.rbp and left_fixity < op_fixity:
+        if left_fixity.right_rank and left_fixity < op_fixity:
             left_str = parenthesized
         else:
             left_str = str
 
-        if right_fixity.lbp and op_fixity > right_fixity:
+        if right_fixity.left_rank and op_fixity > right_fixity:
             right_str = parenthesized
         else:
             right_str = str
