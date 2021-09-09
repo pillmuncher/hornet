@@ -231,11 +231,11 @@ def grammar(db):
     # words = 'manche maeuse jagen viele katze'.split()
     # words = 'eine maus jagt viele katzen'.split()
     # words = [B, C, 'jagen']
-    words = ['manche', B, C]
+    # words = ['manche', B, C]
     # words = ['der', C, D, 'die', F]
-    # words = [B, 'hund', D, E, F]
+    words = [B, 'hund', D, E, F]
     #words = [B, C, 'jagt', D, E]
-    #words = [A, 'jagen' | E]
+    # words = [A, 'jagen' | E]
 
     #for i, subst in enumerate(db.ask(s(W) & join(W, S, ' '))):
     for subst in db.ask(equal(words, W) & s(W) & join(W, S, ' ')):
