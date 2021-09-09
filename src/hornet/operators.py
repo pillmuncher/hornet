@@ -17,10 +17,13 @@ from dataclasses import dataclass
 
 from toolz.functoolz import compose, curry, identity
 
-from hornet.util import pairwise, const, decrement
+from hornet.util import pairwise, const
 from hornet.expressions import is_name, is_operator, is_tuple, is_astwrapper
 from hornet.expressions import mlift, promote, Expression
 
+
+
+decrement = (-1).__add__
 
 class ParseError(Exception):
     pass

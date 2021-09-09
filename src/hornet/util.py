@@ -19,14 +19,6 @@ def noop(*a, **k):
     return None
 
 
-def increment(x):
-    return x + 1
-
-
-def decrement(x):
-    return x - 1
-
-
 def const(x):
     "The K combinator"
     return lambda _: x
