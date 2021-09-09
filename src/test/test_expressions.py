@@ -95,7 +95,8 @@ def test_expression_operators():
     items = [Num(1), Num(2), Num(3)]
 
     pairs = (
-        [x[y], ast.Subscript(value=x_name, slice=ast.Slice(lower=y_name), ctx=load)],
+        [x[y],
+         ast.Subscript(value=x_name, slice=ast.Slice(lower=y_name), ctx=load)],
         [x(1, 2, 3),
          ast.Call(
             func=x_name,
