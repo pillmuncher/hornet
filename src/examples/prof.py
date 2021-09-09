@@ -9,9 +9,9 @@ __author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
 __license__ = 'MIT'
 
 
-#from hornet.examples.queens import *
-from hornet.examples.symdiff import *
-#from hornet.examples.fizzbuzz import *
+#from queens import *
+from symdiff import *
+#from fizzbuzz import *
 
 
 if __name__ == '__main__':
