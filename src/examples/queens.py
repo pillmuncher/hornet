@@ -16,6 +16,9 @@ from hornet.symbols import (
 )
 
 
+QUEENS = 6
+
+
 def main():
 
     db = Database()
@@ -23,7 +26,7 @@ def main():
     db.tell(
 
         queens(S) <<
-            let(Ns, [i + 1 for i in range(9)]) &
+            let(Ns, [i + 1 for i in range(QUEENS)]) &
             solution(Ns, Ns, [], S),
 
         solution([X|Xs], Y0s, Qs, [X/Y|S]) <<
