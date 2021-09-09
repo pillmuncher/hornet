@@ -11,5 +11,6 @@ dist
 *.pyo
 *.old
 *.vim
+*.lock
 tags
 htmlcov
