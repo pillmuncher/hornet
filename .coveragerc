@@ -1,2 +1,2 @@
 [run]
-include = hornet/*
+include = src/hornet/*

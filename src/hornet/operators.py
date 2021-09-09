@@ -192,7 +192,7 @@ class ASTFlattener(ast.NodeVisitor):
     def visit_Bytes(self, node):
         self.append(node)
 
-    def visit_Num(self, node):
+    def visit_Constant(self, node):
         if node.n >= 0:
             self.append(node)
         else:

@@ -1,2 +1,0 @@
-#!/usr/bin/env zsh
-py.test --cov=hornet --mccabe **/test_*.py

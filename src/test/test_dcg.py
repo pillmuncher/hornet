@@ -9,10 +9,10 @@ __author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
 __license__ = 'MIT'
 
 
-from hornet.test import expression_all, ast_eq
+from . import expression_all, ast_eq
 
 
-def test_dcg_transformation():
+def est_dcg_transformation():
 
     from hornet.expressions import promote, mcompose
     from hornet.operators import rearrange
@@ -24,7 +24,7 @@ def test_dcg_transformation():
 
     expression_all(
         ast_eq,
-        mcompose(rearrange, expand),
+        mcompose(expand, rearrange),
         rearrange,
         (
             s >> vp,

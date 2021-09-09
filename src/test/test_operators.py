@@ -9,8 +9,8 @@ __author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
 __license__ = 'MIT'
 
 
-from hornet.test import expression_all, expression_all_raise, ast_eq
-from hornet.util import identity
+from . import expression_all, expression_all_raise, ast_eq
+from toolz.functoolz import identity
 from hornet.expressions import mlift
 
 

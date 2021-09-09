@@ -11,7 +11,7 @@ __license__ = 'MIT'
 
 import pytest
 
-from hornet.test import ast_eq
+from . import ast_eq
 
 
 def test_symbols_module():

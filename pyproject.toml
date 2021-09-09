@@ -1,0 +1,24 @@
+[project]
+name = "hornet"
+version = "0.2.4a"
+description = ""
+authors = [
+    {name = "Mick Krippendorf", email = "m.krippendorf@freenet.de"},
+]
+dependencies = [
+    "cytoolz~=0.11",
+    "codegen~=1.0",
+]
+requires-python = ">=3.9"
+dynamic = ["classifiers"]
+license = {text = "MIT"}
+
+[project.urls]
+homepage = ""
+
+[build-system]
+requires = ["pdm-pep517"]
+build-backend = "pdm.pep517.api"
+
+[tool]
+[tool.pdm]

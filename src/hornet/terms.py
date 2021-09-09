@@ -699,7 +699,7 @@ class Builder(ast.NodeVisitor):
     # def visit_Bytes(self, node):
         # self.append(Bytes(env=self.env, name=node.s))
 
-    def visit_Num(self, node):
+    def visit_Constant(self, node):
         self.append(Number(env=self.env, name=node.n))
 
     def visit_Tuple(self, node):

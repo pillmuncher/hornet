@@ -14,8 +14,8 @@ __license__ = 'MIT'
 import ast
 import itertools
 
-from hornet.test import ast_eq
-from hornet.util import identity
+from . import ast_eq
+from toolz.functoolz import identity
 
 
 load = ast.Load()
@@ -103,7 +103,7 @@ def test_expression_operators():
     items = [Num(1), Num(2), Num(3)]
 
     pairs = (
-        [x[y], ast.Subscript(value=x_name, slice=ast.Index(y_name), ctx=load)],
+        [x[y], ast.Subscript(value=x_name, slice=ast.Slice(lower=y_name), ctx=load)],
         [x(1, 2, 3),
          ast.Call(
             func=x_name,
