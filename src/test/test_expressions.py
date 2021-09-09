@@ -31,22 +31,14 @@ def test_monad_laws():
     z = ast.Name(id='z', ctx=load)
     mx = unit(x)
 
-    def binop(u, op, v):
-        return unit(ast.BinOp(left=u, op=op(), right=v))
-
-    def and_y(u):
-        return binop(u, ast.BitAnd, y)
-
-    def or_z(u):
-        return binop(u, ast.BitOr, z)
-
-    def y_and(v):
-        return binop(y, ast.BitAnd, v)
-
-    def z_or(v):
-        return binop(z, ast.BitOr, v)
-
-    mfuncs = [unit, mlift(identity), and_y, or_z, y_and, z_or]
+    mfuncs = [
+        unit,
+        mlift(identity),
+        lambda u: unit(ast.BinOp(left=u, op=ast.BitAnd(), right=y)),
+        lambda u: unit(ast.BinOp(left=u, op=ast.BitOr(), right=z)),
+        lambda u: unit(ast.BinOp(left=y, op=ast.BitAnd(), right=u)),
+        lambda u: unit(ast.BinOp(left=z, op=ast.BitOr(), right=u)),
+    ]
 
     # left identity:
     for mf in mfuncs:
