@@ -1,6 +1,6 @@
 [project]
 name = "hornet"
-version = "0.2.4a"
+version = "0.2.5a"
 description = ""
 authors = [
     {name = "Mick Krippendorf", email = "m.krippendorf@freenet.de"},
