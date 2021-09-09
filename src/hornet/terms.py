@@ -12,6 +12,7 @@ __license__ = 'MIT'
 import ast
 import collections
 import copy
+import numbers
 import operator
 import string
 
@@ -693,14 +694,13 @@ class Builder(ast.NodeVisitor):
         else:
             self.append(Atom(env=self.env, name=node.id))
 
-    def visit_Str(self, node):
-        self.append(String(env=self.env, name=node.s))
-
-    # def visit_Bytes(self, node):
-        # self.append(Bytes(env=self.env, name=node.s))
-
     def visit_Constant(self, node):
-        self.append(Number(env=self.env, name=node.n))
+        if isinstance(node.value, numbers.Number):
+            self.append(Number(env=self.env, name=node.value))
+        elif isinstance(node.value, str):
+            self.append(String(env=self.env, name=node.value))
+        else:
+            raise ValueError("node must be of type str or Number!")
 
     def visit_Tuple(self, node):
         raise TypeError('Tuples are not allowed: {}'.format(node))

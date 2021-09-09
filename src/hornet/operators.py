@@ -11,6 +11,7 @@ __license__ = 'MIT'
 
 import ast
 import collections
+import numbers
 import operator
 from dataclasses import dataclass
 
@@ -186,17 +187,17 @@ class ASTFlattener(ast.NodeVisitor):
     def visit_Name(self, node):
         self.append(node)
 
-    def visit_Str(self, node):
-        self.append(node)
-
-    def visit_Bytes(self, node):
-        self.append(node)
-
     def visit_Constant(self, node):
-        if node.n >= 0:
+        if isinstance(node.value, numbers.Number):
+            if node.n >= 0:
+                self.append(node)
+            else:
+                self.visit((-promote(-node.n)).node)
+        elif isinstance(node.value, str):
             self.append(node)
         else:
-            self.visit((-promote(-node.n)).node)
+            print("!!!", node, type(node.value))
+            raise ValueError("node must be of type str or Number!")
 
     def visit_Tuple(self, node):
         self.append(
