@@ -9,26 +9,40 @@ __author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
 __license__ = 'MIT'
 
 
-import functools
+USE_TCO = True
 
+if USE_TCO:
 
-def trampoline(bouncing, *args, **kwargs):
-    while bouncing:
-        bouncing, result, args, kwargs = bouncing(*args, **kwargs)
-        yield from result
+    import functools
 
+    def trampoline(bouncing, *args, **kwargs):
+        while bouncing:
+            bouncing, result, args, kwargs = bouncing(*args, **kwargs)
+            yield from result
 
-def abort(*args, **kwargs):
-    return None, (), args, kwargs
+    def abort(*args, **kwargs):
+        return None, (), args, kwargs
 
+    def emit(cont, *args, _=None, **kwargs):
+        return cont, [_], args, kwargs
 
-def emit(cont, *args, _=None, **kwargs):
-    return cont, [_], args, kwargs
+    def bounce(cont, *args, **kwargs):
+        return cont, (), args, kwargs
 
+    def tco(function):
+        return functools.partial(bounce, function)
 
-def bounce(cont, *args, **kwargs):
-    return cont, (), args, kwargs
+else:
 
+    from toolz.functoolz import identity as tco
 
-def tco(function):
-    return functools.partial(bounce, function)
+    def trampoline(f, *a, **k):
+        return f(*a, **k)
+
+    def abort():
+        return
+        yield
+
+    def emit(maybe_more_solutions):
+        yield
+        yield from maybe_more_solutions()

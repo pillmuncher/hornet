@@ -18,10 +18,11 @@ import string
 
 from toolz.functoolz import compose, identity
 
-from hornet.util import noop, foldr, rpartial, tabulate, const
-from hornet.util import first_arg as get_self
-from hornet.expressions import is_bitor, is_name
-from hornet.operators import make_token, fz, xfx, xfy, yfx
+from .tailcalls import tco, trampoline, abort as failure, emit as success
+from .util import noop, foldr, rpartial, tabulate, const
+from .util import first_arg as get_self
+from .expressions import is_bitor, is_name
+from .operators import make_token, fz, xfx, xfy, yfx
 
 
 __all__ = [
@@ -60,28 +61,6 @@ __all__ = [
     'Environment',
     'build',
 ]
-
-
-USE_TCO = True
-
-if USE_TCO:
-
-    from .tailcalls import tco, trampoline, abort as failure, emit as success
-
-else:
-
-    tco = identity
-
-    def trampoline(f, *a, **k):
-        return f(*a, **k)
-
-    def failure():
-        return
-        yield
-
-    def success(maybe_more_solutions):
-        yield
-        yield from maybe_more_solutions()
 
 
 def get_name(self):

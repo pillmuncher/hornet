@@ -17,9 +17,9 @@ from dataclasses import dataclass
 
 from toolz.functoolz import compose, curry, identity
 
-from hornet.util import pairwise, const
-from hornet.expressions import is_name, is_operator, is_tuple, is_astwrapper
-from hornet.expressions import mlift, promote, Expression
+from .util import pairwise, const
+from .expressions import is_name, is_operator, is_tuple, is_astwrapper
+from .expressions import mlift, promote, Expression
 
 
 

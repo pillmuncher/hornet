@@ -16,9 +16,9 @@ import itertools
 
 from toolz.functoolz import compose, curry, identity
 
-from hornet.util import foldr, rotate, splitpairs
-from hornet.expressions import unit, Name, is_rshift, is_bitand, is_name
-from hornet.expressions import is_set, is_list, is_call, is_terminal
+from .util import foldr, rotate, splitpairs
+from .expressions import unit, Name, is_rshift, is_bitand, is_name
+from .expressions import is_set, is_list, is_call, is_terminal
 
 
 _C_ = Name("'C'")

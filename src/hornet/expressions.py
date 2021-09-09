@@ -17,7 +17,7 @@ import numbers
 
 from toolz.functoolz import compose, flip, identity
 
-from hornet.util import foldl, rpartial, qualname
+from .util import foldl, rpartial, qualname
 
 
 __all__ = [

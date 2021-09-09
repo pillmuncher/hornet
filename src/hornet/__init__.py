@@ -14,11 +14,11 @@ import copy
 import numbers
 import pprint
 
-from hornet.util import rpartial, foldr, install_symbols_module
-from hornet.expressions import mcompose, promote, Name
-from hornet.operators import rearrange
-from hornet.dcg import _C_, expand
-from hornet.terms import (
+from .util import rpartial, foldr, install_symbols_module
+from .expressions import mcompose, promote, Name
+from .operators import rearrange
+from .dcg import _C_, expand
+from .terms import (
     Addition,
     Adjunction,
     Atom,
@@ -410,9 +410,9 @@ def _throw(term, env, db, trail):
 
 def _bootstrap():
 
-    from hornet.symbols import P, Q, X, Y, Z, Object, Goal, List, Rest
-    from hornet.symbols import Predicate, A, B, C, D, H, L, T, S, Arity, G, G1
-    from hornet.symbols import M, N, length_given_N_
+    from .symbols import P, Q, X, Y, Z, Object, Goal, List, Rest
+    from .symbols import Predicate, A, B, C, D, H, L, T, S, Arity, G, G1
+    from .symbols import M, N, length_given_N_
 
     expressions = (
 
