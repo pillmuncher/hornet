@@ -196,7 +196,6 @@ class ASTFlattener(ast.NodeVisitor):
         elif isinstance(node.value, str):
             self.append(node)
         else:
-            print("!!!", node, type(node.value))
             raise ValueError("node must be of type str or Number!")
 
     def visit_Tuple(self, node):
