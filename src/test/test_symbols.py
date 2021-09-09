@@ -9,8 +9,6 @@ __author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
 __license__ = 'MIT'
 
 
-import pytest
-
 from . import ast_eq
 
 
@@ -20,7 +18,3 @@ def test_symbols_module():
     from hornet.symbols import x
 
     ast_eq(x, Name('x'))
-
-
-if __name__ == '__main__':
-    pytest.main()
