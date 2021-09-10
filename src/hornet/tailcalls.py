@@ -21,8 +21,8 @@ def tco(function):
 def abort(*args, **kwargs):
     return None, (), args, kwargs
 
-def emit(cont, *args, _=None, **kwargs):
-    return cont, [_], args, kwargs
+def emit(cont, *args, **kwargs):
+    return cont, [None], args, kwargs
 
 def trampoline(bounce, *args, **kwargs):
     while bounce:

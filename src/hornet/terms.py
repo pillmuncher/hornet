@@ -281,7 +281,7 @@ class Structure:
     def resolve(self, db):
 
         return trampoline(
-            self._resolve,
+            self._resolve_with_tailcall,
             db=db,
             choice_points=[],
             yes=success,
@@ -289,19 +289,18 @@ class Structure:
             prune=failure,
         )
 
-    def _resolve(self, *, db, choice_points, yes, no, prune):
+    @tco
+    def _resolve_with_tailcall(self, *, db, choice_points, yes, no, prune):
 
         choice_point = self.choice_point(db)
         choice_points.append(choice_point)
         here = len(choice_points)
 
-        @tco
         def prune_here():
             while here <= len(choice_points):
                 choice_points.pop().close()
             return no()
 
-        @tco
         def try_next():
             for goals in choice_point:
                 break
@@ -312,7 +311,7 @@ class Structure:
                 return yes(try_next)
             else:
                 # goals is a rule body, we need to recurse
-                return goals.ref._resolve(
+                return goals.ref._resolve_with_tailcall(
                     db=db,
                     choice_points=choice_points,
                     yes=yes,
@@ -476,7 +475,8 @@ class Implication(InfixOperator):
     head = first_param
     body = second_param
 
-    def _resolve(self, *, db, choice_points, yes, no, prune):
+    @tco
+    def _resolve_with_tailcall(self, *, db, choice_points, yes, no, prune):
         raise TypeError("Implication '{}' is not a valid goal.".format(self))
 
 
@@ -485,11 +485,11 @@ class Conjunction(InfixOperator):
     __slots__ = ()
     op = operator.and_
 
-    def _resolve(self, *, db, choice_points, yes, no, prune):
+    @tco
+    def _resolve_with_tailcall(self, *, db, choice_points, yes, no, prune):
 
-        @tco
         def try_right(retry_left_then_right):
-            return self.right.ref._resolve(
+            return self.right.ref._resolve_with_tailcall(
                 db=db,
                 choice_points=choice_points,
                 yes=yes,
@@ -497,9 +497,8 @@ class Conjunction(InfixOperator):
                 prune=prune,
             )
 
-        @tco
         def try_left_then_right():
-            return self.left.ref._resolve(
+            return self.left.ref._resolve_with_tailcall(
                 db=db,
                 choice_points=choice_points,
                 yes=try_right,
