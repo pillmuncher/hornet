@@ -569,9 +569,7 @@ class Database(ClauseDict):
             self.indicators[clause.name].add(clause.indicator)
 
     def ask(self, expression):
-        term = build_term(expression)
-        for _ in term.resolve(self):
-            yield term.env.proxy
+        return build_term(expression).resolve(self)
 
     def find_all(self, indicator):
         for clause in self.get(indicator, ()):

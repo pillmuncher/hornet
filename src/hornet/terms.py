@@ -18,7 +18,7 @@ import string
 
 from toolz.functoolz import compose, identity
 
-from .tailcalls import tco, trampoline, abort as failure, emit as success
+from .tailcalls import tco, trampoline
 from .util import noop, foldr, rpartial, tabulate, const
 from .util import first_arg as get_self
 from .expressions import is_bitor, is_name
@@ -279,6 +279,12 @@ class Structure:
                     trail.pop()()
 
     def resolve(self, db):
+
+        def success(cont, *args, **kwargs):
+            return [self.env.proxy], cont, args, kwargs
+
+        def failure(*args, **kwargs):
+            return (), None, args, kwargs
 
         return trampoline(
             self._resolve_with_tailcall,

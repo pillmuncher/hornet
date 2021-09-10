@@ -15,16 +15,10 @@ from functools import wraps
 def tco(function):
     @wraps(function)
     def launch(*args, **kwargs):
-        return function, (), args, kwargs
+        return (), function, args, kwargs
     return launch
-
-def abort(*args, **kwargs):
-    return None, (), args, kwargs
-
-def emit(cont, *args, **kwargs):
-    return cont, [None], args, kwargs
 
 def trampoline(bounce, *args, **kwargs):
     while bounce:
-        bounce, result, args, kwargs = bounce(*args, **kwargs)
+        result, bounce, args, kwargs = bounce(*args, **kwargs)
         yield from result
