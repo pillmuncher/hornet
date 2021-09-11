@@ -18,17 +18,14 @@ from . import ast_eq
 from toolz.functoolz import identity
 
 
-load = ast.Load()
-
-
 def test_monad_laws():
     "Test if the basic monadic functions conform to the three Monad Laws."
 
     from hornet.expressions import unit, bind, mlift
 
-    x = ast.Name(id='x', ctx=load)
-    y = ast.Name(id='y', ctx=load)
-    z = ast.Name(id='z', ctx=load)
+    x = ast.Name(id='x')
+    y = ast.Name(id='y')
+    z = ast.Name(id='z')
     mx = unit(x)
 
     mfuncs = [
@@ -59,7 +56,7 @@ def test_expression_factories():
     "Test all Expression factory functions that are called directly."
 
     from hornet.expressions import (
-        unit, Name, Str, Bytes, Num, Tuple, List, Set, Wrapper, AstWrapper
+        unit, Name, Constant, Tuple, List, Set, Wrapper, AstWrapper
     )
 
     class Callable:
@@ -69,14 +66,13 @@ def test_expression_factories():
     obj = object()
     name = 'joe'
     num = 123
-    keys = [Str('a'), Str('b'), Str('c')]
+    keys = [Constant('a'), Constant('b'), Constant('c')]
     pairs = (
-        [Name(name), ast.Name(id=name, ctx=load)],
-        [Str(name), ast.Str(s=name)],
-        [Bytes(name), ast.Bytes(s=name)],
-        [Num(num), ast.Num(n=num)],
-        [Tuple(keys), ast.Tuple(elts=keys, ctx=load)],
-        [List(keys), ast.List(elts=keys, ctx=load)],
+        [Name(name), ast.Name(id=name)],
+        [Constant(name), ast.Constant(value=name)],
+        [Constant(num), ast.Constant(n=num)],
+        [Tuple(keys), ast.Tuple(elts=keys)],
+        [List(keys), ast.List(elts=keys)],
         [Set(keys), ast.Set(elts=keys)],
         [Wrapper(obj), AstWrapper(wrapped=obj)],
     )
@@ -84,19 +80,19 @@ def test_expression_factories():
         ast_eq(expr, unit(node))
 
 
-def test_expression_operators():
+# def test_expression_operators():
     "Test all Expression factory functions that are called as operators."
 
-    from hornet.expressions import unit, Num
+    from hornet.expressions import unit, Constant
     from hornet.symbols import x, y
 
     x_name = x.node
     y_name = y.node
-    items = [Num(1), Num(2), Num(3)]
+    items = [Constant(1), Constant(2), Constant(3)]
 
     pairs = (
         [x[y],
-         ast.Subscript(value=x_name, slice=ast.Slice(lower=y_name), ctx=load)],
+         ast.Subscript(value=x_name, slice=ast.Slice(lower=y_name))],
         [x(1, 2, 3),
          ast.Call(
             func=x_name,

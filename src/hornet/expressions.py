@@ -33,8 +33,6 @@ __all__ = [
     'astify',
     # Expression factory functions:
     'Name',
-    'Str',
-    'Num',
     'Tuple',
     'List',
     'Set',
@@ -132,38 +130,22 @@ def mcompose(*mfuncs):
 
 @mlift
 def Name(name, **kwargs):
-    return ast.Name(id=name, ctx=ast.Load(), **kwargs)
+    return ast.Name(id=name,  **kwargs)
 
 
 @mlift
-def Str(str_):
-    return ast.Str(s=str_)
-
-
-@mlift
-def Bytes(bytes_):
-    return ast.Bytes(s=bytes_)
-
-
-@mlift
-def Num(num):
-    return ast.Num(n=num)
+def Constant(value):
+    return ast.Constant(value=value)
 
 
 @mlift
 def Tuple(tuple_):
-    return ast.Tuple(
-        elts=[astify(each) for each in tuple_],
-        ctx=ast.Load(),
-    )
+    return ast.Tuple(elts=[astify(each) for each in tuple_])
 
 
 @mlift
 def List(list_):
-    return ast.List(
-        elts=[astify(each) for each in list_],
-        ctx=ast.Load(),
-    )
+    return ast.List(elts=[astify(each) for each in list_])
 
 
 @mlift
@@ -231,7 +213,7 @@ def Wrapper(wrapped):
 # ast.BinOp(
 #         left=ast.Num(n=5),
 #         op=ast.Add(),
-#         right=ast.Name(id='y', ctx=ast.Load())
+#         right=ast.Name(id='y')
 #     )
 
 # For more complex cases like e.g.:
@@ -247,7 +229,6 @@ def Subscript(target, subscript):
     return ast.Subscript(
         value=astify(target),
         slice=ast.Slice(lower=astify(subscript)),
-        ctx=ast.Load(),
     )
 
 
@@ -341,9 +322,8 @@ def promote(obj):
 
 
 promote.register(Expression)(identity)
-promote.register(numbers.Number)(Num)
-promote.register(bytes)(Bytes)
-promote.register(str)(Str)
+promote.register(numbers.Number)(Constant)
+promote.register(str)(Constant)
 promote.register(tuple)(Tuple)
 promote.register(list)(List)
 promote.register(set)(Set)

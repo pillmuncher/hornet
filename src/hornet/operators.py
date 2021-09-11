@@ -202,16 +202,10 @@ class ASTFlattener(ast.NodeVisitor):
             raise ValueError("node must be of type str or Number!")
 
     def visit_Tuple(self, node):
-        self.append(
-            ast.Tuple(
-                elts=[_rearrange(each) for each in node.elts],
-                ctx=ast.Load()))
+        self.append(ast.Tuple(elts=[_rearrange(each) for each in node.elts]))
 
     def visit_List(self, node):
-        self.append(
-            ast.List(
-                elts=[_rearrange(each) for each in node.elts],
-                ctx=ast.Load()))
+        self.append(ast.List(elts=[_rearrange(each) for each in node.elts]))
 
     def visit_Set(self, node):
         if len(node.elts) != 1:
@@ -238,11 +232,7 @@ class ASTFlattener(ast.NodeVisitor):
             actions = [node.slice.lower.wrapped]
         else:
             raise TypeError('Subscript must be one or more callables!')
-        self.append(
-            ast.Subscript(
-                value=_rearrange(node.value),
-                slice=actions,
-                ctx=ast.Load()))
+        self.append(ast.Subscript(value=_rearrange(node.value), slice=actions))
 
     def visit_Call(self, node):
         if not is_name(node.func):
