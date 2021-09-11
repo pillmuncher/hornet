@@ -12,6 +12,7 @@ __license__ = 'MIT'
 import ast
 import collections
 import copy
+import dataclasses
 import numbers
 import operator
 import string
@@ -94,9 +95,10 @@ def comma_separated(items):
     return ', '.join(str(each) for each in items)
 
 
-Indicator = collections.namedtuple('Indicator', 'functor arity')
-Indicator.__str__ = lambda self: '{}/{}'.format(*self)
-Indicator.__repr__ = Indicator.__str__
+@dataclasses.dataclass(frozen=True)
+class Indicator:
+    functor: str
+    arity: int
 
 
 class UnificationFailed(Exception):

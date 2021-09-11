@@ -22,8 +22,8 @@ from .expressions import is_name, is_operator, is_tuple, is_astwrapper
 from .expressions import mlift, promote, Expression
 
 
-
 decrement = (-1).__add__
+
 
 class ParseError(Exception):
     pass
