@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
+#
+
 
 __version__ = '0.2.5a'
 __date__ = '2014-09-27'
@@ -412,7 +414,7 @@ def _bootstrap():
 
     from .symbols import P, Q, X, Y, Z, Object, Goal, List, Rest
     from .symbols import Predicate, A, B, C, D, H, L, T, S, Arity, G, G1
-    from .symbols import M, N, length_given_N_
+    from .symbols import M, N, length_is_N
 
     expressions = (
 
@@ -523,12 +525,12 @@ def _bootstrap():
         maplist(G, [H | T]) << cut & univ(G1, [G, H]) & G1 & maplist(G, T),
         maplist(_, []),
 
-        length(L, N) << nonvar(N) & cut & ~smaller(N, 0) & length_given_N_(L, N),
+        length(L, N) << nonvar(N) & cut & ~smaller(N, 0) & length_is_N(L, N),
         length([], 0),
         length([H | T], N) << length(T, M) & let(N, M + 1),
 
-        length_given_N_([], 0) << cut,
-        length_given_N_([H | T], N) << let(M, N - 1) & length_given_N_(T, M),
+        length_is_N([], 0) << cut,
+        length_is_N([H | T], N) << let(M, N - 1) & length_is_N(T, M),
 
     )
 

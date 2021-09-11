@@ -19,7 +19,7 @@ import string
 
 from toolz.functoolz import compose, identity
 
-from .tailcalls import tco, trampoline
+from .tailcalls import tco, trampoline, emit as success, abort as failure
 from .util import noop, foldr, rpartial, tabulate, const
 from .util import first_arg as get_self
 from .expressions import is_bitor, is_name
@@ -56,8 +56,6 @@ __all__ = [
     'Positive',
     'Negative',
     'Builder',
-    'success',
-    'failure',
     'is_nil',
     'Environment',
     'build',
@@ -282,17 +280,11 @@ class Structure:
 
     def resolve(self, db):
 
-        def success(cont, *args, **kwargs):
-            return [self.env.proxy], cont, args, kwargs
-
-        def failure(*args, **kwargs):
-            return (), None, args, kwargs
-
         return trampoline(
             self._resolve_with_tailcall,
             db=db,
             choice_points=[],
-            yes=success,
+            yes=success(self.env.proxy),
             no=failure,
             prune=failure,
         )
@@ -310,7 +302,7 @@ class Structure:
             return no()
 
         def try_next():
-            for goals in choice_point:
+            for goals in choice_point:  # noqa: B007
                 break
             else:
                 return prune() if is_cut(self) else no()
@@ -403,10 +395,10 @@ class List(Structure):
             return '[{}]'.format(comma_separated(acc))
         return '[{}|{}]'.format(comma_separated(acc), self)
 
-    def __deepcopy__(self, memo):
+    def __deepcopy__(self, memo, deepcopy=copy.deepcopy):
         return List(
-            env=copy.deepcopy(self.env, memo),
-            params=[copy.deepcopy(each.ref, memo) for each in self.params],
+            env=deepcopy(self.env, memo),
+            params=[deepcopy(each.ref, memo) for each in self.params],
             actions=self.actions)
 
     def fresh(self, env):
@@ -666,10 +658,10 @@ class Builder(ast.NodeVisitor):
         self.top().append(item)
 
     def build(self, node):
-        assert self.stack == []
+        assert self.stack == []  # noqa: S101
         self.push()
         self.visit(node)
-        assert 1 == len(self.stack) == len(self.stack[0])
+        assert 1 == len(self.stack) == len(self.stack[0])  # noqa: S101
         return self.pop().pop()
 
     def visit_Name(self, node):
@@ -752,7 +744,7 @@ class Builder(ast.NodeVisitor):
         for each in node.args:
             self.visit(each)
         args = self.pop()
-        assert len(args) == len(node.args)
+        assert len(args) == len(node.args)  # noqa: S101
         self.append(Relation(env=self.env, name=node.func.id, params=args))
 
     def visit_UnaryOp(self, node):
@@ -785,75 +777,3 @@ class Builder(ast.NodeVisitor):
 
 def build(node):
     return Builder(Environment()).build(node)
-
-
-# class PythonBuilder:
-
-    # def build_Wildcard(self, node):
-    # pass
-
-    # def build_Variable(self, node):
-    # pass
-
-    # def build_Relation(self, node):
-    # pass
-
-    # def build_Atom(self, node):
-    # pass
-
-    # def build_String(self, node):
-    # pass
-
-    # def build_Num(self, node):
-    # pass
-
-    # def build_List(self, node):
-    # pass
-
-    # def build_Nil(self, node):
-    # pass
-
-    # def build_Implication(self, node):
-    # pass
-
-    # def build_Conjunction(self, node):
-    # pass
-
-    # def build_Disjunction(self, node):
-    # pass
-
-    # def build_Adjunction(self, node):
-    # pass
-
-    # def build_Conditional(self, node):
-    # pass
-
-    # def build_Addition(self, node):
-    # pass
-
-    # def build_Subtraction(self, node):
-    # pass
-
-    # def build_Multiplication(self, node):
-    # pass
-
-    # def build_Division(self, node):
-    # pass
-
-    # def build_FloorDivision(self, node):
-    # pass
-
-    # def build_Remainder(self, node):
-    # pass
-
-    # def build_Exponentiation(self, node):
-    # pass
-
-    # def build_Negation(self, node):
-    # pass
-
-    # def build_Positive(self, node):
-    # pass
-
-    # def build_Negative(self, node):
-    # pass

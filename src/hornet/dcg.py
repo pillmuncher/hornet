@@ -14,7 +14,7 @@ import copy
 import functools
 import itertools
 
-from toolz.functoolz import compose, curry, identity
+from toolz.functoolz import identity
 
 from .util import foldr, rotate, splitpairs
 from .expressions import unit, Name, is_rshift, is_bitand, is_name
@@ -125,7 +125,7 @@ class Expander:
             return self.expand_terminals(node, cont)
 
         elif is_set(node):
-            assert len(node.elts) == 1
+            assert len(node.elts) == 1   # noqa: S101
             return cont(unit(node.elts[0]))
 
         else:

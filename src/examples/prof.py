@@ -10,8 +10,8 @@ __license__ = 'MIT'
 
 
 #from queens import *
-from symdiff import *
-#from fizzbuzz import *
+#from symdiff import *
+from fizzbuzz import *
 
 
 if __name__ == '__main__':

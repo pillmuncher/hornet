@@ -10,7 +10,6 @@ __license__ = 'MIT'
 
 
 import ast
-import collections
 import numbers
 import operator
 from dataclasses import dataclass
@@ -161,7 +160,8 @@ PYTHON_FIXITIES = {
     ast.BitOr: yfx(10),
     ast.BitXor: yfx(20),
     ast.BitAnd: yfx(30),
-    ast.LShift: yfx(45),  # yeah, i know that's cheating...
+    # yeah, i know that's cheating:
+    ast.LShift: yfx(45),
     ast.RShift: yfx(40),
     ast.Add: yfx(50),
     ast.Sub: yfx(50),

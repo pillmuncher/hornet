@@ -176,9 +176,9 @@ def Wrapper(wrapped):
 #
 # Let's see an example:
 
-# x = Name('x')
-# y = x + 3
-# z = y + 5
+# x = Name('x')                                                     noqa: E800
+# y = x + 3                                                         noqa: E800
+# z = y + 5                                                         noqa: E800
 
 # Here x is an Expression object created by Name('x'). It wraps around an AST
 # node ast.Name(id='x', ctx='ast.Load())
@@ -198,7 +198,7 @@ def Wrapper(wrapped):
 #
 # But what if we change the last line to:
 
-# z = 5 + y
+# z = 5 + y                                                         noqa: E800
 
 # 5 (an int) doesn't know how to add an Expression object to itself, so it
 # returns NotImplemented which causes Python to call the right argument's
@@ -210,15 +210,15 @@ def Wrapper(wrapped):
 # we would expect when we saw 5 + y. When we construct our AST node, it comes
 # out correctly:
 
-# ast.BinOp(
-#         left=ast.Num(n=5),
-#         op=ast.Add(),
-#         right=ast.Name(id='y')
-#     )
+# ast.BinOp(                                                        noqa: E800
+#         left=ast.Num(n=5),                                        noqa: E800
+#         op=ast.Add(),                                             noqa: E800
+#         right=ast.Name(id='y')                                    noqa: E800
+#     )                                                             noqa: E800
 
 # For more complex cases like e.g.:
 
-# x - y * z + 1
+# x - y * z + 1                                                     noqa: E800
 
 # we rely on the priority and associativity rules that Python imposes on us.
 # Then this expression is the same as ((x - (y * z)) + 1).

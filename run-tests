@@ -1,1 +1,1 @@
-python -m pytest --cache-clear --cov=hornet --mccabe src/test
+python -m pytest --cov=hornet --cov-append --mccabe src/test
