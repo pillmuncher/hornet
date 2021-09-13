@@ -1,1 +1,1 @@
-python -m pytest --cov=hornet --cov-append --mccabe src/test
+python3.9 -m pytest --cov=hornet --cov-append --mccabe src/test
