@@ -1,6 +1,8 @@
 .*
 */__pycache__
 __pycache__
+__pypackages__
+.pdm.toml
 hornet.egg-info
 setuptools-*
 ez_setup.py
