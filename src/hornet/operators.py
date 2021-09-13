@@ -182,6 +182,7 @@ binop_fields = operator.attrgetter('left', 'op', 'right')
 class ASTFlattener(ast.NodeVisitor):
 
     def __init__(self, nodes):
+        self.node = nodes
         self.append = nodes.append
 
     def visit_Name(self, node):

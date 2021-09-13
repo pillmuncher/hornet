@@ -1,6 +1,4 @@
 # Copyright (C) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
-#
-
 
 __version__ = '0.2.5a'
 __date__ = '2014-09-27'
@@ -136,8 +134,8 @@ def unify(this, that, trail):
     this.ref.unify(that.ref, trail)
 
 
-expand_term = mcompose(rearrange, expand, build)
-build_term = mcompose(rearrange, build)
+expand_term = mcompose(build, expand, rearrange)
+build_term = mcompose(build, rearrange)
 
 
 is_atomic = rpartial(isinstance, Atomic)

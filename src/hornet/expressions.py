@@ -24,6 +24,7 @@ __all__ = [
     'unit',
     'bind',
     'mlift',
+    'ecompose',
     'mcompose',
     # helper functions:
     'promote',
@@ -103,6 +104,7 @@ def bind(expr, mfunc):
     return mfunc(expr.node)
 
 
+
 # The function mlift(func:T --> AST) --> (T --> Expression) "lifts" a normal
 # function that returns an AST into a function that returns an Expression.
 # It is mostly used as a function decorator.
@@ -114,7 +116,7 @@ def mlift(func):
 # Make monadic functions mf:AST --> Expression composable:
 
 def mcompose(*mfuncs):
-    return functools.partial(foldl, bind, mfuncs)
+    return functools.partial(foldl, bind, tuple(reversed(mfuncs)))
 
 
 # Here come the Expression factory functions.

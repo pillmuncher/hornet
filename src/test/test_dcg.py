@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-#
 # Copyright (C) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
 __version__ = '0.2.5a'
@@ -12,9 +9,11 @@ __license__ = 'MIT'
 from . import expression_all, ast_eq
 
 
-def est_dcg_transformation():
+def test_dcg_transformation():
 
-    from hornet.expressions import promote, mcompose
+    from toolz.functoolz import compose
+
+    from hornet.expressions import promote, mcompose, unit
     from hornet.operators import rearrange
     from hornet.dcg import expand, _C_
 
@@ -24,7 +23,7 @@ def est_dcg_transformation():
 
     expression_all(
         ast_eq,
-        mcompose(expand, rearrange),
+        compose(mcompose(expand, rearrange), unit),
         rearrange,
         (
             s >> vp,
