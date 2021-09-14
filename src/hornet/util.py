@@ -43,15 +43,10 @@ def rpartial(f, *args, **kwargs):
     return partial(flip(f), *args, **kwargs)
 
 
-def pairwise(iterable, *, rotate=False, fillvalue=_sentinel):
-    if rotate and fillvalue is not _sentinel:
-        raise ValueError(
-            'The parameters rotate and fillvalue are mutually exclusive.')
+def pairwise(iterable, *, fillvalue=_sentinel):
     a, b = tee(iterable)
     last = next(b, None)
-    if rotate:
-        return zip(a, chain(b, [last]))
-    elif fillvalue is _sentinel:
+    if fillvalue is _sentinel:
         return zip(a, b)
     else:
         return zip_longest(a, b, fillvalue=fillvalue)
