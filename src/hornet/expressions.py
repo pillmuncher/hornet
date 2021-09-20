@@ -24,7 +24,6 @@ __all__ = [
     'unit',
     'bind',
     'mlift',
-    'ecompose',
     'mcompose',
     # helper functions:
     'promote',
