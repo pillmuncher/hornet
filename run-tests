@@ -1,6 +1,6 @@
 if [ "$1" == "" ]
  then
-    python3.9 -m pytest --cov=hornet --cov-append --mccabe /pub/src/hornet/src/test
+    python -m pytest --cov=hornet --cov-append --mccabe /pub/src/hornet/src/test
  else
-    python3.9 -m pytest --cov=hornet --cov-append --mccabe "$1"
+    python -m pytest --cov=hornet --cov-append --mccabe "$1"
  fi

@@ -1,13 +1,13 @@
 [project]
 name = "hornet"
-version = "0.2.5a"
+version = "2.0.5a"
 description = ""
 authors = [
     {name = "Mick Krippendorf", email = "m.krippendorf@freenet.de"},
 ]
 dependencies = [
-    "codegen~=1.0",
     "cytoolz~=0.11",
+    "codegen~=1.0",
 ]
 requires-python = ">=3.9"
 dynamic = ["classifiers"]
@@ -16,6 +16,8 @@ license = {text = "MIT"}
 [project.urls]
 homepage = ""
 
+
+[project.optional-dependencies]
 [build-system]
 requires = ["pdm-pep517"]
 build-backend = "pdm.pep517.api"
@@ -23,3 +25,15 @@ build-backend = "pdm.pep517.api"
 [tool]
 [tool.pdm]
 [tool.pdm.dev-dependencies]
+test = [
+    "pytest~=6.2",
+    "flake8~=3.9",
+    "pytest-flake8~=1.0",
+    "mccabe~=0.6",
+    "pytest-mccabe~=2.0",
+    "coverage~=5.5",
+    "pytest-coverage~=0.0",
+]
+editor = [
+    "neovim~=0.3",
+]
