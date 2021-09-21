@@ -101,16 +101,12 @@ class UnificationFailed(Exception):
 
 
 class Wildcard:
-
     __slots__ = ()
-
     __call__ = noop
     __repr__ = const('_')
     __deepcopy__ = get_self
-
-    ref = property(identity)
     fresh = get_self
-
+    ref = property(identity)
     unify = noop
     unify_variable = noop
     unify_structure = noop
@@ -120,8 +116,9 @@ WILDCARD = Wildcard()
 
 
 class Variable(collections.Counter):
-
     __slots__ = 'env', 'name'
+    __eq__ = object.__eq__
+    __hash__ = object.__hash__
 
     def __init__(self, *, env, name):
         self.env = env
@@ -139,9 +136,6 @@ class Variable(collections.Counter):
             )
         else:
             return str(self.ref)
-
-    __eq__ = object.__eq__
-    __hash__ = object.__hash__
 
     def __deepcopy__(self, memo, deepcopy=copy.deepcopy):
         var = deepcopy(self.env, memo)(self.name)
@@ -203,9 +197,7 @@ def is_cut(term):
 
 
 class Structure:
-
     __slots__ = 'env', 'name', 'params', 'actions'
-
     ref = property(identity)
     head = property(get_self)
     body = property(noop)
@@ -271,7 +263,6 @@ class Structure:
                     trail.pop()()
 
     def resolve(self, db):
-
         return trampoline(
             self._resolve_with_tailcall,
             db=db,
@@ -351,9 +342,7 @@ is_nil = rpartial(isinstance, Nil)
 
 
 class Relation(Structure):
-
     __slots__ = ()
-
     __call__ = get_name
 
     def __repr__(self):
@@ -363,9 +352,7 @@ class Relation(Structure):
 
 
 class List(Structure):
-
     __slots__ = ()
-
     car = first_param
     cdr = second_param
 
@@ -402,26 +389,20 @@ class List(Structure):
 
 
 class PrefixOperator(Structure):
-
     __slots__ = ()
-
     operand = first_param
 
     def __call__(self):
         return self.op(self.operand.ref())
 
     def __repr__(self):
-
         operand = self.operand.ref
-
         op_fixity = make_token(OPERATOR_FIXITIES, self)
         operand_fixity = make_token(OPERATOR_FIXITIES, operand)
-
         if operand_fixity.left_rank and op_fixity > operand_fixity:
             operand_str = parenthesized
         else:
             operand_str = str
-
         return '{}{}'.format(self.name, operand_str(operand))
 
 
@@ -458,15 +439,13 @@ class InfixOperator(Structure):
 
 
 class Implication(InfixOperator):
-
     __slots__ = ()
+    head = first_param
+    body = second_param
 
     # reverse implication: l << r
     def op(left, right):
         return left or not right
-
-    head = first_param
-    body = second_param
 
     @tco
     def _resolve_with_tailcall(self, *, db, choice_points, yes, no, prune):
@@ -474,7 +453,6 @@ class Implication(InfixOperator):
 
 
 class Conjunction(InfixOperator):
-
     __slots__ = ()
     op = operator.and_
 
@@ -678,7 +656,6 @@ class Builder(ast.NodeVisitor):
         return List(env=self.env, params=[car, cdr])
 
     def visit_List(self, node):
-
         if node.elts:
 
             self.push()
