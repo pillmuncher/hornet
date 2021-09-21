@@ -105,8 +105,7 @@ class Wildcard:
     __slots__ = ()
 
     __call__ = noop
-    __str__ = const('_')
-    __repr__ = __str__
+    __repr__ = const('_')
     __deepcopy__ = get_self
 
     ref = property(identity)
@@ -131,7 +130,7 @@ class Variable(collections.Counter):
     def __call__(self):
         return None if self.ref is self else self.ref()
 
-    def __str__(self):
+    def __repr__(self):
         if self.ref is self:
             return min(
                 variable.name
@@ -141,7 +140,6 @@ class Variable(collections.Counter):
         else:
             return str(self.ref)
 
-    __repr__ = __str__
     __eq__ = object.__eq__
     __hash__ = object.__hash__
 
@@ -221,9 +219,6 @@ class Structure:
         self.name = name
         self.params = tuple(params)
         self.actions = list(actions)
-
-    def __repr__(self):
-        return str(self)
 
     def __deepcopy__(self, memo, deepcopy=copy.deepcopy):
         return type(self)(
@@ -322,29 +317,30 @@ class Structure:
 class Atomic(Structure):
     __slots__ = ()
     __call__ = get_name
-    __str__ = get_name
     __deepcopy__ = get_self
     fresh = get_self
 
 
 class Atom(Atomic):
     __slots__ = ()
+    __repr__ = get_name
 
 
 class String(Atomic):
     __slots__ = ()
+    __str__ = get_name
     __repr__ = compose("'{}'".format, get_name)
 
 
 class Number(Atomic):
     __slots__ = ()
-    __str__ = compose(str, get_name)
+    __repr__ = compose(str, get_name)
 
 
 class Nil(Atomic):
     __slots__ = ()
     __call__ = list
-    __str__ = const('[]')
+    __repr__ = const('[]')
 
     def __init__(self):
         Atomic.__init__(self, env={}, name='[]')
@@ -360,7 +356,7 @@ class Relation(Structure):
 
     __call__ = get_name
 
-    def __str__(self):
+    def __repr__(self):
         return '{}({})'.format(
             self.name,
             comma_separated(str(each.ref) for each in self.params))
@@ -383,7 +379,7 @@ class List(Structure):
             self = self.cdr.ref
         return acc if is_nil(self) else acc + [self]
 
-    def __str__(self):
+    def __repr__(self):
         acc = []
         while isinstance(self, List):
             acc.append(self.car.ref)
@@ -414,7 +410,7 @@ class PrefixOperator(Structure):
     def __call__(self):
         return self.op(self.operand.ref())
 
-    def __str__(self):
+    def __repr__(self):
 
         operand = self.operand.ref
 
@@ -439,7 +435,7 @@ class InfixOperator(Structure):
     def __call__(self):
         return self.op(self.left.ref(), self.right.ref())
 
-    def __str__(self):
+    def __repr__(self):
 
         left = self.left.ref
         right = self.right.ref
@@ -604,8 +600,6 @@ class Environment(dict):
 
         def __repr__(self):
             return 'Environment.{}'.format(super().__repr__())
-
-        __str__ = __repr__
 
 
 OPERATOR_FIXITIES = {
