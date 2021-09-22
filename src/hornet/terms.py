@@ -35,8 +35,8 @@ __all__ = [
     'String',
     'Number',
     'List',
-    'Nil',
-    'NIL',
+    'EmptyList',
+    'EMPTY',
     'Implication',
     'Conjunction',
     'Disjunction',
@@ -53,7 +53,7 @@ __all__ = [
     'Positive',
     'Negative',
     'Builder',
-    'is_nil',
+    'is_empty',
     'Environment',
     'build',
 ]
@@ -328,7 +328,7 @@ class Number(Atomic):
     __repr__ = compose(str, get_name)
 
 
-class Nil(Atomic):
+class EmptyList(Atomic):
     __slots__ = ()
     __call__ = list
     __repr__ = const('[]')
@@ -337,8 +337,8 @@ class Nil(Atomic):
         Atomic.__init__(self, env={}, name='[]')
 
 
-NIL = Nil()
-is_nil = rpartial(isinstance, Nil)
+EMPTY = EmptyList()
+is_empty = rpartial(isinstance, EmptyList)
 
 
 class Relation(Structure):
@@ -364,14 +364,14 @@ class List(Structure):
         while isinstance(self, List):
             acc.append(self.car.ref())
             self = self.cdr.ref
-        return acc if is_nil(self) else acc + [self]
+        return acc if is_empty(self) else acc + [self]
 
     def __repr__(self):
         acc = []
         while isinstance(self, List):
             acc.append(self.car.ref)
             self = self.cdr.ref
-        if is_nil(self):
+        if is_empty(self):
             return '[{}]'.format(comma_separated(acc))
         return '[{}|{}]'.format(comma_separated(acc), self)
 
@@ -674,12 +674,12 @@ class Builder(ast.NodeVisitor):
             else:
                 self.visit(last)
                 *items, last = self.pop()
-                cdr = self.cons(last, NIL)
+                cdr = self.cons(last, EMPTY)
 
             self.append(foldr(self.cons, items, cdr))
 
         else:
-            self.append(NIL)
+            self.append(EMPTY)
 
     def visit_Set(self, node):
         raise TypeError('Sets are not allowed: {}'.format(node))

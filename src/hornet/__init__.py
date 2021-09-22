@@ -30,10 +30,10 @@ from .terms import (
     Indicator,
     List,
     Multiplication,
-    NIL,
+    EMPTY,
     Negation,
     Negative,
-    Nil,
+    EmptyList,
     Number,
     Positive,
     Relation,
@@ -45,7 +45,7 @@ from .terms import (
     Variable,
     Wildcard,
     build,
-    is_nil,
+    is_empty,
 )
 
 
@@ -119,7 +119,7 @@ ASSERTABLE = (
     Multiplication,
     Negation,
     Negative,
-    Nil,
+    EmptyList,
     Positive,
     Relation,
     Remainder,
@@ -222,7 +222,7 @@ def print_trail(term, env, db, trail):
     pprint.pprint(trail)
 
 
-def make_list(env, items, tail=NIL):
+def make_list(env, items, tail=EMPTY):
 
     def cons(*params):
         return List(env=env, params=params)
@@ -235,14 +235,14 @@ class TailPair(Adjunction):
 
 
 def flatten(L):
-    if not isinstance(L, (List, Nil)):
-        raise TypeError('Expected List or Nil, found {}: {}.'
+    if not isinstance(L, (List, EmptyList)):
+        raise TypeError('Expected List or EmptyList, found {}: {}.'
                         .format(type(L), L))
     acc = []
     while isinstance(L, List):
         acc.append(L.car.ref)
         L = L.cdr.ref
-    if not is_nil(L):
+    if not is_empty(L):
         acc[-1] = TailPair(env=L.env, name='|', params=[acc[-1], L])
     return acc
 
@@ -375,7 +375,7 @@ def _univ(term, env, db, trail):
         if not isinstance(functor, Atom):
             raise TypeError('First Element of List must be Atom, not {}: {}'
                             .format(type(functor), functor))
-        if isinstance(env.L.cdr.ref, Nil):
+        if isinstance(env.L.cdr.ref, EmptyList):
             unify(env.T, Atom(env=env, name=functor.name), trail)
         else:
             params = flatten(env.L.cdr.ref)
