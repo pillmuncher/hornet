@@ -152,12 +152,6 @@ class Clause:
     def __repr__(self):
         return repr(self.term)
 
-    def fresh_term(self):
-        env = Environment()
-        term = self.term.fresh(env)
-        env.rename_vars()
-        return term
-
 
 class Fact(Clause):
 
@@ -569,5 +563,4 @@ class Database(ClauseDict):
         return build_term(expression).resolve(self)
 
     def find_all(self, indicator):
-        for clause in self.get(indicator, ()):
-            yield clause.fresh_term()
+        return self.get(indicator, ())

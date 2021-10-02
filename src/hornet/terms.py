@@ -249,7 +249,10 @@ class Structure:
 
     def choice_point(self, db):
         trail = []
-        for term in db.find_all(self.indicator):
+        for clause in db.find_all(self.indicator):
+            env = Environment()
+            term = clause.term.fresh(env)
+            env.rename_vars()
             try:
                 term.head.unify(self, trail)
                 term.head.action(db, trail)
@@ -407,9 +410,7 @@ class PrefixOperator(Structure):
 
 
 class InfixOperator(Structure):
-
     __slots__ = ()
-
     left = first_param
     right = second_param
 
