@@ -207,8 +207,7 @@ class ASTFlattener(ast.NodeVisitor):
 
     def visit_Set(self, node):
         if len(node.elts) != 1:
-            raise TypeError('Only sets with exactly one item allowed, not {}'
-                            .format(node))
+            raise TypeError(f'Only sets with exactly one item allowed, not {node}')
         self.append(
             ast.Set(
                 elts=[_rearrange(each) for each in node.elts]))
@@ -219,7 +218,7 @@ class ASTFlattener(ast.NodeVisitor):
     def visit_AstWrapper(self, node):
         self.append(node)
 
-    def visit_Subscript(self, node):
+    def visit_Subscript(self, node:ast.Subscript):
         if is_tuple(node.slice.lower):
             elts = node.slice.lower.elts
             if all(callable(each.wrapped) for each in elts):
@@ -234,17 +233,11 @@ class ASTFlattener(ast.NodeVisitor):
 
     def visit_Call(self, node):
         if not is_name(node.func):
-            raise TypeError('{} is not a valid functor name.'
-                            .format(node.func))
+            raise TypeError(f'{node.func} is not a valid functor name.')
         if node.keywords:
-            raise TypeError('Keyword arguments are not allowed: {}'
-                            .format(node))
-        if node.starargs:
-            raise TypeError('Starred arguments are not allowed: {}'
-                            .format(node))
-        if node.kwargs:
-            raise TypeError('Starred keyword arguments are not allowed: {}'
-                            .format(node))
+            raise TypeError(f'Keyword arguments are not allowed: {node}')
+        if any(isinstance(arg, ast.Starred) for arg in node.args):
+            raise TypeError(f'Starred arguments are not allowed: {node}')
         self.append(
             ast.Call(
                 func=node.func,

@@ -228,19 +228,6 @@ class TailPair(Adjunction):
     pass
 
 
-def flatten(L):
-    if not isinstance(L, (List, EmptyList)):
-        raise TypeError('Expected List or EmptyList, found {}: {}.'
-                        .format(type(L), L))
-    acc = []
-    while isinstance(L, List):
-        acc.append(L.car.ref)
-        L = L.cdr.ref
-    if not is_empty(L):
-        acc[-1] = TailPair(env=L.env, name='|', params=[acc[-1], L])
-    return acc
-
-
 def expect(item, expected_type):
     if not isinstance(item, expected_type):
         raise UnificationFailed
@@ -289,7 +276,7 @@ def _listing_2(term, env, db, trail):
 def _listing(indicator, clauses):
     print(indicator)
     for clause in clauses:
-        print('    {}.'.format(clause))
+        print(f'    {clause}.')
     print()
 
 
@@ -327,14 +314,28 @@ def _numeric(term, env, db, trail):
     expect(env.X(), numbers.Number)
 
 
+def flatten(L):
+    if isinstance(L, EmptyList):
+        return []
+    elif isinstance(L, List):
+        acc = []
+        while isinstance(L, List):
+            acc.append(L.car.ref)
+            L = L.cdr.ref
+        if not is_empty(L):
+            acc[-1] = TailPair(env=L.env, name='|', params=[acc[-1], L])
+        return acc
+    else:
+        raise TypeError(f'Expected List or EmptyList, found {type(L)}: {L}.')
+
+
 def flatten_strs(L):
     try:
         for each in flatten(L):
             expect(each, String)
             yield each.ref()
     except UnificationFailed:
-        raise TypeError('Expected String, found {}: {}'
-                        .format(type(each), each))
+        raise TypeError(f'Expected String, found {type(each)}: {each}')  # pyright: ignore[reportUnboundVariable]
 
 
 def _join_2(term, env, db, trail):
@@ -357,7 +358,8 @@ def _univ(term, env, db, trail):
 
     if isinstance(env.T, Relation):
         params = make_list(env, env.T.params)
-        result = make_list(env, [Atom(env=env, name=env.T.name)], params)
+        result = make_list(env, [Atom(env=env, name=env.T.name)], params)  # pyright: ignore[reportGeneralTypeIssues]
+
         unify(env.L, result, trail)
 
     elif isinstance(env.T, Atom):
@@ -367,14 +369,15 @@ def _univ(term, env, db, trail):
     elif isinstance(env.L, List):
         functor = env.L.car.ref
         if not isinstance(functor, Atom):
-            raise TypeError('First Element of List must be Atom, not {}: {}'
-                            .format(type(functor), functor))
+            raise TypeError(
+                f'First Element of List must be Atom, not {type(functor)}: {functor}'
+            )
         if isinstance(env.L.cdr.ref, EmptyList):
             unify(env.T, Atom(env=env, name=functor.name), trail)
         else:
             params = flatten(env.L.cdr.ref)
             if isinstance(params[-1], TailPair):
-                raise TypeError('Proper List expected, found {}'.format(env.L))
+                raise TypeError(f'Proper List expected, found {env.L}')
             result = Relation(env=env, name=functor.name, params=params)
             unify(env.T, result, trail)
 
@@ -387,8 +390,7 @@ def _transpose(term, env, db, trail):
     Ls = [flatten(each.ref) for each in L0]
     if len(set(map(len, Ls))) > 1:
         raise ValueError(
-            'Cannot transpose a List of Lists of different lengths: {}'
-            .format(env.L)
+            f'Cannot transpose a List of Lists of different lengths: {env.L}'
         )
     Lt = list(zip(*Ls))
     L1 = [make_list(env, each) for each in Lt]
@@ -401,125 +403,125 @@ def _throw(term, env, db, trail):
 
 def _bootstrap():
 
-    from .symbols import P, Q, X, Y, Z, Object, Goal, List, Rest
-    from .symbols import Predicate, A, B, C, D, H, L, T, S, Arity, G, G1
-    from .symbols import M, N, length_is_N
+    from .symbols import P, Q, X, Y, Z, Object, Goal, List, Rest  # pyright: ignore[reportMissingImports]
+    from .symbols import Predicate, A, B, C, D, H, L, T, S, Arity, G, G1  # pyright: ignore[reportMissingImports]
+    from .symbols import M, N, length_is_N  # pyright: ignore[reportMissingImports]
 
     expressions = (
 
-        cut,
+        cut,  # pyright: ignore[reportUndefinedVariable]
 
-        true,
+        true,  # pyright: ignore[reportUndefinedVariable]
 
-        fail[_fail],
+        fail[_fail],  # pyright: ignore[reportUndefinedVariable]
 
         # not:
-        ~X << X & cut[_fail],
-        ~_,
+        ~X << X & cut[_fail],  # pyright: ignore[reportUndefinedVariable]
+        ~_,  # pyright: ignore[reportUndefinedVariable]
 
         # or:
-        X | _ << X,
-        _ | Y << Y,
+        X | _ << X,  # pyright: ignore[reportUndefinedVariable]
+        _ | Y << Y,  # pyright: ignore[reportUndefinedVariable]
 
         # xor:
-        X ^ Y << X & ~Y,
-        X ^ Y << ~X & Y,
+        X ^ Y << X & ~Y,  # pyright: ignore[reportUndefinedVariable]
+        X ^ Y << ~X & Y,  # pyright: ignore[reportUndefinedVariable]
 
         # if-then-else:
-        X >> Y | _ << X & Y,
-        X >> _ | Z << ~X & Z,
+        X >> Y | _ << X & Y,  # pyright: ignore[reportUndefinedVariable]
+        X >> _ | Z << ~X & Z,  # pyright: ignore[reportUndefinedVariable]
 
-        repeat,
-        repeat << repeat,
+        repeat,  # pyright: ignore[reportUndefinedVariable]
+        repeat << repeat,  # pyright: ignore[reportUndefinedVariable]
 
-        let(X, Y)[_let],
+        let(X, Y)[_let],  # pyright: ignore[reportUndefinedVariable]
 
-        call(Goal) << Goal,
+        call(Goal) << Goal,  # pyright: ignore[reportUndefinedVariable]
 
-        once(Goal) << Goal & cut,
+        once(Goal) << Goal & cut,  # pyright: ignore[reportUndefinedVariable]
 
-        ignore(Goal) << Goal & cut,
-        ignore(_),
+        ignore(Goal) << Goal & cut,  # pyright: ignore[reportUndefinedVariable]
+        ignore(_),  # pyright: ignore[reportUndefinedVariable]
 
-        equal(P, P),
+        equal(P, P),  # pyright: ignore[reportUndefinedVariable]
 
-        unequal(P, P) << cut[_fail],
-        unequal(_, _),
+        unequal(P, P) << cut[_fail],  # pyright: ignore[reportUndefinedVariable]
+        unequal(_, _),  # pyright: ignore[reportUndefinedVariable]
 
-        greater(X, Y)[_greater],
+        greater(X, Y)[_greater],  # pyright: ignore[reportUndefinedVariable]
 
-        smaller(X, Y)[_smaller],
+        smaller(X, Y)[_smaller],  # pyright: ignore[reportUndefinedVariable]
 
-        throw[_throw],
+        throw[_throw],  # pyright: ignore[reportUndefinedVariable]
 
-        findall(Object, Goal, List)[_findall_3],
-        findall(Object, Goal, List, Rest)[_findall_4],
+        findall(Object, Goal, List)[_findall_3],  # pyright: ignore[reportUndefinedVariable]
+        findall(Object, Goal, List, Rest)[_findall_4],  # pyright: ignore[reportUndefinedVariable]
 
-        member(H, [H | T]),
-        member(G, [H | T]) << member(G, T),
+        member(H, [H | T]),  # pyright: ignore[reportUndefinedVariable]
+        member(G, [H | T]) << member(G, T),  # pyright: ignore[reportUndefinedVariable]
 
-        append([], A, A),
-        append([A | B], C, [A | D]) << append(B, C, D),
+        append([], A, A),  # pyright: ignore[reportUndefinedVariable]
+        append([A | B], C, [A | D]) << append(B, C, D),  # pyright: ignore[reportUndefinedVariable]
 
-        reverse(X, Y) << reverse(X, [], Y),
+        reverse(X, Y) << reverse(X, [], Y),  # pyright: ignore[reportUndefinedVariable]
 
-        reverse([], Y, Y),
-        reverse([X | P], Q, Y) << reverse(P, [X | Q], Y),
+        reverse([], Y, Y),  # pyright: ignore[reportUndefinedVariable]
+        reverse([X | P], Q, Y) << reverse(P, [X | Q], Y),  # pyright: ignore[reportUndefinedVariable]
 
-        select(X, [X | T], T),
-        select(X, [H | T], [H | Rest]) << select(X, T, Rest),
+        select(X, [X | T], T),  # pyright: ignore[reportUndefinedVariable]
+        select(X, [H | T], [H | Rest]) << select(X, T, Rest),  # pyright: ignore[reportUndefinedVariable]
 
-        write(X)[_write],
+        write(X)[_write],  # pyright: ignore[reportUndefinedVariable]
 
-        writeln(X)[_writeln],
+        writeln(X)[_writeln],  # pyright: ignore[reportUndefinedVariable]
 
-        lwriteln([H | T]) << writeln(H) & lwriteln(T),
-        lwriteln([]) << nl,
+        lwriteln([H | T]) << writeln(H) & lwriteln(T),  # pyright: ignore[reportUndefinedVariable]
+        lwriteln([]) << nl,  # pyright: ignore[reportUndefinedVariable]
 
-        nl[lambda *a: print()],
+        nl[lambda *a: print()],  # pyright: ignore[reportUndefinedVariable]
 
         listing[_listing_0],
 
-        listing(Predicate)[_listing_1],
+        listing(Predicate)[_listing_1],  # pyright: ignore[reportUndefinedVariable]
 
-        listing(Predicate, Arity)[_listing_2],
+        listing(Predicate, Arity)[_listing_2],  # pyright: ignore[reportUndefinedVariable]
 
-        _C_([X | L], X, L),
+        _C_([X | L], X, L),  # pyright: ignore[reportUndefinedVariable]
 
-        atomic(X)[_atomic],
+        atomic(X)[_atomic],  # pyright: ignore[reportUndefinedVariable]
 
-        integer(X)[_integer],
+        integer(X)[_integer],  # pyright: ignore[reportUndefinedVariable]
 
-        real(X)[_real],
+        real(X)[_real],  # pyright: ignore[reportUndefinedVariable]
 
-        numeric(X)[_numeric],
+        numeric(X)[_numeric],  # pyright: ignore[reportUndefinedVariable]
 
-        join(L, S)[_join_2],
+        join(L, S)[_join_2],  # pyright: ignore[reportUndefinedVariable]
 
-        join(L, S, T)[_join_3],
+        join(L, S, T)[_join_3],  # pyright: ignore[reportUndefinedVariable]
 
-        var(X)[_var],
+        var(X)[_var],  # pyright: ignore[reportUndefinedVariable]
 
-        nonvar(X)[_nonvar],
+        nonvar(X)[_nonvar],  # pyright: ignore[reportUndefinedVariable]
 
-        univ(T, L)[_univ],
+        univ(T, L)[_univ],  # pyright: ignore[reportUndefinedVariable]
 
-        arithmetic_equal(X, Y) << let(Z, X) & let(Z, Y),
+        arithmetic_equal(X, Y) << let(Z, X) & let(Z, Y),  # pyright: ignore[reportUndefinedVariable]
 
-        arithmetic_not_equal(X, Y) << let(Z, X) & let(Z, Y) & cut[_fail],
-        arithmetic_not_equal(_, _),
+        arithmetic_not_equal(X, Y) << let(Z, X) & let(Z, Y) & cut[_fail],  # pyright: ignore[reportUndefinedVariable]
+        arithmetic_not_equal(_, _),  # pyright: ignore[reportUndefinedVariable]
 
-        transpose(L, T)[_transpose],
+        transpose(L, T)[_transpose],  # pyright: ignore[reportUndefinedVariable]
 
-        maplist(G, [H | T]) << cut & univ(G1, [G, H]) & G1 & maplist(G, T),
-        maplist(_, []),
+        maplist(G, [H | T]) << cut & univ(G1, [G, H]) & G1 & maplist(G, T),  # pyright: ignore[reportUndefinedVariable]
+        maplist(_, []),  # pyright: ignore[reportUndefinedVariable]
 
-        length(L, N) << nonvar(N) & cut & ~smaller(N, 0) & length_is_N(L, N),
-        length([], 0),
-        length([H | T], N) << length(T, M) & let(N, M + 1),
+        length(L, N) << nonvar(N) & cut & ~smaller(N, 0) & length_is_N(L, N),  # pyright: ignore[reportUndefinedVariable]
+        length([], 0),  # pyright: ignore[reportUndefinedVariable]
+        length([H | T], N) << length(T, M) & let(N, M + 1),  # pyright: ignore[reportUndefinedVariable]
 
-        length_is_N([], 0) << cut,
-        length_is_N([H | T], N) << let(M, N - 1) & length_is_N(T, M),
+        length_is_N([], 0) << cut,  # pyright: ignore[reportUndefinedVariable]
+        length_is_N([H | T], N) << let(M, N - 1) & length_is_N(T, M),  # pyright: ignore[reportUndefinedVariable]
 
     )
 
@@ -552,12 +554,11 @@ class Database(ClauseDict):
             clause = make_clause(expand_term(expression))
             if not clause.is_assertable:
                 raise TypeError(
-                    "Clause '{}' of type {} cannot be asserted into database."
-                    .format(clause, type(clause.term)))
+                    f"Clause '{clause}' of type {type(clause.term)} cannot be asserted into database.")
             clauses.append(clause)
         for clause in clauses:
             self[clause.indicator].append(clause)
-            self.indicators[clause.name].add(clause.indicator)
+            self.indicators[clause.name].add(clause.indicator)  # pyright: ignore[reportGeneralTypeIssues]
 
     def ask(self, expression):
         return build_term(expression).resolve(self)

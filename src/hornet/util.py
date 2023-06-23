@@ -7,7 +7,8 @@ __license__ = 'MIT'
 
 
 from functools import partial, reduce as foldl
-from itertools import chain, count, tee, zip_longest
+from itertools import count, tee, zip_longest
+
 
 from toolz.functoolz import flip
 
@@ -45,7 +46,7 @@ def rpartial(f, *args, **kwargs):
 
 def pairwise(iterable, *, fillvalue=_sentinel):
     a, b = tee(iterable)
-    last = next(b, None)
+    next(b, None)  # advance b by one position
     if fillvalue is _sentinel:
         return zip(a, b)
     else:
@@ -71,7 +72,7 @@ def rotate(iterable):
     yield tmp
 
 
-def splitpairs(iterable):
+def split_pairs(iterable):
     iterable = iter(iterable)
     for left in iterable:
         right = next(iterable)
@@ -89,10 +90,12 @@ def install_symbols_module(name, factory):
 
     class SymbolsModule(ModuleType):
         __all__ = []
-        __file__ = None  # needed so nose doesn't barf at us
+        __file__ = None  # needed so nose doesn't bark at us
         __getattr__ = staticmethod(lru_cache()(factory))
 
     class SymbolsImporter(MetaPathFinder, Loader):
+
+        exec_module = noop
 
         def find_spec(self, fullname, path=None, target=None):
             if fullname == name:
@@ -101,7 +104,5 @@ def install_symbols_module(name, factory):
         def create_module(self, spec):
             return sys.modules.setdefault(spec.name, SymbolsModule(spec.name))
 
-        def exec_module(self, module):
-            pass
 
     sys.meta_path.insert(0, SymbolsImporter())

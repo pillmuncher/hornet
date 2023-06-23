@@ -103,7 +103,7 @@ class UnificationFailed(Exception):
 class Wildcard:
     __slots__ = ()
     __call__ = noop
-    __repr__ = const('_')
+    __repr__ = const('_')  # type: ignore
     __deepcopy__ = get_self
     fresh = get_self
     ref = property(identity)
@@ -117,8 +117,8 @@ WILDCARD = Wildcard()
 
 class Variable(collections.Counter):
     __slots__ = 'env', 'name'
-    __eq__ = object.__eq__
-    __hash__ = object.__hash__
+    __eq__ = object.__eq__  # type: ignore
+    __hash__ = object.__hash__  # type: ignore
 
     def __init__(self, *, env, name):
         self.env = env
@@ -311,8 +311,8 @@ class Structure:
 class Atomic(Structure):
     __slots__ = ()
     __call__ = get_name
-    __deepcopy__ = get_self
-    fresh = get_self
+    __deepcopy__ = get_self # type: ignore
+    fresh = get_self # type: ignore
 
 
 class Atom(Atomic):
@@ -323,18 +323,18 @@ class Atom(Atomic):
 class String(Atomic):
     __slots__ = ()
     __str__ = get_name
-    __repr__ = compose("'{}'".format, get_name)
+    __repr__ = compose("'{}'".format, get_name) # type: ignore
 
 
 class Number(Atomic):
     __slots__ = ()
-    __repr__ = compose(str, get_name)
+    __repr__ = compose(str, get_name) # type: ignore
 
 
 class EmptyList(Atomic):
     __slots__ = ()
     __call__ = list
-    __repr__ = const('[]')
+    __repr__ = const('[]') # type: ignore
 
     def __init__(self):
         Atomic.__init__(self, env={}, name='[]')
@@ -349,9 +349,7 @@ class Relation(Structure):
     __call__ = get_name
 
     def __repr__(self):
-        return '{}({})'.format(
-            self.name,
-            comma_separated(str(each.ref) for each in self.params))
+        return f'{self.name}({comma_separated(str(each.ref) for each in self.params)})'
 
 
 class List(Structure):
@@ -375,8 +373,9 @@ class List(Structure):
             acc.append(self.car.ref)
             self = self.cdr.ref
         if is_empty(self):
-            return '[{}]'.format(comma_separated(acc))
-        return '[{}|{}]'.format(comma_separated(acc), self)
+            return f'[{comma_separated(acc)}]'
+        else:
+            return f'[{comma_separated(acc)}|{self}]'
 
     def __deepcopy__(self, memo, deepcopy=copy.deepcopy):
         return List(
@@ -394,6 +393,7 @@ class List(Structure):
 class PrefixOperator(Structure):
     __slots__ = ()
     operand = first_param
+    op = noop
 
     def __call__(self):
         return self.op(self.operand.ref())
@@ -403,16 +403,16 @@ class PrefixOperator(Structure):
         op_fixity = make_token(OPERATOR_FIXITIES, self)
         operand_fixity = make_token(OPERATOR_FIXITIES, operand)
         if operand_fixity.left_rank and op_fixity > operand_fixity:
-            operand_str = parenthesized
+            return f'{self.name}{parenthesized(operand)}'
         else:
-            operand_str = str
-        return '{}{}'.format(self.name, operand_str(operand))
+            return f'{self.name}{str(operand)}'
 
 
 class InfixOperator(Structure):
     __slots__ = ()
     left = first_param
     right = second_param
+    op = noop
 
     def __call__(self):
         return self.op(self.left.ref(), self.right.ref())
@@ -436,7 +436,7 @@ class InfixOperator(Structure):
         else:
             right_str = str
 
-        return '{} {} {}'.format(left_str(left), self.name, right_str(right))
+        return f'{left_str(left)} {self.name} {right_str(right)}'
 
 
 class Implication(InfixOperator):
@@ -450,7 +450,7 @@ class Implication(InfixOperator):
 
     @tco
     def _resolve_with_tailcall(self, *, db, choice_points, yes, no, prune):
-        raise TypeError("Implication '{}' is not a valid goal.".format(self))
+        raise TypeError(f"Implication '{self}' is not a valid goal.")
 
 
 class Conjunction(InfixOperator):
@@ -578,7 +578,7 @@ class Environment(dict):
             return collections.ChainMap.__getitem__(self, str(key))
 
         def __repr__(self):
-            return 'Environment.{}'.format(super().__repr__())
+            return f'Environment.{super().__repr__()}'
 
 
 OPERATOR_FIXITIES = {
@@ -651,7 +651,7 @@ class Builder(ast.NodeVisitor):
             raise ValueError("node must be of type str or Number!")
 
     def visit_Tuple(self, node):
-        raise TypeError('Tuples are not allowed: {}'.format(node))
+        raise TypeError(f'Tuples are not allowed: {node}')
 
     def cons(self, car, cdr):
         return List(env=self.env, params=[car, cdr])
@@ -683,32 +683,25 @@ class Builder(ast.NodeVisitor):
             self.append(EMPTY)
 
     def visit_Set(self, node):
-        raise TypeError('Sets are not allowed: {}'.format(node))
+        raise TypeError(f'Sets are not allowed: {node}')
 
     def visit_Dict(self, node):
-        raise TypeError('Dicts are not allowed: {}'.format(node))
+        raise TypeError(f'Dicts are not allowed: {node}')
 
     def visit_AstWrapper(self, node):
-        raise TypeError('Invalid node {} of type {} found'
-                        .format(node, type(node)))
+        raise TypeError(f'Invalid node {node} of type {type(node)} found')
 
     def visit_Subscript(self, node):
         self.visit(node.value)
         self.toptop().actions.extend(node.slice)
 
-    def visit_Call(self, node):
+    def visit_Call(self, node: ast.Call):
         if not is_name(node.func):
-            raise TypeError('{} is not a valid functor name.'
-                            .format(node.func))
+            raise TypeError(f'{node.func} is not a valid functor name.')
         if node.keywords:
-            raise TypeError('Keyword arguments are not allowed: {}'
-                            .format(node))
-        if node.starargs:
-            raise TypeError('Starred arguments are not allowed: {}'
-                            .format(node))
-        if node.kwargs:
-            raise TypeError('Starred keyword arguments are not allowed: {}'
-                            .format(node))
+            raise TypeError(f'Keyword arguments are not allowed: {node}')
+        if any(isinstance(arg, ast.Starred) for arg in node.args):
+            raise TypeError(f'Starred arguments are not allowed: {node}')
         self.push()
         for each in node.args:
             self.visit(each)

@@ -16,3 +16,4 @@ dist
 *.lock
 tags
 htmlcov
+.pdm-python

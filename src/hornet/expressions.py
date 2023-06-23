@@ -94,27 +94,30 @@ class Expression:
 unit = Expression
 
 
-# The function bind(expr:Expression, mfunc:AST --> Expression) --> Expression
-# is the monadic bind operator.  It takes an Expression object expr and a
-# monadic function mfunc, passes the AST associated with expr to mfunc and
-# returns whatever mfunc returns.
-
 def bind(expr, mfunc):
+    """
+    The function bind(expr, AST --> Expression) --> Expression is the monadic
+    bind operator.  It takes an Expression object expr and a monadic function
+    mfunc, passes the AST associated with expr to mfunc and returns whatever
+    mfunc returns.
+    """
     return mfunc(expr.node)
 
 
-
-# The function mlift(func:T --> AST) --> (T --> Expression) "lifts" a normal
-# function that returns an AST into a function that returns an Expression.
-# It is mostly used as a function decorator.
-
 def mlift(func):
+    """
+    The function mlift(... --> AST) --> (... --> unit) "lifts" a normal
+    function that returns an AST into a function that returns an Expression.
+    It is mostly used as a function decorator.
+    """
     return compose(unit, func)
 
 
-# Make monadic functions mf:AST --> Expression composable:
 
 def mcompose(*mfuncs):
+    """
+    Make monadic functions AST --> Expression composable.
+    """
     return functools.partial(foldl, bind, tuple(reversed(mfuncs)))
 
 

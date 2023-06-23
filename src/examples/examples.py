@@ -162,6 +162,25 @@ def difflist(db):
 
 
 @show(skip=False)
+def join_test(db):
+
+    for subst in db.ask(join([], '')):
+        print('Yes.')
+        break
+    else:
+        print('No.')
+
+    try:
+        for subst in db.ask(join([1], '1')):
+            print('Yes.')
+            break
+        else:
+            print('No.')
+    except TypeError:
+        print('Expected Exception raised.')
+
+
+@show(skip=False)
 def unify_test(db):
 
     for subst in db.ask(join(['hallo', 'welt'], 'hallowelt')):

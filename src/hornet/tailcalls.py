@@ -22,7 +22,7 @@ def tco(function):
 
 
 def emit(*values):
-    def emitter (cont, *args, **kwargs):
+    def emitter(cont, *args, **kwargs):
         return values, cont, args, kwargs
     return emitter
 

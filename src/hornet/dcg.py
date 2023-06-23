@@ -13,7 +13,7 @@ import itertools
 
 from toolz.functoolz import identity
 
-from .util import foldr, rotate, splitpairs
+from .util import foldr, rotate, split_pairs
 from .expressions import unit, Name, is_rshift, is_bitand, is_name
 from .expressions import is_set, is_list, is_call, is_terminal
 
@@ -77,7 +77,7 @@ class Expander:
             return self.collect_functor(unit(copy.deepcopy(node)))
 
         else:
-            raise TypeError('Name or Call node expected, not {}'.format(node))
+            raise TypeError(f'Name or Call node expected, not {node}')
 
     def expand_terminals(self, node, cont):
 
@@ -90,8 +90,7 @@ class Expander:
             return foldr(conjunction, elts, cont(last))
 
         else:
-            raise TypeError(
-                'Non-terminal in DCG terminal list found: {}'.format(node))
+            raise TypeError(f'Non-terminal in DCG terminal list found: {node}')
 
     def expand_pushbacks(self, node):
 
@@ -104,8 +103,7 @@ class Expander:
             return foldr(conjunction, elts)
 
         else:
-            raise TypeError(
-                'Non-terminal in DCG pushback list found: {}'.format(node))
+            raise TypeError(f'Non-terminal in DCG pushback list found: {node}')
 
     def expand_body(self, node, cont):
 
@@ -153,7 +151,7 @@ class Expander:
 
         clause = self.expand_clause(root)
 
-        pairs = splitpairs(rotate(itertools.chain(self.left, self.right)))
+        pairs = split_pairs(rotate(itertools.chain(self.left, self.right)))
 
         for (set_left, set_right), var in zip(pairs, numbered_vars('_')):
             set_left(var)
