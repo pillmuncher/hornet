@@ -52,7 +52,7 @@ def test_dcg_transformation():
             a(X) >> 
                 [] & f,
             a(X, _0, _1) <<
-            f(_0, _1),
+                f(_0, _1),
         ),
         (
             a(X) >> 
