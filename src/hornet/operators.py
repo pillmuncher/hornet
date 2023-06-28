@@ -13,13 +13,13 @@ from dataclasses import dataclass
 
 from toolz.functoolz import compose, curry, identity
 
-from .util import pairwise, const
+from .util import pairwise, const, decrement
 from .expressions import is_name, is_operator, is_tuple, is_astwrapper
 from .expressions import mlift, promote, Expression
 
 
-decrement = (-1).__add__
-
+# The following parser is based on the paper "Top Down Operator Precedence" 
+# by Vaughan R. Pratt (1973). See https://tdop.github.io
 
 class ParseError(Exception):
     pass

@@ -1,34 +1,37 @@
-[project]
-name = "hornet"
-version = "0.2.5a"
-description = "Horn clauses via Expression Trees, a Prolog-like Embedded DSL for Python >=3.10"
-authors = [
-    {name = "Mick Krippendorf", email = "m.krippendorf@freenet.de"},
-]
-dependencies = [
-    "toolz>=0.12.0",
-    "codegen>=1.0",
-]
-requires-python = ">=3.10"
-readme = "README.md"
-license = {text = "MIT"}
-
 [build-system]
 requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
-[tool]
-[tool.pdm]
-[tool.pdm.dev-dependencies]
-test = [
-    "pytest~=6.2",
-    "flake8~=3.9",
-    "pytest-flake8~=1.0",
-    "mccabe~=0.6",
-    "pytest-mccabe~=2.0",
-    "coverage~=5.5",
-    "pytest-coverage~=0.0",
+[project]
+name = "hornet"
+license = { file = "LICENSE" }
+authors = [
+    {name = "Mick Krippendorf", email = "m.krippendorf@freenet.de"},
 ]
-editor = [
-    "neovim~=0.3",
+description = "Horn clauses via Expression Trees, a Prolog-like Embedded DSL for Python >=3.10"
+dependencies = [
+    "toolz>=0.12.0",
+    "codegen>=1.0",
 ]
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/pillmuncher/hornet"
+
+[tool.setuptools_scm]
+write_to = "src/_version.py"
+
+[tool.versioneer]
+VCS = "git"
+style = "pep440"
+versionfile_source = "src/hornet/_version.py"
+versionfile_build = "src/hornet/_version.py"
+tag_prefix = ""
+parentdir_prefix = "hornet-"

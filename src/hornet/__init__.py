@@ -565,3 +565,6 @@ class Database(ClauseDict):
 
     def find_all(self, indicator):
         return self.get(indicator, ())
+
+from . import _version
+__version__ = _version.get_versions()['version']

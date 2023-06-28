@@ -13,6 +13,9 @@ from itertools import count, tee, zip_longest
 from toolz.functoolz import flip
 
 
+decrement = (-1).__add__
+
+
 def noop(*a, **k):
     return None
 
