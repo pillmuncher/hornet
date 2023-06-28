@@ -55,11 +55,6 @@ def test_expression_factories():
     from hornet.expressions import (
         unit, Name, Constant, Tuple, List, Set, Wrapper, AstWrapper
     )
-
-    class Callable:
-        def __call__(self):
-            pass
-
     obj = object()
     name = 'joe'
     num = 123
