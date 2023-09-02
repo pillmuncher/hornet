@@ -14,7 +14,7 @@ def trampoline(bounce, *args, **kwargs):
         result, bounce, args, kwargs = bounce(*args, **kwargs)
         yield from result
 
-def tco(function):
+def tailcall(function):
     @wraps(function)
     def launch(*args, **kwargs):
         return (), function, args, kwargs

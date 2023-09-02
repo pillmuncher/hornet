@@ -16,7 +16,7 @@ import string
 
 from toolz.functoolz import compose, identity
 
-from .tailcalls import tco, trampoline, emit as success, abort as failure
+from .tailcalls import tailcall, trampoline, emit as success, abort as failure
 from .util import noop, foldr, rpartial, tabulate, const
 from .util import first_arg as get_self
 from .expressions import is_bitor, is_name
@@ -275,18 +275,20 @@ class Structure:
             prune=failure,
         )
 
-    @tco
+    @tailcall
     def _resolve_with_tailcall(self, *, db, choice_points, yes, no, prune):
 
         choice_point = self.choice_point(db)
         choice_points.append(choice_point)
         here = len(choice_points)
 
+        @tailcall
         def prune_here():
             while here <= len(choice_points):
                 choice_points.pop().close()
             return no()
 
+        @tailcall
         def try_next():
             for goals in choice_point:  # noqa: B007
                 break
@@ -448,7 +450,7 @@ class Implication(InfixOperator):
     def op(left, right):
         return left or not right
 
-    @tco
+    @tailcall
     def _resolve_with_tailcall(self, *, db, choice_points, yes, no, prune):
         raise TypeError(f"Implication '{self}' is not a valid goal.")
 
@@ -457,9 +459,10 @@ class Conjunction(InfixOperator):
     __slots__ = ()
     op = operator.and_
 
-    @tco
+    @tailcall
     def _resolve_with_tailcall(self, *, db, choice_points, yes, no, prune):
 
+        @tailcall
         def try_right(retry_left_then_right):
             return self.right.ref._resolve_with_tailcall(
                 db=db,
@@ -469,6 +472,7 @@ class Conjunction(InfixOperator):
                 prune=prune,
             )
 
+        @tailcall
         def try_left_then_right():
             return self.left.ref._resolve_with_tailcall(
                 db=db,
