@@ -1,82 +1,79 @@
 # Copyright (C) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
-__version__ = '0.2.5a'
-__date__ = '2014-09-27'
-__author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
-__license__ = 'MIT'
+__version__ = "0.2.5a"
+__date__ = "2014-09-27"
+__author__ = "Mick Krippendorf <m.krippendorf@freenet.de>"
+__license__ = "MIT"
 
-
-import codegen
 
 import ast
 import functools
 import numbers
 
+import codegen
 from toolz.functoolz import compose, flip, identity
 
-from .util import foldl, rpartial, qualname
-
+from .util import foldl, qualname, rpartial
 
 __all__ = [
     # monad class:
-    'Expression',
+    "Expression",
     # monadic functions:
-    'unit',
-    'bind',
-    'mlift',
-    'mcompose',
+    "unit",
+    "bind",
+    "mlift",
+    "mcompose",
     # helper functions:
-    'promote',
-    'astify',
+    "promote",
+    "astify",
     # Expression factory functions:
-    'Name',
-    'Tuple',
-    'List',
-    'Set',
-    'Wrapper',
+    "Name",
+    "Tuple",
+    "List",
+    "Set",
+    "Wrapper",
     # Expression factory operators:
-    'Subscript',
-    'Call',
-    'USub',
-    'UAdd',
-    'Invert',
-    'Add',
-    'Sub',
-    'Mult',
-    'Div',
-    'FloorDiv',
-    'Mod',
-    'Pow',
-    'LShift',
-    'RShift',
-    'BitAnd',
-    'BitXor',
-    'BitOr',
+    "Subscript",
+    "Call",
+    "USub",
+    "UAdd",
+    "Invert",
+    "Add",
+    "Sub",
+    "Mult",
+    "Div",
+    "FloorDiv",
+    "Mod",
+    "Pow",
+    "LShift",
+    "RShift",
+    "BitAnd",
+    "BitXor",
+    "BitOr",
     # AST node instance test functions:
-    'is_binop',
-    'is_lshift',
-    'is_rshift',
-    'is_bitand',
-    'is_bitor',
-    'is_name',
-    'is_str',
-    'is_call',
-    'is_list',
-    'is_set',
-    'is_tuple',
-    'is_astwrapper',
-    'is_operator',
+    "is_binop",
+    "is_lshift",
+    "is_rshift",
+    "is_bitand",
+    "is_bitor",
+    "is_name",
+    "is_str",
+    "is_call",
+    "is_list",
+    "is_set",
+    "is_tuple",
+    "is_astwrapper",
+    "is_operator",
 ]
 
 
 class Expression:
-
     """
     An Expression object wraps around an AST node.
     """
 
     # See also .test.test_expresion.test_monad_laws()
-    __slots__ = 'node'
+    __slots__ = "node"
 
     def __init__(self, node):
         "Initialize an Expression object with an AST node."
@@ -113,7 +110,6 @@ def mlift(func):
     return compose(unit, func)
 
 
-
 def mcompose(*mfuncs):
     """
     Make monadic functions AST --> Expression composable.
@@ -129,9 +125,10 @@ def mcompose(*mfuncs):
 # Their names don't conform to PEP-8 because they reflect the AST node types
 # they represent.
 
+
 @mlift
 def Name(name, **kwargs):
-    return ast.Name(id=name,  **kwargs)
+    return ast.Name(id=name, **kwargs)
 
 
 @mlift
@@ -160,7 +157,8 @@ def Set(set_):
 
 
 class AstWrapper(ast.AST):
-    pass
+    def __init__(self, wrapped):
+        self.wrapped = wrapped
 
 
 @mlift
@@ -224,8 +222,9 @@ def Wrapper(wrapped):
 # we rely on the priority and associativity rules that Python imposes on us.
 # Then this expression is the same as ((x - (y * z)) + 1).
 
+
 @mlift
-@qualname('Expression.__getitem__')
+@qualname("Expression.__getitem__")
 def Subscript(target, subscript):
     return ast.Subscript(
         value=astify(target),
@@ -234,14 +233,12 @@ def Subscript(target, subscript):
 
 
 @mlift
-@qualname('Expression.__call__')
+@qualname("Expression.__call__")
 def Call(target, *args):
     return ast.Call(
         func=astify(target),
         args=[astify(each) for each in args],
         keywords=[],
-        starargs=None,
-        kwargs=None,
     )
 
 
@@ -250,12 +247,13 @@ def _unary_op(op, name):
     @qualname(name)
     def op_method(right):
         return ast.UnaryOp(op(), astify(right))
+
     return op_method
 
 
-USub = _unary_op(ast.USub, 'Expression.__neg__')
-UAdd = _unary_op(ast.UAdd, 'Expression.__pos__')
-Invert = _unary_op(ast.Invert, 'Expression.__invert__')
+USub = _unary_op(ast.USub, "Expression.__neg__")
+UAdd = _unary_op(ast.UAdd, "Expression.__pos__")
+Invert = _unary_op(ast.Invert, "Expression.__invert__")
 
 
 def _binary_op(op, name):
@@ -263,21 +261,22 @@ def _binary_op(op, name):
     @qualname(name)
     def op_method(left, right):
         return ast.BinOp(astify(left), op(), astify(right))
+
     return op_method
 
 
-Add = _binary_op(ast.Add, 'Expression.__add__')
-Sub = _binary_op(ast.Sub, 'Expression.__sub__')
-Mult = _binary_op(ast.Mult, 'Expression.__mul__')
-Div = _binary_op(ast.Div, 'Expression.__truediv__')
-FloorDiv = _binary_op(ast.FloorDiv, 'Expression.__floordiv__')
-Mod = _binary_op(ast.Mod, 'Expression.__mod__')
-Pow = _binary_op(ast.Pow, 'Expression.__pow__')
-LShift = _binary_op(ast.LShift, 'Expression.__lshift__')
-RShift = _binary_op(ast.RShift, 'Expression.__rshift__')
-BitAnd = _binary_op(ast.BitAnd, 'Expression.__and__')
-BitXor = _binary_op(ast.BitXor, 'Expression.__xor__')
-BitOr = _binary_op(ast.BitOr, 'Expression.__or__')
+Add = _binary_op(ast.Add, "Expression.__add__")
+Sub = _binary_op(ast.Sub, "Expression.__sub__")
+Mult = _binary_op(ast.Mult, "Expression.__mul__")
+Div = _binary_op(ast.Div, "Expression.__truediv__")
+FloorDiv = _binary_op(ast.FloorDiv, "Expression.__floordiv__")
+Mod = _binary_op(ast.Mod, "Expression.__mod__")
+Pow = _binary_op(ast.Pow, "Expression.__pow__")
+LShift = _binary_op(ast.LShift, "Expression.__lshift__")
+RShift = _binary_op(ast.RShift, "Expression.__rshift__")
+BitAnd = _binary_op(ast.BitAnd, "Expression.__and__")
+BitXor = _binary_op(ast.BitXor, "Expression.__xor__")
+BitOr = _binary_op(ast.BitOr, "Expression.__or__")
 
 
 # Here the Expression factory operator functions get finally bound to the
@@ -317,6 +316,7 @@ Expression.__ror__ = flip(BitOr)
 # Any Python object 'obj' will be turned into an Expression object with its
 # AST created if necessary:
 
+
 @functools.singledispatch
 def promote(obj):
     return Wrapper(obj)
@@ -332,6 +332,7 @@ promote.register(set)(Set)
 
 # Given any Python object 'obj', return its AST (and create it if necessary):
 
+
 def astify(obj):
     return promote(obj).node
 
@@ -346,11 +347,11 @@ is_bitand = rpartial(is_binop, ast.BitAnd)
 is_bitor = rpartial(is_binop, ast.BitOr)
 
 is_name = rpartial(isinstance, ast.Name)
-is_str = rpartial(isinstance, ast.Str)
+is_str = rpartial(isinstance, ast.Constant)
 is_call = rpartial(isinstance, ast.Call)
 is_list = rpartial(isinstance, ast.List)
 is_set = rpartial(isinstance, ast.Set)
 is_tuple = rpartial(isinstance, ast.Tuple)
 is_astwrapper = rpartial(isinstance, AstWrapper)
 is_operator = rpartial(isinstance, (ast.BinOp, ast.UnaryOp))
-is_terminal = rpartial(isinstance, (ast.Name, ast.Str))
+is_terminal = rpartial(isinstance, (ast.Name, ast.Constant))

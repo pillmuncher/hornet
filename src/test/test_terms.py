@@ -1,13 +1,12 @@
-#Copyright (C) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
+# Copyright (C) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
-__version__ = '0.2.5a'
-__date__ = '2014-09-27'
-__author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
-__license__ = 'MIT'
+__version__ = "0.2.5a"
+__date__ = "2014-09-27"
+__author__ = "Mick Krippendorf <m.krippendorf@freenet.de>"
+__license__ = "MIT"
 
 
 def test_builder():
-
     from hornet import build_term
 
     from hornet.symbols import _, f, a, b, c, d, e, X, Y, Z
@@ -21,7 +20,6 @@ def test_builder():
 
 
 def test_resolver():
-
     from pprint import pprint
 
     from hornet import Database
@@ -55,6 +53,6 @@ def test_resolver():
         print(subst)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_builder()
     test_resolver()

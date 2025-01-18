@@ -1,9 +1,9 @@
 # Copyright (C) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
-__version__ = '0.2.5a'
-__date__ = '2014-09-27'
-__author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
-__license__ = 'MIT'
+__version__ = "0.2.5a"
+__date__ = "2014-09-27"
+__author__ = "Mick Krippendorf <m.krippendorf@freenet.de>"
+__license__ = "MIT"
 
 
 import ast
@@ -13,24 +13,30 @@ from dataclasses import dataclass
 
 from toolz.functoolz import compose, curry, identity
 
-from .util import pairwise, const, decrement
-from .expressions import is_name, is_operator, is_tuple, is_astwrapper
-from .expressions import mlift, promote, Expression
+from .expressions import (
+    Expression,
+    is_astwrapper,
+    is_name,
+    is_operator,
+    is_tuple,
+    mlift,
+    promote,
+)
+from .util import const, decrement, pairwise
 
-
-# The following parser is based on the paper "Top Down Operator Precedence" 
+# The following parser is based on the paper "Top Down Operator Precedence"
 # by Vaughan R. Pratt (1973). See https://tdop.github.io
+
 
 class ParseError(Exception):
     pass
 
 
-parse_error = compose(ParseError, 'Precedence conflict: ({}) {} ({})'.format)
+parse_error = compose(ParseError, "Precedence conflict: ({}) {} ({})".format)
 
 
 @dataclass(frozen=True)
 class Token:
-
     left_rank: int
     right_rank: int
     node: Expression
@@ -48,7 +54,6 @@ class Token:
 
 
 class Nofix(Token):
-
     __slots__ = ()
 
     def nud(self, parse):
@@ -56,7 +61,6 @@ class Nofix(Token):
 
 
 class Prefix(Token):
-
     __slots__ = ()
 
     def nud(self, parse):
@@ -66,7 +70,6 @@ class Prefix(Token):
 
 
 class Infix(Token):
-
     __slots__ = ()
 
     def led(self, left, parse):
@@ -127,13 +130,11 @@ def check_right(op, right_node):
 
 
 def pratt_parse(nodes):
-
     tokens = (make_token(HORNET_FIXITIES, node) for node in nodes)
     token_pairs = pairwise(tokens, fillvalue=END)
     token = None
 
     def parse(right_rank):
-
         nonlocal token
 
         t, token = next(token_pairs)
@@ -175,12 +176,11 @@ PYTHON_FIXITIES = {
 }
 
 
-unaryop_fields = operator.attrgetter('op', 'operand')
-binop_fields = operator.attrgetter('left', 'op', 'right')
+unaryop_fields = operator.attrgetter("op", "operand")
+binop_fields = operator.attrgetter("left", "op", "right")
 
 
 class ASTFlattener(ast.NodeVisitor):
-
     def __init__(self, nodes):
         self.node = nodes
         self.append = nodes.append
@@ -190,7 +190,7 @@ class ASTFlattener(ast.NodeVisitor):
 
     def visit_Constant(self, node):
         if isinstance(node.value, numbers.Number):
-            if node.n >= 0:
+            if node.value >= 0:
                 self.append(node)
             else:
                 self.visit((-promote(-node.n)).node)
@@ -207,47 +207,44 @@ class ASTFlattener(ast.NodeVisitor):
 
     def visit_Set(self, node):
         if len(node.elts) != 1:
-            raise TypeError(f'Only sets with exactly one item allowed, not {node}')
-        self.append(
-            ast.Set(
-                elts=[_rearrange(each) for each in node.elts]))
+            raise TypeError(f"Only sets with exactly one item allowed, not {node}")
+        self.append(ast.Set(elts=[_rearrange(each) for each in node.elts]))
 
     def visit_Dict(self, node):
-        raise TypeError('Dicts not allowed: ')
+        raise TypeError("Dicts not allowed: ")
 
     def visit_AstWrapper(self, node):
         self.append(node)
 
-    def visit_Subscript(self, node:ast.Subscript):
+    def visit_Subscript(self, node: ast.Subscript):
         if is_tuple(node.slice.lower):
             elts = node.slice.lower.elts
             if all(callable(each.wrapped) for each in elts):
                 actions = [each.wrapped for each in elts]
             else:
-                raise TypeError('Subscript must be one or more callables!')
+                raise TypeError("Subscript must be one or more callables!")
         elif is_astwrapper(node.slice.lower):
             actions = [node.slice.lower.wrapped]
         else:
-            raise TypeError('Subscript must be one or more callables!')
+            raise TypeError("Subscript must be one or more callables!")
         self.append(ast.Subscript(value=_rearrange(node.value), slice=actions))
 
     def visit_Call(self, node):
         if not is_name(node.func):
-            raise TypeError(f'{node.func} is not a valid functor name.')
+            raise TypeError(f"{node.func} is not a valid functor name.")
         if node.keywords:
-            raise TypeError(f'Keyword arguments are not allowed: {node}')
+            raise TypeError(f"Keyword arguments are not allowed: {node}")
         if any(isinstance(arg, ast.Starred) for arg in node.args):
-            raise TypeError(f'Starred arguments are not allowed: {node}')
+            raise TypeError(f"Starred arguments are not allowed: {node}")
         self.append(
             ast.Call(
                 func=node.func,
                 args=[_rearrange(arg) for arg in node.args],
                 keywords=[],
-                starargs=None,
-                kwargs=None))
+            )
+        )
 
     def visit_UnaryOp(self, node):
-
         op, operand = unaryop_fields(node)
 
         op_fixity = make_token(PYTHON_FIXITIES, op)
@@ -261,7 +258,6 @@ class ASTFlattener(ast.NodeVisitor):
             self.append(_rearrange(operand))
 
     def visit_BinOp(self, node):
-
         left, op, right = binop_fields(node)
 
         op_fixity = make_token(PYTHON_FIXITIES, op)

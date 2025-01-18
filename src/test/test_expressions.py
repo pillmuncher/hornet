@@ -1,9 +1,9 @@
 # Copyright (C) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
-__version__ = '0.2.5a'
-__date__ = '2014-09-27'
-__author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
-__license__ = 'MIT'
+__version__ = "0.2.5a"
+__date__ = "2014-09-27"
+__author__ = "Mick Krippendorf <m.krippendorf@freenet.de>"
+__license__ = "MIT"
 
 
 # import nose
@@ -11,18 +11,19 @@ __license__ = 'MIT'
 import ast
 import itertools
 
-from . import ast_eq
 from toolz.functoolz import identity
+
+from . import ast_eq
 
 
 def test_monad_laws():
     "Test if the basic monadic functions conform to the three Monad Laws."
 
-    from hornet.expressions import unit, bind, mlift
+    from hornet.expressions import bind, mlift, unit
 
-    x = ast.Name(id='x')
-    y = ast.Name(id='y')
-    z = ast.Name(id='z')
+    x = ast.Name(id="x")
+    y = ast.Name(id="y")
+    z = ast.Name(id="z")
     mx = unit(x)
 
     mfuncs = [
@@ -43,26 +44,31 @@ def test_monad_laws():
 
     # associativity:
     for mf, mg in itertools.product(mfuncs, repeat=2):
-        ast_eq(
-            bind(bind(mx, mf), mg),
-            bind(mx, lambda v: bind(mf(v), mg))
-        )
+        ast_eq(bind(bind(mx, mf), mg), bind(mx, lambda v: bind(mf(v), mg)))
 
 
 def test_expression_factories():
     "Test all Expression factory functions that are called directly."
 
     from hornet.expressions import (
-        unit, Name, Constant, Tuple, List, Set, Wrapper, AstWrapper
+        AstWrapper,
+        Constant,
+        List,
+        Name,
+        Set,
+        Tuple,
+        Wrapper,
+        unit,
     )
+
     obj = object()
-    name = 'joe'
+    name = "joe"
     num = 123
-    keys = [Constant('a'), Constant('b'), Constant('c')]
+    keys = [Constant("a"), Constant("b"), Constant("c")]
     pairs = (
         [Name(name), ast.Name(id=name)],
         [Constant(name), ast.Constant(value=name)],
-        [Constant(num), ast.Constant(n=num)],
+        [Constant(num), ast.Constant(value=num)],
         [Tuple(keys), ast.Tuple(elts=keys)],
         [List(keys), ast.List(elts=keys)],
         [Set(keys), ast.Set(elts=keys)],
@@ -71,11 +77,10 @@ def test_expression_factories():
     for expr, node in pairs:
         ast_eq(expr, unit(node))
 
-
-# def test_expression_operators():
+    # def test_expression_operators():
     "Test all Expression factory functions that are called as operators."
 
-    from hornet.expressions import unit, Constant
+    from hornet.expressions import Constant, unit
     from hornet.symbols import x, y
 
     x_name = x.node
@@ -83,16 +88,15 @@ def test_expression_factories():
     items = [Constant(1), Constant(2), Constant(3)]
 
     pairs = (
-        [x[y],
-         ast.Subscript(value=x_name, slice=ast.Slice(lower=y_name))],
-        [x(1, 2, 3),
-         ast.Call(
-            func=x_name,
-            args=items,
-            keywords=[],
-            starargs=None,
-            kwargs=None,
-        )],
+        [x[y], ast.Subscript(value=x_name, slice=ast.Slice(lower=y_name))],
+        [
+            x(1, 2, 3),
+            ast.Call(
+                func=x_name,
+                args=items,
+                keywords=[],
+            ),
+        ],
     )
     for expr, node in pairs:
         ast_eq(expr, unit(node))
@@ -106,7 +110,7 @@ def test_expression_factories():
         ast_eq(expr, unit(ast.UnaryOp(op(), x_name)))
 
     pairs = (
-        [x ** y, ast.Pow],
+        [x**y, ast.Pow],
         [x * y, ast.Mult],
         [x / y, ast.Div],
         [x // y, ast.FloorDiv],
