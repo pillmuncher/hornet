@@ -1,6 +1,6 @@
 [project]
 name = "hornet"
-version = "0.2.6" # Version is managed via bump2version
+version = "version = "0.2.6"" # Version is managed via bump2version
 license = { file = "LICENSE.md" }
 authors = [{ name = "Mick Krippendorf", email = "m.krippendorf@freenet.de" }]
 description = "Hornet: An embedded DSL for Logic Programming in Python."
