@@ -1,9 +1,9 @@
 # Copyright (C) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
-__version__ = '0.2.5a'
-__date__ = '2014-09-27'
-__author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
-__license__ = 'MIT'
+__version__ = "0.2.5a"
+__date__ = "2014-09-27"
+__author__ = "Mick Krippendorf <m.krippendorf@freenet.de>"
+__license__ = "MIT"
 
 
 import ast
@@ -16,46 +16,48 @@ import string
 
 from toolz.functoolz import compose, identity
 
-from .tailcalls import tailcall, trampoline, emit as success, abort as failure
-from .util import noop, foldr, rpartial, tabulate, const
-from .util import first_arg as get_self
 from .expressions import is_bitor, is_name
-from .operators import make_token, fz, xfx, xfy, yfx
-
+from .operators import fz, make_token, xfx, xfy, yfx
+from .tailcalls import abort as failure
+from .tailcalls import emit as success
+from .tailcalls import tailcall, trampoline
+from .util import const
+from .util import first_arg as get_self
+from .util import foldr, noop, rpartial, tabulate
 
 __all__ = [
-    'Indicator',
-    'UnificationFailed',
-    'Wildcard',
-    'Variable',
-    'Structure',
-    'Relation',
-    'Atomic',
-    'Atom',
-    'String',
-    'Number',
-    'List',
-    'EmptyList',
-    'EMPTY',
-    'Implication',
-    'Conjunction',
-    'Disjunction',
-    'Adjunction',
-    'Conditional',
-    'Addition',
-    'Subtraction',
-    'Multiplication',
-    'Division',
-    'FloorDivision',
-    'Remainder',
-    'Exponentiation',
-    'Negation',
-    'Positive',
-    'Negative',
-    'Builder',
-    'is_empty',
-    'Environment',
-    'build',
+    "Indicator",
+    "UnificationFailed",
+    "Wildcard",
+    "Variable",
+    "Structure",
+    "Relation",
+    "Atomic",
+    "Atom",
+    "String",
+    "Number",
+    "List",
+    "EmptyList",
+    "EMPTY",
+    "Implication",
+    "Conjunction",
+    "Disjunction",
+    "Adjunction",
+    "Conditional",
+    "Addition",
+    "Subtraction",
+    "Multiplication",
+    "Division",
+    "FloorDivision",
+    "Remainder",
+    "Exponentiation",
+    "Negation",
+    "Positive",
+    "Negative",
+    "Builder",
+    "is_empty",
+    "Environment",
+    "build",
 ]
 
 
@@ -63,10 +65,10 @@ def get_name(self):
     return self.name
 
 
-is_wildcard_name = '_'.__eq__
+is_wildcard_name = "_".__eq__
 
 
-FIRST_VARIABLE_CHARS = frozenset(string.ascii_uppercase + '_')
+FIRST_VARIABLE_CHARS = frozenset(string.ascii_uppercase + "_")
 
 
 def is_variable_name(name):
@@ -83,11 +85,11 @@ def second_param(structure):
     return structure.params[1]
 
 
-parenthesized = '({})'.format
+parenthesized = "({})".format
 
 
 def comma_separated(items):
-    return ', '.join(str(each) for each in items)
+    return ", ".join(str(each) for each in items)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -103,7 +105,7 @@ class UnificationFailed(Exception):
 class Wildcard:
     __slots__ = ()
     __call__ = noop
-    __repr__ = const('_')  # type: ignore
+    __repr__ = const("_")  # type: ignore
     __deepcopy__ = get_self
     fresh = get_self
     ref = property(identity)
@@ -116,7 +118,7 @@ WILDCARD = Wildcard()
 
 
 class Variable(collections.Counter):
-    __slots__ = 'env', 'name'
+    __slots__ = "env", "name"
     __eq__ = object.__eq__  # type: ignore
     __hash__ = object.__hash__  # type: ignore
 
@@ -130,9 +132,7 @@ class Variable(collections.Counter):
     def __repr__(self):
         if self.ref is self:
             return min(
-                variable.name
-                for variable in self.aliases()
-                if variable.env is self.env
+                variable.name for variable in self.aliases() if variable.env is self.env
             )
         else:
             return str(self.ref)
@@ -168,7 +168,6 @@ class Variable(collections.Counter):
         other.unify_variable(self, trail)
 
     def unify_variable(self, other, trail):
-
         self[other] += 1
         other[self] += 1
 
@@ -181,7 +180,6 @@ class Variable(collections.Counter):
                 del other[self]
 
     def unify_structure(self, structure, trail):
-
         variables = self.aliases()
         for variable in variables:
             variable.ref = structure
@@ -193,11 +191,11 @@ class Variable(collections.Counter):
 
 
 def is_cut(term):
-    return isinstance(term, Atom) and term.name == 'cut'
+    return isinstance(term, Atom) and term.name == "cut"
 
 
 class Structure:
-    __slots__ = 'env', 'name', 'params', 'actions'
+    __slots__ = "env", "name", "params", "actions"
     ref = property(identity)
     head = property(get_self)
     body = property(noop)
@@ -277,7 +275,6 @@ class Structure:
 
     @tailcall
     def _resolve_with_tailcall(self, *, db, choice_points, yes, no, prune):
-
         choice_point = self.choice_point(db)
         choice_points.append(choice_point)
         here = len(choice_points)
@@ -313,8 +310,8 @@ class Structure:
 class Atomic(Structure):
     __slots__ = ()
     __call__ = get_name
-    __deepcopy__ = get_self # type: ignore
-    fresh = get_self # type: ignore
+    __deepcopy__ = get_self  # type: ignore
+    fresh = get_self  # type: ignore
 
 
 class Atom(Atomic):
@@ -325,21 +322,21 @@ class Atom(Atomic):
 class String(Atomic):
     __slots__ = ()
     __str__ = get_name
-    __repr__ = compose("'{}'".format, get_name) # type: ignore
+    __repr__ = compose("'{}'".format, get_name)  # type: ignore
 
 
 class Number(Atomic):
     __slots__ = ()
-    __repr__ = compose(str, get_name) # type: ignore
+    __repr__ = compose(str, get_name)  # type: ignore
 
 
 class EmptyList(Atomic):
     __slots__ = ()
     __call__ = list
-    __repr__ = const('[]') # type: ignore
+    __repr__ = const("[]")  # type: ignore
 
     def __init__(self):
-        Atomic.__init__(self, env={}, name='[]')
+        Atomic.__init__(self, env={}, name="[]")
 
 
 EMPTY = EmptyList()
@@ -351,7 +348,7 @@ class Relation(Structure):
     __call__ = get_name
 
     def __repr__(self):
-        return f'{self.name}({comma_separated(str(each.ref) for each in self.params)})'
+        return f"{self.name}({comma_separated(str(each.ref) for each in self.params)})"
 
 
 class List(Structure):
@@ -360,7 +357,7 @@ class List(Structure):
     cdr = second_param
 
     def __init__(self, **kwargs):
-        Structure.__init__(self, name='.', **kwargs)
+        Structure.__init__(self, name=".", **kwargs)
 
     def __call__(self):
         acc = []
@@ -375,21 +372,23 @@ class List(Structure):
             acc.append(self.car.ref)
             self = self.cdr.ref
         if is_empty(self):
-            return f'[{comma_separated(acc)}]'
+            return f"[{comma_separated(acc)}]"
         else:
-            return f'[{comma_separated(acc)}|{self}]'
+            return f"[{comma_separated(acc)}|{self}]"
 
     def __deepcopy__(self, memo, deepcopy=copy.deepcopy):
         return List(
             env=deepcopy(self.env, memo),
             params=[deepcopy(each.ref, memo) for each in self.params],
-            actions=self.actions)
+            actions=self.actions,
+        )
 
     def fresh(self, env):
         return List(
             env=env,
             params=[each.fresh(env) for each in self.params],
-            actions=self.actions)
+            actions=self.actions,
+        )
 
 
 class PrefixOperator(Structure):
@@ -405,9 +404,9 @@ class PrefixOperator(Structure):
         op_fixity = make_token(OPERATOR_FIXITIES, self)
         operand_fixity = make_token(OPERATOR_FIXITIES, operand)
         if operand_fixity.left_rank and op_fixity > operand_fixity:
-            return f'{self.name}{parenthesized(operand)}'
+            return f"{self.name}{parenthesized(operand)}"
         else:
-            return f'{self.name}{str(operand)}'
+            return f"{self.name}{str(operand)}"
 
 
 class InfixOperator(Structure):
@@ -420,7 +419,6 @@ class InfixOperator(Structure):
         return self.op(self.left.ref(), self.right.ref())
 
     def __repr__(self):
-
         left = self.left.ref
         right = self.right.ref
 
@@ -438,7 +436,7 @@ class InfixOperator(Structure):
         else:
             right_str = str
 
-        return f'{left_str(left)} {self.name} {right_str(right)}'
+        return f"{left_str(left)} {self.name} {right_str(right)}"
 
 
 class Implication(InfixOperator):
@@ -461,7 +459,6 @@ class Conjunction(InfixOperator):
 
     @tailcall
     def _resolve_with_tailcall(self, *, db, choice_points, yes, no, prune):
-
         @tailcall
         def try_right(retry_left_then_right):
             return self.right.ref._resolve_with_tailcall(
@@ -550,11 +547,10 @@ class Negative(PrefixOperator):
     op = operator.neg
 
 
-var_suffix_map = collections.defaultdict(lambda: tabulate('_{:02X}?'.format))
+var_suffix_map = collections.defaultdict(lambda: tabulate("_{:02X}?".format))
 
 
 class Environment(dict):
-
     def __call__(self, name):
         try:
             return self[name]
@@ -577,12 +573,11 @@ class Environment(dict):
 
     @property
     class proxy(collections.ChainMap):
-
         def __getitem__(self, key):
-            return collections.ChainMap.__getitem__(self, str(key))
+            return collections.ChainMap.__getitem__(self, str(key).strip())
 
         def __repr__(self):
-            return f'Environment.{super().__repr__()}'
+            return f"Environment.{super().__repr__()}"
 
 
 OPERATOR_FIXITIES = {
@@ -607,11 +602,11 @@ OPERATOR_FIXITIES = {
 def visit_op(op_class, op_name):
     def visit(self, node):
         self.append(op_class(env=self.env, name=op_name, params=self.pop()))
+
     return visit
 
 
 class Builder(ast.NodeVisitor):
-
     def __init__(self, env):
         self.env = env
         self.stack = []
@@ -655,14 +650,13 @@ class Builder(ast.NodeVisitor):
             raise ValueError("node must be of type str or Number!")
 
     def visit_Tuple(self, node):
-        raise TypeError(f'Tuples are not allowed: {node}')
+        raise TypeError(f"Tuples are not allowed: {node}")
 
     def cons(self, car, cdr):
         return List(env=self.env, params=[car, cdr])
 
     def visit_List(self, node):
         if node.elts:
-
             self.push()
 
             *elts, last = node.elts
@@ -687,13 +681,13 @@ class Builder(ast.NodeVisitor):
             self.append(EMPTY)
 
     def visit_Set(self, node):
-        raise TypeError(f'Sets are not allowed: {node}')
+        raise TypeError(f"Sets are not allowed: {node}")
 
     def visit_Dict(self, node):
-        raise TypeError(f'Dicts are not allowed: {node}')
+        raise TypeError(f"Dicts are not allowed: {node}")
 
     def visit_AstWrapper(self, node):
-        raise TypeError(f'Invalid node {node} of type {type(node)} found')
+        raise TypeError(f"Invalid node {node} of type {type(node)} found")
 
     def visit_Subscript(self, node):
         self.visit(node.value)
@@ -701,11 +695,11 @@ class Builder(ast.NodeVisitor):
 
     def visit_Call(self, node: ast.Call):
         if not is_name(node.func):
-            raise TypeError(f'{node.func} is not a valid functor name.')
+            raise TypeError(f"{node.func} is not a valid functor name.")
         if node.keywords:
-            raise TypeError(f'Keyword arguments are not allowed: {node}')
+            raise TypeError(f"Keyword arguments are not allowed: {node}")
         if any(isinstance(arg, ast.Starred) for arg in node.args):
-            raise TypeError(f'Starred arguments are not allowed: {node}')
+            raise TypeError(f"Starred arguments are not allowed: {node}")
         self.push()
         for each in node.args:
             self.visit(each)
@@ -724,21 +718,21 @@ class Builder(ast.NodeVisitor):
         self.visit(node.right)
         self.visit(node.op)
 
-    visit_Invert = visit_op(Negation, '~')
-    visit_UAdd = visit_op(Positive, '+')
-    visit_USub = visit_op(Negative, '-')
-    visit_Add = visit_op(Addition, '+')
-    visit_Sub = visit_op(Subtraction, '-')
-    visit_Mult = visit_op(Multiplication, '*')
-    visit_Div = visit_op(Division, '/')
-    visit_FloorDiv = visit_op(FloorDivision, '//')
-    visit_Mod = visit_op(Remainder, '%')
-    visit_Pow = visit_op(Exponentiation, '**')
-    visit_RShift = visit_op(Conditional, '>>')
-    visit_LShift = visit_op(Implication, '<<')
-    visit_BitAnd = visit_op(Conjunction, '&')
-    visit_BitXor = visit_op(Disjunction, '^')
-    visit_BitOr = visit_op(Adjunction, '|')
+    visit_Invert = visit_op(Negation, "~")
+    visit_UAdd = visit_op(Positive, "+")
+    visit_USub = visit_op(Negative, "-")
+    visit_Add = visit_op(Addition, "+")
+    visit_Sub = visit_op(Subtraction, "-")
+    visit_Mult = visit_op(Multiplication, "*")
+    visit_Div = visit_op(Division, "/")
+    visit_FloorDiv = visit_op(FloorDivision, "//")
+    visit_Mod = visit_op(Remainder, "%")
+    visit_Pow = visit_op(Exponentiation, "**")
+    visit_RShift = visit_op(Conditional, ">>")
+    visit_LShift = visit_op(Implication, "<<")
+    visit_BitAnd = visit_op(Conjunction, "&")
+    visit_BitXor = visit_op(Disjunction, "^")
+    visit_BitOr = visit_op(Adjunction, "|")
 
 
 def build(node):

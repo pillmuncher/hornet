@@ -10,7 +10,7 @@ import ast
 import functools
 import numbers
 
-import codegen
+from astor import code_gen as codegen
 from toolz.functoolz import compose, flip, identity
 
 from .util import foldl, qualname, rpartial

@@ -1,10 +1,10 @@
 [project]
 name = "hornet"
-version = "0.2.5a" # Version is managed via bump2version
-license = { file = "LICENSE.md", text = "MIT" }
+version = "0.2.6" # Version is managed via bump2version
+license = { file = "LICENSE.md" }
 authors = [{ name = "Mick Krippendorf", email = "m.krippendorf@freenet.de" }]
-description = "Embedded DSL for Logic Programming in Python."
-dependencies = ["toolz", "codegen"]
+description = "Hornet: An embedded DSL for Logic Programming in Python."
+dependencies = ["toolz", "codegen==1.0", "astor>=0.8.1"]
 readme = "README.md"
 requires-python = ">=3.13"
 classifiers = [
@@ -41,7 +41,7 @@ skip_covered = true
 
 
 [tool.bumpversion]
-current_version = "0.2.5"
+current_version = "0.2.5a"
 commit = true
 tag = true
 files = ["_version.py"]
@@ -52,14 +52,11 @@ build-backend = "setuptools.build_meta"
 
 [dependency-groups]
 dev = [
+    "bumpversion",
     "coverage",
     "flake8",
-    "mccabe",
-    "neotest",
     "pytest",
     "pytest-cov",
     "pytest-flake8",
     "setuptools",
-    "tomli",
-    "bumpversion>=0.6.0",
 ]
