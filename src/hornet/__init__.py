@@ -14,12 +14,38 @@ import pprint
 from .dcg import _C_, expand
 from .expressions import Name, mcompose, promote
 from .operators import rearrange
-from .terms import (EMPTY, Addition, Adjunction, Atom, Atomic, Conditional,
-                    Disjunction, Division, EmptyList, Environment,
-                    Exponentiation, FloorDivision, Implication, Indicator,
-                    List, Multiplication, Negation, Negative, Number, Positive,
-                    Relation, Remainder, String, Structure, Subtraction,
-                    UnificationFailed, Variable, Wildcard, build, is_empty)
+from .terms import (
+    EMPTY,
+    Addition,
+    Adjunction,
+    Atom,
+    Atomic,
+    Conditional,
+    Disjunction,
+    Division,
+    EmptyList,
+    Environment,
+    Exponentiation,
+    FloorDivision,
+    Implication,
+    Indicator,
+    List,
+    Multiplication,
+    Negation,
+    Negative,
+    Number,
+    Positive,
+    Relation,
+    Remainder,
+    String,
+    Structure,
+    Subtraction,
+    UnificationFailed,
+    Variable,
+    Wildcard,
+    build,
+    is_empty,
+)
 from .util import foldr, install_symbols_module, rpartial
 
 system_names = [
@@ -340,8 +366,7 @@ def _univ(term, env, db, trail):
         functor = env.L.car.ref
         if not isinstance(functor, Atom):
             raise TypeError(
-                f"First Element of List must be Atom, not {type(functor)}: {
-                    functor}"
+                f"First Element of List must be Atom, not {type(functor)}: {functor}"
             )
         if isinstance(env.L.cdr.ref, EmptyList):
             unify(env.T, Atom(env=env, name=functor.name), trail)
@@ -376,9 +401,32 @@ def _bootstrap():
     # pyright: ignore[reportMissingImports]
     # pyright: ignore[reportMissingImports]
     # pyright: ignore[reportMissingImports]
-    from .symbols import (G1, A, Arity, B, C, D, G, Goal, H, L, List, M, N,
-                          Object, P, Predicate, Q, Rest, S, T, X, Y, Z,
-                          length_is_N)
+    from .symbols import (
+        G1,
+        A,
+        Arity,
+        B,
+        C,
+        D,
+        G,
+        Goal,
+        H,
+        L,
+        List,
+        M,
+        N,
+        Object,
+        P,
+        Predicate,
+        Q,
+        Rest,
+        S,
+        T,
+        X,
+        Y,
+        Z,
+        length_is_N,
+    )
 
     expressions = (
         cut,  # pyright: ignore[reportUndefinedVariable]
@@ -451,16 +499,13 @@ def _bootstrap():
         univ(T, L)[_univ],  # pyright: ignore[reportUndefinedVariable]
         # pyright: ignore[reportUndefinedVariable]
         arithmetic_equal(X, Y) << let(Z, X) & let(Z, Y),
-        arithmetic_not_equal(X, Y) << let(Z, X) & let(
-            Z, Y) & cut[_fail],  # pyright: ignore[reportUndefinedVariable]
+        arithmetic_not_equal(X, Y) << let(Z, X) & let(Z, Y) & cut[_fail],  # pyright: ignore[reportUndefinedVariable]
         arithmetic_not_equal(_, _),  # pyright: ignore[reportUndefinedVariable]
         # pyright: ignore[reportUndefinedVariable]
         transpose(L, T)[_transpose],
-        maplist(G, [H | T]) << cut & univ(G1, [G, H]) & G1 & maplist(
-            G, T),  # pyright: ignore[reportUndefinedVariable]
+        maplist(G, [H | T]) << cut & univ(G1, [G, H]) & G1 & maplist(G, T),  # pyright: ignore[reportUndefinedVariable]
         maplist(_, []),  # pyright: ignore[reportUndefinedVariable]
-        length(L, N) << nonvar(N) & cut & ~smaller(N, 0) & length_is_N(
-            L, N),  # pyright: ignore[reportUndefinedVariable]
+        length(L, N) << nonvar(N) & cut & ~smaller(N, 0) & length_is_N(L, N),  # pyright: ignore[reportUndefinedVariable]
         length([], 0),  # pyright: ignore[reportUndefinedVariable]
         # pyright: ignore[reportUndefinedVariable]
         length([H | T], N) << length(T, M) & let(N, M + 1),
@@ -497,8 +542,9 @@ class Database(ClauseDict):
             clause = make_clause(expand_term(expression))
             if not clause.is_assertable:
                 raise TypeError(
-                    f"Clause '{clause}' of type {
-                        type(clause.term)} cannot be asserted into database."
+                    f"""Clause '{clause}' of type {
+                        type(clause.term)
+                    } cannot be asserted into database."""
                 )
             clauses.append(clause)
         for clause in clauses:

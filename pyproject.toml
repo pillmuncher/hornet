@@ -1,12 +1,11 @@
 [project]
-name = "hornet"
-version = "version = "0.2.6"" # Version is managed via bump2version
+version = "0.2.6"
 license = { file = "LICENSE.md" }
 authors = [{ name = "Mick Krippendorf", email = "m.krippendorf@freenet.de" }]
 description = "Hornet: An embedded DSL for Logic Programming in Python."
-dependencies = ["toolz", "codegen==1.0", "astor>=0.8.1"]
+dependencies = ["toolz", "astor"]
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -22,6 +21,9 @@ write_to = "src/_version.py"
 
 [tool.pdm]
 distribution = true
+
+[tool.pdm.scripts]
+test = "pytest"
 
 [[tool.pdm.source]]
 name = "pypi"
@@ -60,3 +62,4 @@ dev = [
     "pytest-flake8",
     "setuptools",
 ]
+name = ["hornet"]

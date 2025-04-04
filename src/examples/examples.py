@@ -3,44 +3,86 @@
 #
 # Copyright (C) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
-__version__ = '0.2.5a'
-__date__ = '2014-09-27'
-__author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
-__license__ = 'MIT'
+__version__ = "0.2.5a"
+__date__ = "2014-09-27"
+__author__ = "Mick Krippendorf <m.krippendorf@freenet.de>"
+__license__ = "MIT"
 
 
-from functools import wraps, partial
+from functools import partial, wraps
 from itertools import islice
-
-
 
 from hornet import *
 from hornet.expressions import promote
+from hornet.symbols import (
+    A,
+    B,
+    C,
+    D,
+    Seen,
+    Tribe,
+    U,
+    V,
+    W,
+    Who,
+    X,
+    Y,
+    Z,
+    a,
+    ancestor,
+    appenddl,
+    aristotle,
+    b,
+    blub,
+    bob,
+    c,
+    d,
+    dan,
+    descendant,
+    directly_related,
+    e,
+    god,
+    hal,
+    jim,
+    joe,
+    lee,
+    lwriteln,
+    man,
+    mortal,
+    nonequal,
+    patriarch,
+    plato,
+    related,
+    related_,
+    sam,
+    socrates,
+    son,
+    test,
+    tom,
+    tribe,
+    zeus,
+)
 from hornet.util import noop
 
-from hornet.symbols import (
-    A, B, C, D, Seen, Tribe, U, V, W, Who, X, Y, Z, ancestor, appenddl,
-    aristotle, bob, dan, descendant, directly_related, patriarch, hal, jim,
-    joe, lee, man, mortal, plato, related, related_, sam, socrates, son, test,
-    tom, tribe, nonequal, lwriteln, a, b, c, d, e, blub, god, zeus
-)
-
-
 show_funcs = []
+
 
 def show(f=None, *, skip=False):
     if f is None:
         return partial(show, skip=skip)
     if skip:
+
         @wraps(f)
         def wrapper(*a, **k):
             pass
-            #print('\n\n' + f.__qualname__ + ': skipped\n')
+            # print('\n\n' + f.__qualname__ + ': skipped\n')
     else:
+
         @wraps(f)
         def wrapper(*a, **k):
-            print('\n\n' + f.__qualname__ + ':\n')
+            print("\n\n" + f.__qualname__ + ":\n")
             return f(*a, **k)
+
     show_funcs.append(wrapper)
     return wrapper
 
@@ -60,7 +102,7 @@ def show_db(db):
 def xor_test(db):
     for each in fail ^ true, true ^ fail, fail ^ fail, true ^ true:
         for subst in db.ask(equal(each, X) & call(X)):
-           print(subst[X])
+            print(subst[X])
     print()
 
 
@@ -69,7 +111,7 @@ def eqtest(db):
     for subst in db.ask(equal(tom, X)):
         print(subst[X])
         for a, b in subst.items():
-            print(type(a), ':', type(b))
+            print(type(a), ":", type(b))
     print()
 
 
@@ -80,8 +122,7 @@ def barbara(db):
         man(socrates),
         man(plato),
         man(aristotle),
-        mortal(X) <<
-            man(X),
+        mortal(X) << man(X),
     )
     for subst in db.ask(mortal(Who)):
         print(subst[Who])
@@ -92,7 +133,7 @@ def barbara(db):
 def varunify(db):
     for subst in db.ask(equal(X, Z) & equal(Y, Z) & (equal(man, Z) | true)):
         for k, v in sorted(subst.items()):
-            print(k, '=', v, '=', v())
+            print(k, "=", v, "=", v())
     print()
 
 
@@ -100,7 +141,7 @@ def varunify(db):
 def subtraction(db):
     q = equal(A, 5) & equal(B, 2) & equal(C, 1) & let(D, A - B - C)
     for subst in db.ask(q):
-        print(subst[A], '-', subst[B], '-', subst[C], '==', subst[D])
+        print(subst[A], "-", subst[B], "-", subst[C], "==", subst[D])
     print()
 
 
@@ -109,7 +150,7 @@ def stdtypes(db):
     for subst in db.ask(equal(10, X) & equal(X, 10)):
         print(sorted(subst.items()))
 
-    for subst in db.ask(equal('hallo', X) & equal(X, 'hallo')):
+    for subst in db.ask(equal("hallo", X) & equal(X, "hallo")):
         print(sorted(subst.items()))
 
     for subst in db.ask(equal([], X) & equal(X, [])):
@@ -128,10 +169,10 @@ def stdtypes(db):
         print(sorted(subst.items()))
 
     for subst in db.ask(equal([1, promote(2), 3], X) & equal(X, [1, 2 | promote(3)])):
-        print('Yes.')
+        print("Yes.")
         break
     else:
-        print('No.')
+        print("No.")
     print()
 
 
@@ -144,198 +185,174 @@ def difflist(db):
     q = appenddl([1, 2 | U] - U, [3, 4 | V] - V, W - [5, 6 | X])
     for subst in db.ask(q):
         for k, v in sorted(subst.items()):
-            print(k, ':', v)
+            print(k, ":", v)
     print()
     for subst in db.ask(q & equal(X, [7, 8, 9])):
         for k, v in sorted(subst.items()):
-            print(k, ':', v)
+            print(k, ":", v)
     print()
     q = ([1, 2 | U] - U + [3, 4 | V] - V) / (W - [5, 6 | X])
     for subst in db.ask(q):
         for k, v in sorted(subst.items()):
-            print(k, ':', v)
+            print(k, ":", v)
     print()
     for subst in db.ask(q & equal(X, [7, 8, 9])):
         for k, v in sorted(subst.items()):
-            print(k, ':', v)
+            print(k, ":", v)
     print()
 
 
 @show(skip=False)
 def join_test(db):
-
-    for subst in db.ask(join([], '')):
-        print('Yes.')
+    for subst in db.ask(join([], "")):
+        print("Yes.")
         break
     else:
-        print('No.')
+        print("No.")
 
     try:
-        for subst in db.ask(join([1], '1')):
-            print('Yes.')
+        for subst in db.ask(join([1], "1")):
+            print("Yes.")
             break
         else:
-            print('No.')
+            print("No.")
     except TypeError:
-        print('Expected Exception raised.')
+        print("Expected Exception raised.")
 
 
 @show(skip=False)
 def unify_test(db):
-
-    for subst in db.ask(join(['hallo', 'welt'], 'hallowelt')):
-        print('Yes.')
+    for subst in db.ask(join(["hallo", "welt"], "hallowelt")):
+        print("Yes.")
         break
     else:
-        print('No.')
+        print("No.")
 
 
 def tribes(db):
-
     db.tell(
-
         son(joe, sam),  # joe is the son of sam, etc.
-        #son(bob, sam),
+        # son(bob, sam),
         son(jim, joe),
         son(tom, bob),
         son(hal, bob),
         son(dan, jim),
         son(lee, jim),
-
         # X is a descendant of Y:
-        descendant(X, Y) <<
-            son(X, Y),          # one's son is one's descendant
-        descendant(X, Z) <<
-            son(Y, Z) &         # a descendant of one's son
-            descendant(X, Y),   # is also one's descendant
-
+        descendant(X, Y) << son(X, Y),  # one's son is one's descendant
+        descendant(X, Z) << son(Y, Z)  # a descendant of one's son
+        & descendant(X, Y),  # is also one's descendant
         # X is an ancestor of Y:
-        ancestor(X, Y) <<
-            descendant(Y, X),   # one is an ancestor of one's descendant
-
-        related(X, Y) <<
-            related(X, Y, [X]),
-
-        related(X, Y, Seen) <<
-            directly_related(X, Z) &
-            ~member(Z, Seen) &
-            related_(Z, Y, Seen),
-
+        ancestor(X, Y) << descendant(Y, X),  # one is an ancestor of one's descendant
+        related(X, Y) << related(X, Y, [X]),
+        related(X, Y, Seen) << directly_related(X, Z)
+        & ~member(Z, Seen)
+        & related_(Z, Y, Seen),
         related_(X, X, _),
-        related_(X, Y, Seen) <<
-            related(X, Y, [X | Seen]),
-
+        related_(X, Y, Seen) << related(X, Y, [X | Seen]),
         directly_related(X, Y) << son(X, Y) | son(Y, X),
-
         # Z is the patriarch of X:
-        patriarch(Z, X) <<
-            son(X, Y) &
-            patriarch(Z, Y) & cut,
+        patriarch(Z, X) << son(X, Y) & patriarch(Z, Y) & cut,
         patriarch(Z, Z),
-
-        tribe(X, [X|Tribe]) <<
-            findall(Y, related(Y, X), Tribe),
-        #tribe(X, [Z | Tribe]) <<
-            #patriarch(Z, X) &
-            #findall(Y, descendant(Y, Z), Tribe),
-            #findall(test(Y, U), descendant(Y, Z), Tribe, U) & equal(U, [patriarch]),
-            #findall(test(Y, U, test(U)), descendant(Y, Z), Tribe) &
-            #equal(W, bob) & equal(Tribe, [test(_, V, _) | _]) & equal(W, V),
-            #findall(test(Y, U), descendant(Y, Z) & equal(Y, U), Tribe),
-
+        tribe(X, [X | Tribe]) << findall(Y, related(Y, X), Tribe),
+        # tribe(X, [Z | Tribe]) <<
+        # patriarch(Z, X) &
+        # findall(Y, descendant(Y, Z), Tribe),
+        # findall(test(Y, U), descendant(Y, Z), Tribe, U) & equal(U, [patriarch]),
+        # findall(test(Y, U, test(U)), descendant(Y, Z), Tribe) &
+        # equal(W, bob) & equal(Tribe, [test(_, V, _) | _]) & equal(W, V),
+        # findall(test(Y, U), descendant(Y, Z) & equal(Y, U), Tribe),
     )
 
 
 @show(skip=False)
 def genealogy(db):
-
     tribes(db)
 
-    print('who is an ancestor of who?')
+    print("who is an ancestor of who?")
     for subst in db.ask(ancestor(A, B)):
-        print(subst[A], 'of', subst[B])
+        print(subst[A], "of", subst[B])
     print()
 
-    print('who are joe\'s descendants?')
+    print("who are joe's descendants?")
     for subst in db.ask(descendant(A, joe)):
         print(subst[A])
     print()
 
-    print('who are dan\'s ancestors?')
+    print("who are dan's ancestors?")
     for subst in db.ask(ancestor(A, dan)):
         print(subst[A])
     print()
 
-    print('who is bob related to?')
+    print("who is bob related to?")
     for subst in db.ask(related(bob, A)):
         print(subst[A])
     print()
 
-    print('who is related to bob?')
+    print("who is related to bob?")
     for subst in db.ask(related(A, bob)):
         print(subst[A])
     print()
 
-    print('who is lee related to?')
+    print("who is lee related to?")
     for subst in db.ask(related(lee, A)):
         print(subst[A])
     print()
 
-    print('who is related to lee?')
+    print("who is related to lee?")
     for subst in db.ask(related(A, lee)):
         print(subst[A])
     print()
 
-    print('is lee related to joe?')
+    print("is lee related to joe?")
     for subst in db.ask(related(lee, joe)):
-        print('Yes.')
+        print("Yes.")
         break
     else:
-        print('No.')
+        print("No.")
     print()
 
-    print('is lee related to bob?')
+    print("is lee related to bob?")
     for subst in db.ask(related(lee, bob)):
-        print('Yes.')
+        print("Yes.")
         break
     else:
-        print('No.')
+        print("No.")
     print()
 
-    print('one is not a relative of oneself. true?')
+    print("one is not a relative of oneself. true?")
     for subst in db.ask(~related(A, A)):
-        print('Yes.')
+        print("Yes.")
         break
     else:
-        print('No.')
+        print("No.")
     print()
 
-    print('who belongs to joe\'s tribe?')
+    print("who belongs to joe's tribe?")
     for subst in db.ask(tribe(joe, A) & lwriteln(A)):
-        #print(subst[A])
+        # print(subst[A])
         pass
     print()
 
-    print('what clauses does the predicate descendant/2 consist of?')
+    print("what clauses does the predicate descendant/2 consist of?")
     for subst in db.ask(listing(descendant, 2)):
-        print('Yes.')
+        print("Yes.")
         break
     else:
-        print('No.')
+        print("No.")
     print()
 
-    print('test')
+    print("test")
     for subst in db.ask(related(bob, X) & cut & writeln(X) & fail):
-        print('Yes.')
-        #break
+        print("Yes.")
+        # break
     else:
-        print('No.')
+        print("No.")
     print()
 
 
 @show(skip=False)
 def member_test(db):
-
     for subst in db.ask(member(X, [a, b, c])):
         print(subst[X])
     print()
@@ -359,43 +376,41 @@ def member_test(db):
 
 @show(skip=False)
 def length_test(db):
-
     for subst in db.ask(length([1, 2, 3, 4, 5], X)):
         print(subst[X])
 
     for subst in db.ask(length(X, -1)):
-        print('Yes.')
+        print("Yes.")
         break
     else:
-        print('No.')
+        print("No.")
 
     for subst in db.ask(length(X, 3)):
         print(subst[X])
         break
 
     for subst in db.ask(length([1, 2, 3, 4, 5], 5)):
-        print('Yes.')
+        print("Yes.")
         break
     else:
-        print('No.')
+        print("No.")
 
     for subst in islice(db.ask(length(X, Y)), 6):
         print(subst[X], subst[Y])
 
-    for subst in islice(db.ask(equal(X, [a, b|W]) & length(X, Y)), 6):
+    for subst in islice(db.ask(equal(X, [a, b | W]) & length(X, Y)), 6):
         print(subst[X], subst[Y])
 
 
 @show(skip=False)
 def member_length_test(db):
     for subst in db.ask(length(X, 3) & member(tom, X)):
-    #for subst in db.ask(member(tom, X) & length(X, 3)):
+        # for subst in db.ask(member(tom, X) & length(X, 3)):
         print(subst[X])
 
 
 @show(skip=False)
 def append_test(db):
-
     for subst in db.ask(append([], [a, b, c, d, e], X)):
         print(subst[X])
     print()
@@ -424,157 +439,138 @@ def append_test(db):
         print(subst[X], subst[Y])
     print()
 
-    for subst in db.ask(append(X, Y, [a, b, c, d|e])):
+    for subst in db.ask(append(X, Y, [a, b, c, d | e])):
         print(subst[X], subst[Y])
 
 
 @show(skip=False)
 def ignore_test(db):
-
     for subst in db.ask(ignore(true | true) & ignore(fail)):
-        print('Yes, ignored.')
+        print("Yes, ignored.")
 
 
 @show(skip=False)
 def univ_test(db):
-
     for subst in db.ask(var(X)):
         print(subst)
-        print('Yes.')
+        print("Yes.")
         break
     else:
-        print('No.')
+        print("No.")
 
     for subst in db.ask(equal(a, X) & var(X)):
         print(subst)
-        print('Yes.')
+        print("Yes.")
         break
     else:
-        print('No.')
+        print("No.")
 
     for subst in db.ask(equal([a], Y) & univ(X, Y)):
-        print(subst[X], ':', subst[Y])
-        print('Yes.')
+        print(subst[X], ":", subst[Y])
+        print("Yes.")
         break
     else:
-        print('No.')
+        print("No.")
 
     for subst in db.ask(equal(X, a) & univ(X, Y)):
-        print(subst[X], ':', subst[Y])
-        print('Yes.')
+        print(subst[X], ":", subst[Y])
+        print("Yes.")
         break
     else:
-        print('No.')
+        print("No.")
 
     for subst in db.ask(equal([a, B, C], Y) & univ(X, Y)):
-        print(subst[X], ':', subst[Y])
-        print('Yes.')
+        print(subst[X], ":", subst[Y])
+        print("Yes.")
         break
     else:
-        print('No.')
+        print("No.")
 
     for subst in db.ask(equal(X, a(B, C)) & univ(X, Y)):
-        print(subst[X], ':', subst[Y])
-        print('Yes.')
+        print(subst[X], ":", subst[Y])
+        print("Yes.")
         break
     else:
-        print('No.')
+        print("No.")
 
-    for subst in db.ask(equal(X, a(B, C)) & univ(X, [Y|Z])):
-        print(subst[X], ':', subst[Y], ':', subst[Z])
-        print('Yes.')
+    for subst in db.ask(equal(X, a(B, C)) & univ(X, [Y | Z])):
+        print(subst[X], ":", subst[Y], ":", subst[Z])
+        print("Yes.")
         break
     else:
-        print('No.')
+        print("No.")
 
     for subst in db.ask(equal(a(B, C), X) & equal([a, B, C], Y) & univ(X, Y)):
-        print(subst[X], ':', subst[Y])
-        print('Yes.')
+        print(subst[X], ":", subst[Y])
+        print("Yes.")
         break
     else:
-        print('No.')
+        print("No.")
 
-    db.tell(
-        blub(A << A)
-    )
+    db.tell(blub(A << A))
     for subst in db.ask(blub(X) & equal(a << Y, X)):
         print(subst[X])
-        print('Yes.')
+        print("Yes.")
         break
     else:
-        print('No.')
+        print("No.")
 
-    #db.tell(
-        #blub << true & (A << (A & true))
-    #)
-    #for subst in db.ask(blub):
-        #print(subst[X])
-        #print('Yes.')
-        #break
-    #else:
-        #print('No.')
-    #for subst in db.ask(equal([a, B, C|D], Y) & univ(X, Y)):
-        #print(subst[X], ':', subst[Y])
-        #print('Yes.')
-        #break
-    #else:
-        #print('No.')
+    # db.tell(
+    # blub << true & (A << (A & true))
+    # )
+    # for subst in db.ask(blub):
+    # print(subst[X])
+    # print('Yes.')
+    # break
+    # else:
+    # print('No.')
+    # for subst in db.ask(equal([a, B, C|D], Y) & univ(X, Y)):
+    # print(subst[X], ':', subst[Y])
+    # print('Yes.')
+    # break
+    # else:
+    # print('No.')
 
 
 @show(skip=False)
 def rec(db):
     for subst in db.ask(equal(X, a(X))):
-        print('oh!')
+        print("oh!")
         break
 
 
 @show(skip=False)
 def cut_test(db):
+    from hornet.symbols import A, B, X, Y, bar, branch, foo, root
 
-    from hornet.symbols import branch, root, foo, bar, A, B, X, Y
-
-    #db.tell(
-
-        #root(X, Y) <<
-            #branch(X, Y),
-
-        #branch(X, Y) << foo(X) & bar(Y),
-        #branch(X, Y) << foo(Y) & bar(X),
-
-        #foo(1) << cut,
-        #foo(2),
-        #bar(3),
-        #bar(4),
-
-    #)
-
-    #for subst in db.ask(root(A, B)):
-        #print(subst)
+    # db.tell(
+    # root(X, Y) <<
+    # branch(X, Y),
+    # branch(X, Y) << foo(X) & bar(Y),
+    # branch(X, Y) << foo(Y) & bar(X),
+    # foo(1) << cut,
+    # foo(2),
+    # bar(3),
+    # bar(4),
+    # )
+    # for subst in db.ask(root(A, B)):
+    # print(subst)
 
     db.tell(
-
-        root(X, Y) <<
-            branch(X, Y),
-        root(Y, X) <<
-            writeln([X, Y]) &
-            branch(X, Y),
-
+        root(X, Y) << branch(X, Y),
+        root(Y, X) << writeln([X, Y]) & branch(X, Y),
         branch(X, Y) << equal(foo(1), X) & equal(bar(2), Y) & cut,
-        #branch(foo(1), bar(2)) << cut,
-
-
+        # branch(foo(1), bar(2)) << cut,
     )
 
-    #for subst in db.ask(root(foo(A), bar(B))):
+    # for subst in db.ask(root(foo(A), bar(B))):
     for subst in db.ask(root(A, B)):
         print(subst)
 
 
-
 @show(skip=False)
 def transpose_test(db):
-
-    from hornet.symbols import a, b, c, d, e, f, g, h, i, j, k, l, X, L
+    from hornet.symbols import L, X, a, b, c, d, e, f, g, h, i, j, k, l
 
     L0 = [[a, b, c, d], [e, f, g, h], [i, j, k, l]]
     for subst in db.ask(equal(L0, L) & transpose(L, X)):
@@ -584,7 +580,6 @@ def transpose_test(db):
 
 @show(skip=False)
 def maplist_test(db):
-
     for subst in db.ask(maplist(writeln, [1, 2, 3, 4, 5])):
         pass
 

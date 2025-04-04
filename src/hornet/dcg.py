@@ -1,9 +1,9 @@
 # Copyright (C) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
-__version__ = '0.2.5a'
-__date__ = '2014-09-27'
-__author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
-__license__ = 'MIT'
+__version__ = "0.2.5a"
+__date__ = "2014-09-27"
+__author__ = "Mick Krippendorf <m.krippendorf@freenet.de>"
+__license__ = "MIT"
 
 
 import collections
@@ -13,10 +13,18 @@ import itertools
 
 from toolz.functoolz import identity
 
+from .expressions import (
+    Name,
+    is_bitand,
+    is_call,
+    is_list,
+    is_name,
+    is_rshift,
+    is_set,
+    is_terminal,
+    unit,
+)
 from .util import foldr, rotate, split_pairs
-from .expressions import unit, Name, is_rshift, is_bitand, is_name
-from .expressions import is_set, is_list, is_call, is_terminal
-
 
 _C_ = Name("'C'")
 
@@ -27,7 +35,6 @@ def numbered_vars(prefix):
 
 
 def rule(head, body):
-
     if body:
         return head << body
 
@@ -36,7 +43,6 @@ def rule(head, body):
 
 
 def conjunction(left, right):
-
     if left and right:
         return left & right
 
@@ -45,7 +51,6 @@ def conjunction(left, right):
 
 
 class Expander:
-
     def __init__(self):
         self.left = []
         self.right = collections.deque()
@@ -69,7 +74,6 @@ class Expander:
         return call
 
     def expand_call(self, node):
-
         if is_name(node):
             return self.collect_functor(unit(node)())
 
@@ -77,42 +81,37 @@ class Expander:
             return self.collect_functor(unit(copy.deepcopy(node)))
 
         else:
-            raise TypeError(f'Name or Call node expected, not {node}')
+            raise TypeError(f"Name or Call node expected, not {node}")
 
     def expand_terminals(self, node, cont):
-
         if not node.elts:
             return cont(None)
 
         elif all(is_terminal(each) for each in node.elts):
-            *elts, last = (
-                self.collect_terminal(_C_(unit(each))) for each in node.elts)
+            *elts, last = (self.collect_terminal(_C_(unit(each))) for each in node.elts)
             return foldr(conjunction, elts, cont(last))
 
         else:
-            raise TypeError(f'Non-terminal in DCG terminal list found: {node}')
+            raise TypeError(f"Non-terminal in DCG terminal list found: {node}")
 
     def expand_pushbacks(self, node):
-
         if not node.elts:
             return None
 
         elif all(is_terminal(each) for each in node.elts):
-            elts = [self.collect_pushback(_C_(unit(each)))
-                    for each in node.elts]
+            elts = [self.collect_pushback(_C_(unit(each))) for each in node.elts]
             return foldr(conjunction, elts)
 
         else:
-            raise TypeError(f'Non-terminal in DCG pushback list found: {node}')
+            raise TypeError(f"Non-terminal in DCG pushback list found: {node}")
 
     def expand_body(self, node, cont):
-
         if is_bitand(node):
 
             def right_side(rightmost_of_left_side):
                 return conjunction(
-                    rightmost_of_left_side,
-                    self.expand_body(node.right, cont))
+                    rightmost_of_left_side, self.expand_body(node.right, cont)
+                )
 
             return self.expand_body(node.left, right_side)
 
@@ -120,40 +119,32 @@ class Expander:
             return self.expand_terminals(node, cont)
 
         elif is_set(node):
-            assert len(node.elts) == 1   # noqa: S101
+            assert len(node.elts) == 1  # noqa: S101
             return cont(unit(node.elts[0]))
 
         else:
             return cont(self.expand_call(node))
 
     def expand_clause(self, node):
-
         head = node.left
         body = node.right
 
         if is_bitand(head):
 
             def pushback(rightmost_of_body):
-                return conjunction(
-                    rightmost_of_body,
-                    self.expand_pushbacks(head.right))
+                return conjunction(rightmost_of_body, self.expand_pushbacks(head.right))
 
-            return rule(
-                self.expand_call(head.left),
-                self.expand_body(body, pushback))
+            return rule(self.expand_call(head.left), self.expand_body(body, pushback))
 
         else:
-            return rule(
-                self.expand_call(head),
-                self.expand_body(body, identity))
+            return rule(self.expand_call(head), self.expand_body(body, identity))
 
     def __call__(self, root):
-
         clause = self.expand_clause(root)
 
         pairs = split_pairs(rotate(itertools.chain(self.left, self.right)))
 
-        for (set_left, set_right), var in zip(pairs, numbered_vars('_')):
+        for (set_left, set_right), var in zip(pairs, numbered_vars("_")):
             set_left(var)
             set_right(var)
 
@@ -161,7 +152,6 @@ class Expander:
 
 
 def expand(root):
-
     if not is_rshift(root):
         return unit(root)
 
