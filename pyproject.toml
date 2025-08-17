@@ -43,7 +43,7 @@ skip_covered = true
 
 
 [tool.bumpversion]
-current_version = "version = "version = "version = "version = "0.2.8"""""
+current_version = "0.2.8"
 commit = true
 tag = true
 files = ["_version.py"]
