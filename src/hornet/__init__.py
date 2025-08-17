@@ -5,8 +5,47 @@ import copy
 import numbers
 import pprint
 
+import hornet.install_symbols_module
+from hornet.symbols import _  # type: ignore
+from hornet.symbols import append  # type: ignore
+from hornet.symbols import arithmetic_equal  # type: ignore
+from hornet.symbols import arithmetic_not_equal  # type: ignore
+from hornet.symbols import atomic  # type: ignore
+from hornet.symbols import call  # type: ignore
+from hornet.symbols import cut  # type: ignore
+from hornet.symbols import equal  # type: ignore
+from hornet.symbols import fail  # type: ignore
+from hornet.symbols import findall  # type: ignore
+from hornet.symbols import greater  # type: ignore
+from hornet.symbols import ignore  # type: ignore
+from hornet.symbols import integer  # type: ignore
+from hornet.symbols import join  # type: ignore
+from hornet.symbols import length  # type: ignore
+from hornet.symbols import let  # type: ignore
+from hornet.symbols import listing  # type: ignore
+from hornet.symbols import lwriteln  # type: ignore
+from hornet.symbols import maplist  # type: ignore
+from hornet.symbols import member  # type: ignore
+from hornet.symbols import nl  # type: ignore
+from hornet.symbols import nonvar  # type: ignore
+from hornet.symbols import numeric  # type: ignore
+from hornet.symbols import once  # type: ignore
+from hornet.symbols import real  # type: ignore
+from hornet.symbols import repeat  # type: ignore
+from hornet.symbols import reverse  # type: ignore
+from hornet.symbols import select  # type: ignore
+from hornet.symbols import smaller  # type: ignore
+from hornet.symbols import throw  # type: ignore
+from hornet.symbols import transpose  # type: ignore
+from hornet.symbols import true  # type: ignore
+from hornet.symbols import unequal  # type: ignore
+from hornet.symbols import univ  # type: ignore
+from hornet.symbols import var  # type: ignore
+from hornet.symbols import write  # type: ignore
+from hornet.symbols import writeln  # type: ignore
+
 from .dcg import _C_, expand
-from .expressions import Name, mcompose, promote
+from .expressions import mcompose, promote
 from .operators import rearrange
 from .terms import (
     EMPTY,
@@ -18,7 +57,6 @@ from .terms import (
     Disjunction,
     Division,
     EmptyList,
-    Environment,
     Exponentiation,
     FloorDivision,
     Implication,
@@ -40,48 +78,7 @@ from .terms import (
     build,
     is_empty,
 )
-from .util import foldr, install_symbols_module, rpartial
-
-system_names = [
-    "_",
-    "append",
-    "arithmetic_equal",
-    "arithmetic_not_equal",
-    "atomic",
-    "call",
-    "cut",
-    "equal",
-    "fail",
-    "findall",
-    "greater",
-    "ignore",
-    "integer",
-    "join",
-    "length",
-    "let",
-    "listing",
-    "lwriteln",
-    "maplist",
-    "member",
-    "nl",
-    "nonvar",
-    "numeric",
-    "once",
-    "real",
-    "repeat",
-    "reverse",
-    "select",
-    "smaller",
-    "throw",
-    "transpose",
-    "true",
-    "unequal",
-    "univ",
-    "var",
-    "write",
-    "writeln",
-]
-
+from .util import foldr, rpartial
 
 __all__ = [
     "Database",
@@ -92,11 +89,44 @@ __all__ = [
     "promote",
     "pyfunc",
     "unify",
-] + system_names
-
-
-globals().update((each, Name(each)) for each in system_names)
-
+    "_",  # type: ignore
+    "append",  # type: ignore
+    "arithmetic_equal",  # type: ignore
+    "arithmetic_not_equal",  # type: ignore
+    "atomic",  # type: ignore
+    "call",  # type: ignore
+    "cut",  # type: ignore
+    "equal",  # type: ignore
+    "fail",  # type: ignore
+    "findall",  # type: ignore
+    "greater",  # type: ignore
+    "ignore",  # type: ignore
+    "integer",  # type: ignore
+    "join",  # type: ignore
+    "length",  # type: ignore
+    "let",  # type: ignore
+    "listing",  # type: ignore
+    "lwriteln",  # type: ignore
+    "maplist",  # type: ignore
+    "member",  # type: ignore
+    "nl",  # type: ignore
+    "nonvar",  # type: ignore
+    "numeric",  # type: ignore
+    "once",  # type: ignore
+    "real",  # type: ignore
+    "repeat",  # type: ignore
+    "reverse",  # type: ignore
+    "select",  # type: ignore
+    "smaller",  # type: ignore
+    "throw",  # type: ignore
+    "transpose",  # type: ignore
+    "true",  # type: ignore
+    "unequal",  # type: ignore
+    "univ",  # type: ignore
+    "var",  # type: ignore
+    "write",  # type: ignore
+    "writeln",  # type: ignore
+]
 
 ASSERTABLE = (
     Addition,
@@ -118,9 +148,6 @@ ASSERTABLE = (
     Remainder,
     Subtraction,
 )
-
-
-install_symbols_module("hornet.symbols", Name)
 
 
 def unify(this, that, trail):
@@ -319,13 +346,12 @@ def flatten(L):
 
 
 def flatten_strs(L):
-    try:
-        for each in flatten(L):
+    for each in flatten(L):
+        try:
             expect(each, String)
             yield each.ref()
-    except UnificationFailed:
-        # pyright: ignore[reportUnboundVariable]
-        raise TypeError(f"Expected String, found {type(each)}: {each}")
+        except UnificationFailed:
+            raise TypeError(f"Expected String, found {type(each)}: {each}")
 
 
 def _join_2(term, env, db, trail):
@@ -348,7 +374,7 @@ def _univ(term, env, db, trail):
     if isinstance(env.T, Relation):
         params = make_list(env, env.T.params)
         # pyright: ignore[reportGeneralTypeIssues]
-        result = make_list(env, [Atom(env=env, name=env.T.name)], params)
+        result = make_list(env, [Atom(env=env, name=env.T.name)], params)  # type: ignore
 
         unify(env.L, result, trail)
 
@@ -392,120 +418,100 @@ def _throw(term, env, db, trail):
 
 
 def _bootstrap():
-    # pyright: ignore[reportMissingImports]
-    # pyright: ignore[reportMissingImports]
-    # pyright: ignore[reportMissingImports]
-    from .symbols import (
-        G1,
-        A,
-        Arity,
-        B,
-        C,
-        D,
-        G,
-        Goal,
-        H,
-        L,
-        List,
-        M,
-        N,
-        Object,
-        P,
-        Predicate,
-        Q,
-        Rest,
-        S,
-        T,
-        X,
-        Y,
-        Z,
-        length_is_N,
-    )
+    from .symbols import G1  # type: ignore
+    from .symbols import A  # type: ignore
+    from .symbols import Arity  # type: ignore
+    from .symbols import B  # type: ignore
+    from .symbols import C  # type: ignore
+    from .symbols import D  # type: ignore
+    from .symbols import G  # type: ignore
+    from .symbols import Goal  # type: ignore
+    from .symbols import H  # type: ignore
+    from .symbols import L  # type: ignore
+    from .symbols import List  # type: ignore
+    from .symbols import M  # type: ignore
+    from .symbols import N  # type: ignore
+    from .symbols import Object  # type: ignore
+    from .symbols import P  # type: ignore
+    from .symbols import Predicate  # type: ignore
+    from .symbols import Q  # type: ignore
+    from .symbols import Rest  # type: ignore
+    from .symbols import S  # type: ignore
+    from .symbols import T  # type: ignore
+    from .symbols import X  # type: ignore
+    from .symbols import Y  # type: ignore
+    from .symbols import Z  # type: ignore
+    from .symbols import length_is_N  # type: ignore
 
     expressions = (
-        cut,  # pyright: ignore[reportUndefinedVariable]
-        true,  # pyright: ignore[reportUndefinedVariable]
-        fail[_fail],  # pyright: ignore[reportUndefinedVariable]
+        cut,  # type: ignore
+        true,  # type: ignore
+        fail[_fail],  # type: ignore
         # not:
-        ~X << X & cut[_fail],  # pyright: ignore[reportUndefinedVariable]
-        ~_,  # pyright: ignore[reportUndefinedVariable]
+        ~X << X & cut[_fail],  # type: ignore
+        ~_,  # type: ignore
         # or:
-        X | _ << X,  # pyright: ignore[reportUndefinedVariable]
-        _ | Y << Y,  # pyright: ignore[reportUndefinedVariable]
+        X | _ << X,  # type: ignore
+        _ | Y << Y,  # type: ignore
         # xor:
-        X ^ Y << X & ~Y,  # pyright: ignore[reportUndefinedVariable]
-        X ^ Y << ~X & Y,  # pyright: ignore[reportUndefinedVariable]
+        X ^ Y << X & ~Y,  # type: ignore
+        X ^ Y << ~X & Y,  # type: ignore
         # if-then-else:
-        X >> Y | _ << X & Y,  # pyright: ignore[reportUndefinedVariable]
-        X >> _ | Z << ~X & Z,  # pyright: ignore[reportUndefinedVariable]
-        repeat,  # pyright: ignore[reportUndefinedVariable]
-        repeat << repeat,  # pyright: ignore[reportUndefinedVariable]
-        let(X, Y)[_let],  # pyright: ignore[reportUndefinedVariable]
-        call(Goal) << Goal,  # pyright: ignore[reportUndefinedVariable]
-        once(Goal) << Goal & cut,  # pyright: ignore[reportUndefinedVariable]
-        ignore(Goal) << Goal & cut,  # pyright: ignore[reportUndefinedVariable]
-        ignore(_),  # pyright: ignore[reportUndefinedVariable]
-        equal(P, P),  # pyright: ignore[reportUndefinedVariable]
-        # pyright: ignore[reportUndefinedVariable]
-        unequal(P, P) << cut[_fail],
-        unequal(_, _),  # pyright: ignore[reportUndefinedVariable]
-        greater(X, Y)[_greater],  # pyright: ignore[reportUndefinedVariable]
-        smaller(X, Y)[_smaller],  # pyright: ignore[reportUndefinedVariable]
-        throw[_throw],  # pyright: ignore[reportUndefinedVariable]
-        # pyright: ignore[reportUndefinedVariable]
-        findall(Object, Goal, List)[_findall_3],
-        # pyright: ignore[reportUndefinedVariable]
-        findall(Object, Goal, List, Rest)[_findall_4],
-        member(H, [H | T]),  # pyright: ignore[reportUndefinedVariable]
-        # pyright: ignore[reportUndefinedVariable]
-        member(G, [H | T]) << member(G, T),
-        append([], A, A),  # pyright: ignore[reportUndefinedVariable]
-        # pyright: ignore[reportUndefinedVariable]
-        append([A | B], C, [A | D]) << append(B, C, D),
-        # pyright: ignore[reportUndefinedVariable]
-        reverse(X, Y) << reverse(X, [], Y),
-        reverse([], Y, Y),  # pyright: ignore[reportUndefinedVariable]
-        # pyright: ignore[reportUndefinedVariable]
-        reverse([X | P], Q, Y) << reverse(P, [X | Q], Y),
-        select(X, [X | T], T),  # pyright: ignore[reportUndefinedVariable]
-        # pyright: ignore[reportUndefinedVariable]
-        select(X, [H | T], [H | Rest]) << select(X, T, Rest),
-        write(X)[_write],  # pyright: ignore[reportUndefinedVariable]
-        writeln(X)[_writeln],  # pyright: ignore[reportUndefinedVariable]
-        # pyright: ignore[reportUndefinedVariable]
-        lwriteln([H | T]) << writeln(H) & lwriteln(T),
-        lwriteln([]) << nl,  # pyright: ignore[reportUndefinedVariable]
-        nl[lambda *a: print()],  # pyright: ignore[reportUndefinedVariable]
-        listing[_listing_0],
-        # pyright: ignore[reportUndefinedVariable]
-        listing(Predicate)[_listing_1],
-        # pyright: ignore[reportUndefinedVariable]
-        listing(Predicate, Arity)[_listing_2],
-        _C_([X | L], X, L),  # pyright: ignore[reportUndefinedVariable]
-        atomic(X)[_atomic],  # pyright: ignore[reportUndefinedVariable]
-        integer(X)[_integer],  # pyright: ignore[reportUndefinedVariable]
-        real(X)[_real],  # pyright: ignore[reportUndefinedVariable]
-        numeric(X)[_numeric],  # pyright: ignore[reportUndefinedVariable]
-        join(L, S)[_join_2],  # pyright: ignore[reportUndefinedVariable]
-        join(L, S, T)[_join_3],  # pyright: ignore[reportUndefinedVariable]
-        var(X)[_var],  # pyright: ignore[reportUndefinedVariable]
-        nonvar(X)[_nonvar],  # pyright: ignore[reportUndefinedVariable]
-        univ(T, L)[_univ],  # pyright: ignore[reportUndefinedVariable]
-        # pyright: ignore[reportUndefinedVariable]
-        arithmetic_equal(X, Y) << let(Z, X) & let(Z, Y),
-        arithmetic_not_equal(X, Y) << let(Z, X) & let(Z, Y) & cut[_fail],  # pyright: ignore[reportUndefinedVariable]
-        arithmetic_not_equal(_, _),  # pyright: ignore[reportUndefinedVariable]
-        # pyright: ignore[reportUndefinedVariable]
-        transpose(L, T)[_transpose],
-        maplist(G, [H | T]) << cut & univ(G1, [G, H]) & G1 & maplist(G, T),  # pyright: ignore[reportUndefinedVariable]
-        maplist(_, []),  # pyright: ignore[reportUndefinedVariable]
-        length(L, N) << nonvar(N) & cut & ~smaller(N, 0) & length_is_N(L, N),  # pyright: ignore[reportUndefinedVariable]
-        length([], 0),  # pyright: ignore[reportUndefinedVariable]
-        # pyright: ignore[reportUndefinedVariable]
-        length([H | T], N) << length(T, M) & let(N, M + 1),
-        length_is_N([], 0) << cut,  # pyright: ignore[reportUndefinedVariable]
-        # pyright: ignore[reportUndefinedVariable]
-        length_is_N([H | T], N) << let(M, N - 1) & length_is_N(T, M),
+        X >> Y | _ << X & Y,  # type: ignore
+        X >> _ | Z << ~X & Z,  # type: ignore
+        repeat,  # type: ignore
+        repeat << repeat,  # type: ignore
+        let(X, Y)[_let],  # type: ignore
+        call(Goal) << Goal,  # type: ignore
+        once(Goal) << Goal & cut,  # type: ignore
+        ignore(Goal) << Goal & cut,  # type: ignore
+        ignore(_),  # type: ignore
+        equal(P, P),  # type: ignore
+        unequal(P, P) << cut[_fail],  # type: ignore
+        unequal(_, _),  # type: ignore
+        greater(X, Y)[_greater],  # type: ignore
+        smaller(X, Y)[_smaller],  # type: ignore
+        throw[_throw],  # type: ignore
+        findall(Object, Goal, List)[_findall_3],  # type: ignore
+        findall(Object, Goal, List, Rest)[_findall_4],  # type: ignore
+        member(H, [H | T]),  # type: ignore
+        member(G, [H | T]) << member(G, T),  # type: ignore
+        append([], A, A),  # type: ignore
+        append([A | B], C, [A | D]) << append(B, C, D),  # type: ignore
+        reverse(X, Y) << reverse(X, [], Y),  # type: ignore
+        reverse([], Y, Y),  # type: ignore
+        reverse([X | P], Q, Y) << reverse(P, [X | Q], Y),  # type: ignore
+        select(X, [X | T], T),  # type: ignore
+        select(X, [H | T], [H | Rest]) << select(X, T, Rest),  # type: ignore
+        write(X)[_write],  # type: ignore
+        writeln(X)[_writeln],  # type: ignore
+        lwriteln([H | T]) << writeln(H) & lwriteln(T),  # type: ignore
+        lwriteln([]) << nl,  # type: ignore
+        nl[lambda *a: print()],  # type: ignore
+        listing[_listing_0],  # type: ignore
+        listing(Predicate)[_listing_1],  # type: ignore
+        listing(Predicate, Arity)[_listing_2],  # type: ignore
+        _C_([X | L], X, L),  # type: ignore
+        atomic(X)[_atomic],  # type: ignore
+        integer(X)[_integer],  # type: ignore
+        real(X)[_real],  # type: ignore
+        numeric(X)[_numeric],  # type: ignore
+        join(L, S)[_join_2],  # type: ignore
+        join(L, S, T)[_join_3],  # type: ignore
+        var(X)[_var],  # type: ignore
+        nonvar(X)[_nonvar],  # type: ignore
+        univ(T, L)[_univ],  # type: ignore
+        arithmetic_equal(X, Y) << let(Z, X) & let(Z, Y),  # type: ignore
+        arithmetic_not_equal(X, Y) << let(Z, X) & let(Z, Y) & cut[_fail],  # type: ignore
+        arithmetic_not_equal(_, _),  # type: ignore
+        transpose(L, T)[_transpose],  # type: ignore
+        maplist(G, [H | T]) << cut & univ(G1, [G, H]) & G1 & maplist(G, T),  # type: ignore
+        maplist(_, []),  # type: ignore
+        length(L, N) << nonvar(N) & cut & ~smaller(N, 0) & length_is_N(L, N),  # type: ignore
+        length([], 0),  # type: ignore
+        length([H | T], N) << length(T, M) & let(N, M + 1),  # type: ignore
+        length_is_N([], 0) << cut,  # type: ignore
+        length_is_N([H | T], N) << let(M, N - 1) & length_is_N(T, M),  # type: ignore
     )
 
     db = ClauseDict()
@@ -544,10 +550,10 @@ class Database(ClauseDict):
         for clause in clauses:
             self[clause.indicator].append(clause)
             # pyright: ignore[reportGeneralTypeIssues]
-            self.indicators[clause.name].add(clause.indicator)
+            self.indicators[clause.name].add(clause.indicator)  # type: ignore
 
     def ask(self, expression):
-        return build_term(expression).resolve(self)
+        return build_term(expression).resolve(self)  # type: ignore
 
     def find_all(self, indicator):
         return self.get(indicator, ())
