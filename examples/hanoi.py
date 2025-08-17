@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-"""       turtle-example-suite:
+"""turtle-example-suite:
 
          tdemo_minimal_hanoi.py
 
@@ -33,7 +31,6 @@ from turtle import *
 
 
 class Disc(Turtle):
-
     def __init__(self, n):
         Turtle.__init__(self, shape="square", visible=False)
         self.pu()
@@ -43,7 +40,6 @@ class Disc(Turtle):
 
 
 class Tower(list):
-
     "Hanoi tower, a subclass of built-in type list"
 
     def __init__(self, x):
@@ -62,7 +58,6 @@ class Tower(list):
 
 
 def hanoi():
-
     from hornet import Database, pyfunc, _, greater, let, cut
     from hornet.symbols import play_hanoi, move, M, N, From, With, To
 
@@ -73,32 +68,26 @@ def hanoi():
     db = Database()
 
     db.tell(
-
-        play_hanoi(N, From, To, With) <<
-            greater(N, 0) &
-            move(N, From, To, With),
-
+        play_hanoi(N, From, To, With) << greater(N, 0) & move(N, From, To, With),
         move(1, From, To, _)[show_move] << cut,
-        move(N, From, To, With) <<
-            let(M, N - 1) &
-            move(M, From, With, To) &
-            move(1, From, To, _) &
-            move(M, With, To, From),
+        move(N, From, To, With) << let(M, N - 1)
+        & move(M, From, With, To)
+        & move(1, From, To, _)
+        & move(M, With, To, From),
     )
 
     for subst in db.ask(play_hanoi(6, 0, 1, 2)):
-        print('Yes.')
+        print("Yes.")
         break
     else:
-        print('No.')
+        print("No.")
 
 
 def play():
     onkey(None, "space")
     clear()
     hanoi()
-    write("press STOP button to exit",
-          align="center", font=("Courier", 16, "bold"))
+    write("press STOP button to exit", align="center", font=("Courier", 16, "bold"))
 
 
 def main():
@@ -114,8 +103,7 @@ def main():
     for i in range(6, 0, -1):
         t1.push(Disc(i))
     # prepare spartanic user interface ;-)
-    write("press spacebar to start game",
-          align="center", font=("Courier", 16, "bold"))
+    write("press spacebar to start game", align="center", font=("Courier", 16, "bold"))
     onkey(play, "space")
     listen()
     return "EVENTLOOP"

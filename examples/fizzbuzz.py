@@ -1,15 +1,22 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-#
-# Copyright (C) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
+# Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
-__version__ = "0.2.5a"
+__version__ = "0.2.7"
 __date__ = "2014-09-27"
 __author__ = "Mick Krippendorf <m.krippendorf@freenet.de>"
 __license__ = "MIT"
 
 
-from hornet import *
+from hornet import (
+    greater,
+    findall,
+    let,
+    arithmetic_equal,
+    equal,
+    writeln,
+    join,
+    Database,
+)
 from hornet.symbols import N1, D, Max, N, R, S, W, Ws, divisible, fizzbuzz, show, word
 
 

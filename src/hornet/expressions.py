@@ -1,6 +1,7 @@
-# Copyright (C) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
+#!/usr/bin/env python3
+# Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
-__version__ = "0.2.5a"
+__version__ = "0.2.7"
 __date__ = "2014-09-27"
 __author__ = "Mick Krippendorf <m.krippendorf@freenet.de>"
 __license__ = "MIT"
@@ -10,10 +11,12 @@ import ast
 import functools
 import numbers
 
-from astor import code_gen as codegen
-from toolz.functoolz import compose, flip, identity
+from typing import Callable
 
-from .util import foldl, qualname, rpartial
+from astor import code_gen as codegen
+from toolz.functoolz import flip, identity
+
+from .util import compose, foldl, qualname, rpartial
 
 __all__ = [
     # monad class:
@@ -87,11 +90,10 @@ class Expression:
 
 
 # In the Monad, unit is the same as Expression:
-
 unit = Expression
 
 
-def bind(expr, mfunc):
+def bind(expr: Expression, mfunc: Callable[[ast.AST], Expression]) -> Expression:
     """
     The function bind(expr, AST --> Expression) --> Expression is the monadic
     bind operator.  It takes an Expression object expr and a monadic function
@@ -101,13 +103,13 @@ def bind(expr, mfunc):
     return mfunc(expr.node)
 
 
-def mlift(func):
+def mlift(func: Callable[..., ast.AST]) -> Callable[..., Expression]:
     """
     The function mlift(... --> AST) --> (... --> unit) "lifts" a normal
     function that returns an AST into a function that returns an Expression.
     It is mostly used as a function decorator.
     """
-    return compose(unit, func)
+    return compose(Expression, func)
 
 
 def mcompose(*mfuncs):
@@ -156,9 +158,9 @@ def Set(set_):
 # above.
 
 
-class AstWrapper(ast.AST):
-    def __init__(self, wrapped):
-        self.wrapped = wrapped
+class AstWrapper[T](ast.AST):
+    def __init__(self, wrapped: T):
+        self.wrapped: T = wrapped
 
 
 @mlift
@@ -175,9 +177,9 @@ def Wrapper(wrapped):
 #
 # Let's see an example:
 
-# x = Name('x')                                                     noqa: E800
-# y = x + 3                                                         noqa: E800
-# z = y + 5                                                         noqa: E800
+# x = Name('x')
+# y = x + 3
+# z = y + 5
 
 # Here x is an Expression object created by Name('x'). It wraps around an AST
 # node ast.Name(id='x', ctx='ast.Load())
@@ -197,7 +199,7 @@ def Wrapper(wrapped):
 #
 # But what if we change the last line to:
 
-# z = 5 + y                                                         noqa: E800
+# z = 5 + y
 
 # 5 (an int) doesn't know how to add an Expression object to itself, so it
 # returns NotImplemented which causes Python to call the right argument's
@@ -209,15 +211,15 @@ def Wrapper(wrapped):
 # we would expect when we saw 5 + y. When we construct our AST node, it comes
 # out correctly:
 
-# ast.BinOp(                                                        noqa: E800
-#         left=ast.Num(n=5),                                        noqa: E800
-#         op=ast.Add(),                                             noqa: E800
-#         right=ast.Name(id='y')                                    noqa: E800
-#     )                                                             noqa: E800
+# ast.BinOp(
+#         left=ast.Num(n=5),
+#         op=ast.Add(),
+#         right=ast.Name(id='y')
+#     )
 
 # For more complex cases like e.g.:
 
-# x - y * z + 1                                                     noqa: E800
+# x - y * z + 1
 
 # we rely on the priority and associativity rules that Python imposes on us.
 # Then this expression is the same as ((x - (y * z)) + 1).
@@ -282,43 +284,41 @@ BitOr = _binary_op(ast.BitOr, "Expression.__or__")
 # Here the Expression factory operator functions get finally bound to the
 # Expression class:
 
-Expression.__getitem__ = Subscript
-Expression.__call__ = Call
-Expression.__neg__ = USub
-Expression.__pos__ = UAdd
-Expression.__invert__ = Invert
-Expression.__add__ = Add
-Expression.__radd__ = flip(Add)
-Expression.__sub__ = Sub
-Expression.__rsub__ = flip(Sub)
-Expression.__mul__ = Mult
-Expression.__rmul__ = flip(Mult)
-Expression.__truediv__ = Div
-Expression.__rtruediv__ = flip(Div)
-Expression.__floordiv__ = FloorDiv
-Expression.__rfloordiv__ = flip(FloorDiv)
-Expression.__mod__ = Mod
-Expression.__rmod__ = flip(Mod)
-Expression.__pow__ = Pow
-Expression.__rpow__ = flip(Pow)
-Expression.__lshift__ = LShift
-Expression.__rlshift__ = flip(LShift)
-Expression.__rshift__ = RShift
-Expression.__rrshift__ = flip(RShift)
-Expression.__and__ = BitAnd
-Expression.__rand__ = flip(BitAnd)
-Expression.__xor__ = BitXor
-Expression.__rxor__ = flip(BitXor)
-Expression.__or__ = BitOr
-Expression.__ror__ = flip(BitOr)
+Expression.__getitem__ = Subscript  # type: ignore
+Expression.__call__ = Call  # type: ignore
+Expression.__neg__ = USub  # type: ignore
+Expression.__pos__ = UAdd  # type: ignore
+Expression.__invert__ = Invert  # type: ignore
+Expression.__add__ = Add  # type: ignore
+Expression.__radd__ = flip(Add)  # type: ignore
+Expression.__sub__ = Sub  # type: ignore
+Expression.__rsub__ = flip(Sub)  # type: ignore
+Expression.__mul__ = Mult  # type: ignore
+Expression.__rmul__ = flip(Mult)  # type: ignore
+Expression.__truediv__ = Div  # type: ignore
+Expression.__rtruediv__ = flip(Div)  # type: ignore
+Expression.__floordiv__ = FloorDiv  # type: ignore
+Expression.__rfloordiv__ = flip(FloorDiv)  # type: ignore
+Expression.__mod__ = Mod  # type: ignore
+Expression.__rmod__ = flip(Mod)  # type: ignore
+Expression.__pow__ = Pow  # type: ignore
+Expression.__rpow__ = flip(Pow)  # type: ignore
+Expression.__lshift__ = LShift  # type: ignore
+Expression.__rlshift__ = flip(LShift)  # type: ignore
+Expression.__rshift__ = RShift  # type: ignore
+Expression.__rrshift__ = flip(RShift)  # type: ignore
+Expression.__and__ = BitAnd  # type: ignore
+Expression.__rand__ = flip(BitAnd)  # type: ignore
+Expression.__xor__ = BitXor  # type: ignore
+Expression.__rxor__ = flip(BitXor)  # type: ignore
+Expression.__or__ = BitOr  # type: ignore
+Expression.__ror__ = flip(BitOr)  # type: ignore
 
 
 # Any Python object 'obj' will be turned into an Expression object with its
 # AST created if necessary:
-
-
 @functools.singledispatch
-def promote(obj):
+def promote(obj) -> Expression:
     return Wrapper(obj)
 
 
@@ -331,8 +331,6 @@ promote.register(set)(Set)
 
 
 # Given any Python object 'obj', return its AST (and create it if necessary):
-
-
 def astify(obj):
     return promote(obj).node
 

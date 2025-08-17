@@ -1,6 +1,7 @@
-# Copyright (C) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
+#!/usr/bin/env python3
+# Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
-__version__ = "0.2.5a"
+__version__ = "0.2.7"
 __date__ = "2014-09-27"
 __author__ = "Mick Krippendorf <m.krippendorf@freenet.de>"
 __license__ = "MIT"
@@ -9,12 +10,22 @@ __license__ = "MIT"
 import ast
 import numbers
 import operator
-from dataclasses import dataclass
 
-from toolz.functoolz import compose, curry, identity
+from dataclasses import (
+    dataclass,
+)
+from typing import (
+    Callable,
+    Protocol,
+    Self,
+    cast,
+)
+
+from toolz.functoolz import (
+    identity,
+)
 
 from .expressions import (
-    Expression,
     is_astwrapper,
     is_name,
     is_operator,
@@ -22,7 +33,12 @@ from .expressions import (
     mlift,
     promote,
 )
-from .util import const, decrement, pairwise
+from .util import (
+    const,
+    compose,
+    decrement,
+    pairwise,
+)
 
 # The following parser is based on the paper "Top Down Operator Precedence"
 # by Vaughan R. Pratt (1973). See https://tdop.github.io
@@ -35,11 +51,16 @@ class ParseError(Exception):
 parse_error = compose(ParseError, "Precedence conflict: ({}) {} ({})".format)
 
 
+class NudLed(Protocol):
+    def nud(self, parse) -> ast.expr: ...
+    def led(self, left, parse) -> ast.expr: ...
+
+
 @dataclass(frozen=True)
-class Token:
+class Token[Op]:
     left_rank: int
     right_rank: int
-    node: Expression
+    node: Op
 
     def __lt__(self, other):
         return self.right_rank < other.left_rank
@@ -48,31 +69,36 @@ class Token:
         return self.right_rank > other.left_rank
 
     @classmethod
-    @curry
-    def fixity(cls, left, right, rank, node):
-        return cls(left(rank), right(rank), node)
+    def fixity(cls, left: Callable[[int], int], right: Callable[[int], int]):
+        def with_rank(rank: int):
+            def with_node(node: Op) -> Self:
+                return cls(left(rank), right(rank), node)
+
+            return with_node
+
+        return with_rank
 
 
-class Nofix(Token):
+class Nofix(Token[ast.expr]):
     __slots__ = ()
 
-    def nud(self, parse):
+    def nud(self, parse) -> ast.expr:
         return self.node
 
 
-class Prefix(Token):
+class Prefix(Token[ast.unaryop]):
     __slots__ = ()
 
-    def nud(self, parse):
+    def nud(self, parse) -> ast.expr:
         right = parse(self.right_rank)
         check_right(self, right)
         return ast.UnaryOp(self.node, right)
 
 
-class Infix(Token):
+class Infix(Token[ast.operator]):
     __slots__ = ()
 
-    def led(self, left, parse):
+    def led(self, left, parse) -> ast.expr:
         check_left(self, left)
         right = parse(self.right_rank)
         check_right(self, right)
@@ -108,7 +134,7 @@ HORNET_FIXITIES = {
 
 
 NON_OP = f(0)
-END = NON_OP(None)
+END = NON_OP(None)  # type: ignore
 
 
 def make_token(fixities, node):
@@ -129,19 +155,19 @@ def check_right(op, right_node):
             raise parse_error(op.right_rank, right_node, right.left_rank)
 
 
-def pratt_parse(nodes):
+def pratt_parse(nodes) -> ast.expr:
     tokens = (make_token(HORNET_FIXITIES, node) for node in nodes)
     token_pairs = pairwise(tokens, fillvalue=END)
     token = None
 
-    def parse(right_rank):
+    def parse(right_rank) -> ast.expr:
         nonlocal token
 
-        t, token = next(token_pairs)
+        t, token = cast(tuple[NudLed, Token], next(token_pairs))
         left = t.nud(parse)
 
         while right_rank < token.left_rank:
-            t, token = next(token_pairs)
+            t, token = cast(tuple[NudLed, Token], next(token_pairs))
             left = t.led(left, parse)
 
         return left
@@ -190,10 +216,10 @@ class ASTFlattener(ast.NodeVisitor):
 
     def visit_Constant(self, node):
         if isinstance(node.value, numbers.Number):
-            if node.value >= 0:
+            if node.value >= 0:  # type: ignore
                 self.append(node)
             else:
-                self.visit((-promote(-node.n)).node)
+                self.visit((-promote(-node.n)).node)  # type: ignore
         elif isinstance(node.value, str):
             self.append(node)
         else:
@@ -217,17 +243,17 @@ class ASTFlattener(ast.NodeVisitor):
         self.append(node)
 
     def visit_Subscript(self, node: ast.Subscript):
-        if is_tuple(node.slice.lower):
-            elts = node.slice.lower.elts
+        if is_tuple(node.slice.lower):  # type: ignore
+            elts = node.slice.lower.elts  # type: ignore
             if all(callable(each.wrapped) for each in elts):
                 actions = [each.wrapped for each in elts]
             else:
                 raise TypeError("Subscript must be one or more callables!")
-        elif is_astwrapper(node.slice.lower):
-            actions = [node.slice.lower.wrapped]
+        elif is_astwrapper(node.slice.lower):  # type: ignore
+            actions = [node.slice.lower.wrapped]  # type: ignore
         else:
             raise TypeError("Subscript must be one or more callables!")
-        self.append(ast.Subscript(value=_rearrange(node.value), slice=actions))
+        self.append(ast.Subscript(value=_rearrange(node.value), slice=actions))  # type: ignore
 
     def visit_Call(self, node):
         if not is_name(node.func):

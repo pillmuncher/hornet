@@ -1,6 +1,7 @@
-# Copyright (C) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
+#!/usr/bin/env pytest
+# Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
-__version__ = "0.2.5a"
+__version__ = "0.2.7"
 __date__ = "2014-09-27"
 __author__ = "Mick Krippendorf <m.krippendorf@freenet.de>"
 __license__ = "MIT"
@@ -40,7 +41,7 @@ def test_monad_laws():
         ast_eq(bind(mx, mf), mf(x))
 
     # right identity:
-    ast_eq(bind(mx, unit), mx)
+    ast_eq(bind(mx, unit), mx)  # type: ignore
 
     # associativity:
     for mf, mg in itertools.product(mfuncs, repeat=2):
@@ -69,9 +70,9 @@ def test_expression_factories():
         [Name(name), ast.Name(id=name)],
         [Constant(name), ast.Constant(value=name)],
         [Constant(num), ast.Constant(value=num)],
-        [Tuple(keys), ast.Tuple(elts=keys)],
-        [List(keys), ast.List(elts=keys)],
-        [Set(keys), ast.Set(elts=keys)],
+        [Tuple(keys), ast.Tuple(elts=keys)],  # type: ignore
+        [List(keys), ast.List(elts=keys)],  # type: ignore
+        [Set(keys), ast.Set(elts=keys)],  # type: ignore
         [Wrapper(obj), AstWrapper(wrapped=obj)],
     )
     for expr, node in pairs:
@@ -81,7 +82,7 @@ def test_expression_factories():
     "Test all Expression factory functions that are called as operators."
 
     from hornet.expressions import Constant, unit
-    from hornet.symbols import x, y
+    from hornet.symbols import x, y  # type: ignore
 
     x_name = x.node
     y_name = y.node
@@ -93,7 +94,7 @@ def test_expression_factories():
             x(1, 2, 3),
             ast.Call(
                 func=x_name,
-                args=items,
+                args=items,  # type: ignore
                 keywords=[],
             ),
         ],

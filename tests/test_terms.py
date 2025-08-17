@@ -1,6 +1,7 @@
-# Copyright (C) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
+#!/usr/bin/env pytest
+# Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
-__version__ = "0.2.5a"
+__version__ = "0.2.7"
 __date__ = "2014-09-27"
 __author__ = "Mick Krippendorf <m.krippendorf@freenet.de>"
 __license__ = "MIT"
@@ -9,7 +10,7 @@ __license__ = "MIT"
 def test_builder():
     from hornet import build_term
 
-    from hornet.symbols import _, f, a, b, c, d, e, X, Y, Z
+    from hornet.symbols import _, f, a, b, c, d, e, X, Y, Z  # type: ignore
 
     print(build_term(a))
     print(build_term(f(a, b) << b & c & d))
@@ -23,7 +24,7 @@ def test_resolver():
     from pprint import pprint
 
     from hornet import Database
-    from hornet.symbols import _, f, g, h, a, b, c, X, Y, Z
+    from hornet.symbols import _, f, g, h, a, b, c, X, Y, Z  # type: ignore
 
     db = Database()
     db.tell(

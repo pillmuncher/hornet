@@ -1,13 +1,15 @@
-# Copyright (C) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
+#!/usr/bin/env python3
+# Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
-__version__ = '0.2.5a'
-__date__ = '2014-09-27'
-__author__ = 'Mick Krippendorf <m.krippendorf@freenet.de>'
-__license__ = 'MIT'
+__version__ = "0.2.7"
+__date__ = "2014-09-27"
+__author__ = "Mick Krippendorf <m.krippendorf@freenet.de>"
+__license__ = "MIT"
 
 
 from functools import partial, reduce as foldl
 from itertools import count, tee, zip_longest
+from typing import Callable
 
 
 from toolz.functoolz import flip
@@ -29,6 +31,18 @@ def first_arg(x, *a, **k):
     return x
 
 
+def compose(*fs):
+    f, *gs = reversed(fs)
+
+    def composed(*args, **kwargs):
+        result = f(*args, **kwargs)
+        for g in gs:
+            result = g(result)
+        return result
+
+    return composed
+
+
 def tabulate(function, start=0):
     "Return function(0), function(1), ..."
     return map(function, count(start))
@@ -39,12 +53,12 @@ _sentinel = object()
 
 def foldr(func, seq, start=_sentinel):
     if start is _sentinel:
-        return foldl(flip(func), reversed(seq))
-    return foldl(flip(func), reversed(seq), start)
+        return foldl(flip(func), reversed(seq))  # type: ignore
+    return foldl(flip(func), reversed(seq), start)  # type: ignore
 
 
 def rpartial(f, *args, **kwargs):
-    return partial(flip(f), *args, **kwargs)
+    return partial(flip(f), *args, **kwargs)  # type: ignore
 
 
 def pairwise(iterable, *, fillvalue=_sentinel):
@@ -57,8 +71,7 @@ def pairwise(iterable, *, fillvalue=_sentinel):
 
 
 def qualname(fullname):
-
-    name = fullname.rsplit('.', 1).pop()
+    name = fullname.rsplit(".", 1).pop()
 
     def name_setter(func):
         func.__name__ = name
@@ -83,7 +96,6 @@ def split_pairs(iterable):
 
 
 def install_symbols_module(name, factory):
-
     import sys
 
     from functools import lru_cache
@@ -97,7 +109,6 @@ def install_symbols_module(name, factory):
         __getattr__ = staticmethod(lru_cache()(factory))
 
     class SymbolsImporter(MetaPathFinder, Loader):
-
         exec_module = noop
 
         def find_spec(self, fullname, path=None, target=None):
@@ -106,6 +117,5 @@ def install_symbols_module(name, factory):
 
         def create_module(self, spec):
             return sys.modules.setdefault(spec.name, SymbolsModule(spec.name))
-
 
     sys.meta_path.insert(0, SymbolsImporter())
