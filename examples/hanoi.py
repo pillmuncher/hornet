@@ -1,3 +1,5 @@
+from turtle import Turtle, clear, goto, ht, listen, mainloop, onkey, penup, write
+
 """turtle-example-suite:
 
          tdemo_minimal_hanoi.py
@@ -26,9 +28,6 @@ how to interface hornet code with python code.  -- pillmuncher@web.de
 """
 
 
-from turtle import *
-
-
 class Disc(Turtle):
     def __init__(self, n):
         Turtle.__init__(self, shape="square", visible=False)
@@ -50,15 +49,21 @@ class Tower(list):
         d.sety(-150 + 34 * len(self))
         self.append(d)
 
-    def pop(self):
+    def pop(self):  # type: ignore
         d = list.pop(self)
         d.sety(150)
         return d
 
 
 def hanoi():
-    from hornet import Database, _, cut, greater, let, pyfunc
-    from hornet.symbols import From, M, N, To, With, move, play_hanoi
+    from hornet import Database, _, cut, greater, let, pyfunc  # type: ignore
+    from hornet.symbols import From  # type: ignore
+    from hornet.symbols import M  # type: ignore
+    from hornet.symbols import N  # type: ignore
+    from hornet.symbols import To  # type: ignore
+    from hornet.symbols import With  # type: ignore
+    from hornet.symbols import move  # type: ignore
+    from hornet.symbols import play_hanoi  # type: ignore
 
     @pyfunc
     def show_move(N, From, To, With):
@@ -83,7 +88,7 @@ def hanoi():
 
 
 def play():
-    onkey(None, "space")
+    onkey(None, "space")  # type: ignore
     clear()
     hanoi()
     write("press STOP button to exit", align="center", font=("Courier", 16, "bold"))

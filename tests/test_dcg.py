@@ -9,6 +9,7 @@ def test_dcg_transformation():
     from hornet.dcg import _C_, expand
     from hornet.expressions import mcompose, promote, unit
     from hornet.operators import rearrange
+    from hornet.symbols import _6  # type: ignore
     from hornet.symbols import (
         X,
         _0,
@@ -17,8 +18,7 @@ def test_dcg_transformation():
         _3,
         _4,
         _5,
-        _6,  # type: ignore
-        _7,
+        _7,  # type: ignore
         _8,
         a,
         b,

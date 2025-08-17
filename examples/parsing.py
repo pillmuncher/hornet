@@ -2,53 +2,47 @@
 
 import pprint
 
-from hornet import *
-from hornet.symbols import (
-    NP,
-    VP,
-    A,
-    Adj,
-    B,
-    C,
-    Case,
-    D,
-    Det,
-    E,
-    F,
-    Gender,
-    L,
-    Noun,
-    Number,
-    Rest,
-    S,
-    T,
-    Trans,
-    Verb,
-    W,
-    X,
-    Y,
-    Z,
-    accusative,
-    adj,
-    dative,
-    det,
-    feminine,
-    genitive,
-    intransitive,
-    masculine,
-    neuter,
-    nominative,
-    noun,
-    noun_unknown,
-    np,
-    np_unknown,
-    plural,
-    s,
-    singular,
-    transitive,
-    verb,
-    vp,
-)
+from hornet import Database, equal, join
+
+# from hornet.symbols import A  # type: ignore
+from hornet.symbols import NP  # type: ignore
+from hornet.symbols import VP  # type: ignore
+from hornet.symbols import Adj  # type: ignore
+from hornet.symbols import B  # type: ignore
+from hornet.symbols import Case  # type: ignore
+from hornet.symbols import D  # type: ignore
+from hornet.symbols import Det  # type: ignore
+from hornet.symbols import E  # type: ignore
+from hornet.symbols import F  # type: ignore
+from hornet.symbols import Gender  # type: ignore
+from hornet.symbols import Noun  # type: ignore
+from hornet.symbols import Number  # type: ignore
+from hornet.symbols import S  # type: ignore
+from hornet.symbols import T  # type: ignore
+from hornet.symbols import Trans  # type: ignore
+from hornet.symbols import Verb  # type: ignore
+from hornet.symbols import W  # type: ignore
+from hornet.symbols import X  # type: ignore
+from hornet.symbols import Y  # type: ignore
+from hornet.symbols import _  # type: ignore
+from hornet.symbols import accusative  # type: ignore
+from hornet.symbols import adj  # type: ignore
+from hornet.symbols import dative  # type: ignore
+from hornet.symbols import det  # type: ignore
+from hornet.symbols import feminine  # type: ignore
+from hornet.symbols import genitive  # type: ignore
+from hornet.symbols import intransitive  # type: ignore
+from hornet.symbols import masculine  # type: ignore
+from hornet.symbols import neuter  # type: ignore
+from hornet.symbols import nominative  # type: ignore
+from hornet.symbols import noun  # type: ignore
+from hornet.symbols import np  # type: ignore
+from hornet.symbols import plural  # type: ignore
+from hornet.symbols import s  # type: ignore
+from hornet.symbols import singular  # type: ignore
+from hornet.symbols import transitive  # type: ignore
+from hornet.symbols import verb  # type: ignore
+from hornet.symbols import vp  # C, # type: ignore; type: ignore
 
 
 def grammar(db):

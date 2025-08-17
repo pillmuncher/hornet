@@ -3,7 +3,6 @@
 from functools import partial
 from functools import reduce as foldl
 from itertools import count, tee, zip_longest
-from typing import Callable
 
 from toolz.functoolz import flip
 

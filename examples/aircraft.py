@@ -3,22 +3,20 @@
 import pprint
 
 from hornet import Database, findall  # type: ignore
-from hornet.symbols import (
-    Id,
-    S,
-    Side,
-    Ss,
-    W,
-    left,
-    point,  # type: ignore
-    right,
-    section,
-    sections,
-    segment,
-    segments,
-    side,
-    wing,
-)
+from hornet.symbols import Id  # type: ignore
+from hornet.symbols import S  # type: ignore
+from hornet.symbols import Side  # type: ignore
+from hornet.symbols import Ss  # type: ignore
+from hornet.symbols import W  # type: ignore
+from hornet.symbols import left  # type: ignore
+from hornet.symbols import point  # type: ignore
+from hornet.symbols import right  # type: ignore
+from hornet.symbols import section  # type: ignore
+from hornet.symbols import sections  # type: ignore
+from hornet.symbols import segment  # type: ignore
+from hornet.symbols import segments  # type: ignore
+from hornet.symbols import side  # type: ignore
+from hornet.symbols import wing  # type: ignore
 
 
 def make_wing(db):
