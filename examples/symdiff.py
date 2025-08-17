@@ -1,30 +1,26 @@
 # Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
-from hornet import atomic  # type: ignore
-from hornet import cut  # type: ignore
-from hornet import equal  # type: ignore
-from hornet import let  # type: ignore
-from hornet import numeric  # type: ignore
-from hornet import unequal  # type: ignore
-from hornet import Database, build_term
-from hornet.symbols import C1  # type: ignore
-from hornet.symbols import A  # type: ignore
-from hornet.symbols import B  # type: ignore
-from hornet.symbols import C  # type: ignore
-from hornet.symbols import D  # type: ignore
-from hornet.symbols import U  # type: ignore
-from hornet.symbols import V  # type: ignore
-from hornet.symbols import W  # type: ignore
-from hornet.symbols import X  # type: ignore
-from hornet.symbols import Y  # type: ignore
-from hornet.symbols import Z  # type: ignore
-from hornet.symbols import cos  # type: ignore
-from hornet.symbols import d  # type: ignore
-from hornet.symbols import exp  # type: ignore
-from hornet.symbols import log  # type: ignore
-from hornet.symbols import simp  # type: ignore
-from hornet.symbols import sin  # type: ignore
-from hornet.symbols import x  # type: ignore
+from hornet import Database, atomic, build_term, cut, equal, let, numeric, unequal
+from hornet.symbols import (
+    C1,
+    A,
+    B,
+    C,
+    D,
+    U,
+    V,
+    W,
+    X,
+    Y,
+    Z,
+    cos,
+    d,
+    exp,
+    log,
+    simp,
+    sin,
+    x,
+)
 
 
 def diff_rules(db):

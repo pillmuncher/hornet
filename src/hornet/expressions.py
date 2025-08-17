@@ -276,35 +276,35 @@ BitOr = _binary_op(ast.BitOr, "Expression.__or__")
 # Here the Expression factory operator functions get finally bound to the
 # Expression class:
 
-Expression.__getitem__ = Subscript  # type: ignore
-Expression.__call__ = Call  # type: ignore
-Expression.__neg__ = USub  # type: ignore
-Expression.__pos__ = UAdd  # type: ignore
-Expression.__invert__ = Invert  # type: ignore
-Expression.__add__ = Add  # type: ignore
-Expression.__radd__ = flip(Add)  # type: ignore
-Expression.__sub__ = Sub  # type: ignore
-Expression.__rsub__ = flip(Sub)  # type: ignore
-Expression.__mul__ = Mult  # type: ignore
-Expression.__rmul__ = flip(Mult)  # type: ignore
-Expression.__truediv__ = Div  # type: ignore
-Expression.__rtruediv__ = flip(Div)  # type: ignore
-Expression.__floordiv__ = FloorDiv  # type: ignore
-Expression.__rfloordiv__ = flip(FloorDiv)  # type: ignore
-Expression.__mod__ = Mod  # type: ignore
-Expression.__rmod__ = flip(Mod)  # type: ignore
-Expression.__pow__ = Pow  # type: ignore
-Expression.__rpow__ = flip(Pow)  # type: ignore
-Expression.__lshift__ = LShift  # type: ignore
-Expression.__rlshift__ = flip(LShift)  # type: ignore
-Expression.__rshift__ = RShift  # type: ignore
-Expression.__rrshift__ = flip(RShift)  # type: ignore
-Expression.__and__ = BitAnd  # type: ignore
-Expression.__rand__ = flip(BitAnd)  # type: ignore
-Expression.__xor__ = BitXor  # type: ignore
-Expression.__rxor__ = flip(BitXor)  # type: ignore
-Expression.__or__ = BitOr  # type: ignore
-Expression.__ror__ = flip(BitOr)  # type: ignore
+Expression.__getitem__ = Subscript
+Expression.__call__ = Call
+Expression.__neg__ = USub
+Expression.__pos__ = UAdd
+Expression.__invert__ = Invert
+Expression.__add__ = Add
+Expression.__radd__ = flip(Add)
+Expression.__sub__ = Sub
+Expression.__rsub__ = flip(Sub)
+Expression.__mul__ = Mult
+Expression.__rmul__ = flip(Mult)
+Expression.__truediv__ = Div
+Expression.__rtruediv__ = flip(Div)
+Expression.__floordiv__ = FloorDiv
+Expression.__rfloordiv__ = flip(FloorDiv)
+Expression.__mod__ = Mod
+Expression.__rmod__ = flip(Mod)
+Expression.__pow__ = Pow
+Expression.__rpow__ = flip(Pow)
+Expression.__lshift__ = LShift
+Expression.__rlshift__ = flip(LShift)
+Expression.__rshift__ = RShift
+Expression.__rrshift__ = flip(RShift)
+Expression.__and__ = BitAnd
+Expression.__rand__ = flip(BitAnd)
+Expression.__xor__ = BitXor
+Expression.__rxor__ = flip(BitXor)
+Expression.__or__ = BitOr
+Expression.__ror__ = flip(BitOr)
 
 
 # Any Python object 'obj' will be turned into an Expression object with its

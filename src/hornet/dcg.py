@@ -69,7 +69,7 @@ class Expander:
 
     def expand_call(self, node):
         if is_name(node):
-            return self.collect_functor(unit(node)())  # type: ignore
+            return self.collect_functor(unit(node)())
 
         elif is_call(node):
             return self.collect_functor(unit(copy.deepcopy(node)))
@@ -82,7 +82,7 @@ class Expander:
             return cont(None)
 
         elif all(is_terminal(each) for each in node.elts):
-            *elts, last = (self.collect_terminal(_C_(unit(each))) for each in node.elts)  # type: ignore
+            *elts, last = (self.collect_terminal(_C_(unit(each))) for each in node.elts)
             return foldr(conjunction, elts, cont(last))
 
         else:
@@ -93,7 +93,7 @@ class Expander:
             return None
 
         elif all(is_terminal(each) for each in node.elts):
-            elts = [self.collect_pushback(_C_(unit(each))) for each in node.elts]  # type: ignore
+            elts = [self.collect_pushback(_C_(unit(each))) for each in node.elts]
             return foldr(conjunction, elts)
 
         else:

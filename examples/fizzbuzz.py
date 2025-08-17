@@ -1,25 +1,16 @@
 # Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
-from hornet import arithmetic_equal  # type: ignore
-from hornet import equal  # type: ignore
-from hornet import findall  # type: ignore
-from hornet import greater  # type: ignore
-from hornet import join  # type: ignore
-from hornet import let  # type: ignore
-from hornet import writeln  # type: ignore
-from hornet import Database
-from hornet.symbols import N1  # type: ignore
-from hornet.symbols import D  # type: ignore
-from hornet.symbols import Max  # type: ignore
-from hornet.symbols import N  # type: ignore
-from hornet.symbols import R  # type: ignore
-from hornet.symbols import S  # type: ignore
-from hornet.symbols import W  # type: ignore
-from hornet.symbols import Ws  # type: ignore
-from hornet.symbols import divisible  # type: ignore
-from hornet.symbols import fizzbuzz  # type: ignore
-from hornet.symbols import show  # type: ignore
-from hornet.symbols import word  # type: ignore
+from hornet import (
+    Database,
+    arithmetic_equal,
+    equal,
+    findall,
+    greater,
+    join,
+    let,
+    writeln,
+)
+from hornet.symbols import N1, D, Max, N, R, S, W, Ws, divisible, fizzbuzz, show, word
 
 
 def main():

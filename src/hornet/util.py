@@ -44,12 +44,12 @@ _sentinel = object()
 
 def foldr(func, seq, start=_sentinel):
     if start is _sentinel:
-        return foldl(flip(func), reversed(seq))  # type: ignore
-    return foldl(flip(func), reversed(seq), start)  # type: ignore
+        return foldl(flip(func), reversed(seq))
+    return foldl(flip(func), reversed(seq), start)
 
 
 def rpartial(f, *args, **kwargs):
-    return partial(flip(f), *args, **kwargs)  # type: ignore
+    return partial(flip(f), *args, **kwargs)
 
 
 def pairwise(iterable, *, fillvalue=_sentinel):
@@ -84,28 +84,3 @@ def split_pairs(iterable):
     for left in iterable:
         right = next(iterable)
         yield left, right
-
-
-def install_symbols_module(name, factory):
-    import sys
-    from functools import lru_cache
-    from importlib.abc import Loader, MetaPathFinder
-    from importlib.machinery import ModuleSpec
-    from types import ModuleType
-
-    class SymbolsModule(ModuleType):
-        __all__ = []
-        __file__ = None  # needed so nose doesn't bark at us
-        __getattr__ = staticmethod(lru_cache()(factory))
-
-    class SymbolsImporter(MetaPathFinder, Loader):
-        exec_module = noop
-
-        def find_spec(self, fullname, path=None, target=None):
-            if fullname == name:
-                return ModuleSpec(fullname, self)
-
-        def create_module(self, spec):
-            return sys.modules.setdefault(spec.name, SymbolsModule(spec.name))
-
-    sys.meta_path.insert(0, SymbolsImporter())

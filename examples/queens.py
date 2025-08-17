@@ -1,24 +1,23 @@
 # Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
-from hornet import arithmetic_not_equal  # type: ignore
-from hornet import let  # type: ignore
-from hornet import select  # type: ignore
-from hornet import Database
-from hornet.symbols import X1  # type: ignore
-from hornet.symbols import Y1  # type: ignore
-from hornet.symbols import Ns  # type: ignore
-from hornet.symbols import Qs  # type: ignore
-from hornet.symbols import Rest  # type: ignore
-from hornet.symbols import S  # type: ignore
-from hornet.symbols import X  # type: ignore
-from hornet.symbols import Xs  # type: ignore
-from hornet.symbols import Y  # type: ignore
-from hornet.symbols import Y0s  # type: ignore
-from hornet.symbols import Ys  # type: ignore
-from hornet.symbols import _  # type: ignore
-from hornet.symbols import noattack  # type: ignore
-from hornet.symbols import queens  # type: ignore
-from hornet.symbols import solution  # type: ignore
+from hornet import Database, arithmetic_not_equal, let, select
+from hornet.symbols import (
+    X1,
+    Y1,
+    Ns,
+    Qs,
+    Rest,
+    S,
+    X,
+    Xs,
+    Y,
+    Y0s,
+    Ys,
+    _,
+    noattack,
+    queens,
+    solution,
+)
 
 QUEENS = 6
 

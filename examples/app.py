@@ -1,7 +1,7 @@
 # Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
-from hornet import Database, append  # type: ignore
-from hornet.symbols import L1, L2  # type: ignore
+from hornet import Database, append
+from hornet.symbols import L1, L2
 
 
 def main():

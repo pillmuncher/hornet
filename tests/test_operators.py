@@ -9,7 +9,7 @@ from . import ast_eq, expression_all, expression_all_raise
 
 def test_rearrange():
     from hornet.operators import ParseError, rearrange
-    from hornet.symbols import a, b, c, d, e  # type: ignore
+    from hornet.symbols import a, b, c, d, e
 
     expression_all(
         ast_eq,

@@ -49,21 +49,15 @@ class Tower(list):
         d.sety(-150 + 34 * len(self))
         self.append(d)
 
-    def pop(self):  # type: ignore
+    def pop(self):
         d = list.pop(self)
         d.sety(150)
         return d
 
 
 def hanoi():
-    from hornet import Database, _, cut, greater, let, pyfunc  # type: ignore
-    from hornet.symbols import From  # type: ignore
-    from hornet.symbols import M  # type: ignore
-    from hornet.symbols import N  # type: ignore
-    from hornet.symbols import To  # type: ignore
-    from hornet.symbols import With  # type: ignore
-    from hornet.symbols import move  # type: ignore
-    from hornet.symbols import play_hanoi  # type: ignore
+    from hornet import Database, _, cut, greater, let, pyfunc
+    from hornet.symbols import From, M, N, To, With, move, play_hanoi
 
     @pyfunc
     def show_move(N, From, To, With):
@@ -88,7 +82,7 @@ def hanoi():
 
 
 def play():
-    onkey(None, "space")  # type: ignore
+    onkey(None, "space")
     clear()
     hanoi()
     write("press STOP button to exit", align="center", font=("Courier", 16, "bold"))

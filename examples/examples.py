@@ -30,7 +30,7 @@ def show_all(*a, **k):
 
 @show(skip=True)
 def show_db(db):
-    from hornet import listing  # type: ignore
+    from hornet import listing
 
     for _ in db.ask(listing):
         break
@@ -38,11 +38,8 @@ def show_db(db):
 
 @show(skip=False)
 def xor_test(db):
-    from hornet import call  # type: ignore
-    from hornet import equal  # type: ignore
-    from hornet import fail  # type: ignore
-    from hornet import true  # type: ignore
-    from hornet.symbols import X  # type: ignore
+    from hornet import call, equal, fail, true
+    from hornet.symbols import X
 
     for each in fail ^ true, true ^ fail, fail ^ fail, true ^ true:
         for subst in db.ask(equal(each, X) & call(X)):
@@ -52,8 +49,8 @@ def xor_test(db):
 
 @show(skip=False)
 def eqtest(db):
-    from hornet import equal  # type: ignore
-    from hornet.symbols import X, tom  # type: ignore
+    from hornet import equal
+    from hornet.symbols import X, tom
 
     for subst in db.ask(equal(tom, X)):
         print(subst[X])
@@ -64,15 +61,17 @@ def eqtest(db):
 
 @show(skip=False)
 def barbara(db):
-    from hornet.symbols import Who  # type: ignore
-    from hornet.symbols import X  # type: ignore
-    from hornet.symbols import aristotle  # type: ignore
-    from hornet.symbols import god  # type: ignore
-    from hornet.symbols import man  # type: ignore
-    from hornet.symbols import mortal  # type: ignore
-    from hornet.symbols import plato  # type: ignore
-    from hornet.symbols import socrates  # type: ignore
-    from hornet.symbols import zeus  # type: ignore
+    from hornet.symbols import (
+        Who,
+        X,
+        aristotle,
+        god,
+        man,
+        mortal,
+        plato,
+        socrates,
+        zeus,
+    )
 
     db.tell(
         god(zeus),
@@ -88,9 +87,8 @@ def barbara(db):
 
 @show(skip=False)
 def varunify(db):
-    from hornet import equal  # type: ignore
-    from hornet import true  # type: ignore
-    from hornet.symbols import X, Y, Z, man, true  # type: ignore
+    from hornet import equal, true
+    from hornet.symbols import X, Y, Z, man, true
 
     for subst in db.ask(equal(X, Z) & equal(Y, Z) & (equal(man, Z) | true)):
         for k, v in sorted(subst.items()):
@@ -100,9 +98,8 @@ def varunify(db):
 
 @show(skip=False)
 def subtraction(db):
-    from hornet import equal  # type: ignore
-    from hornet import let  # type: ignore
-    from hornet.symbols import A, B, C, D  # type: ignore
+    from hornet import equal, let
+    from hornet.symbols import A, B, C, D
 
     q = equal(A, 5) & equal(B, 2) & equal(C, 1) & let(D, A - B - C)
     for subst in db.ask(q):
@@ -112,9 +109,9 @@ def subtraction(db):
 
 @show(skip=False)
 def stdtypes(db):
-    from hornet import equal  # type: ignore
+    from hornet import equal
     from hornet.expressions import promote
-    from hornet.symbols import X  # type: ignore
+    from hornet.symbols import X
 
     for subst in db.ask(equal(10, X) & equal(X, 10)):
         print(sorted(subst.items()))
@@ -127,16 +124,16 @@ def stdtypes(db):
 
     for subst in db.ask(equal([1], X) & equal(X, [1])):
         print(sorted(subst.items()))
-    for subst in db.ask(equal([1 | promote(2)], X) & equal(X, [promote(1) | 2])):  # type: ignore
+    for subst in db.ask(equal([1 | promote(2)], X) & equal(X, [promote(1) | 2])):
         print(sorted(subst.items()))
 
     for subst in db.ask(equal([1, 2], X) & equal(X, [1, 2])):
         print(sorted(subst.items()))
 
-    for subst in db.ask(equal([1, promote(2) | 3], X) & equal(X, [1, 2 | promote(3)])):  # type: ignore
+    for subst in db.ask(equal([1, promote(2) | 3], X) & equal(X, [1, 2 | promote(3)])):
         print(sorted(subst.items()))
 
-    for subst in db.ask(equal([1, promote(2), 3], X) & equal(X, [1, 2 | promote(3)])):  # type: ignore
+    for subst in db.ask(equal([1, promote(2), 3], X) & equal(X, [1, 2 | promote(3)])):
         print("Yes.")
         break
     else:
@@ -146,8 +143,8 @@ def stdtypes(db):
 
 @show(skip=False)
 def difflist(db):
-    from hornet import equal  # type: ignore
-    from hornet.symbols import A, B, C, U, V, W, X, appenddl  # type: ignore
+    from hornet import equal
+    from hornet.symbols import A, B, C, U, V, W, X, appenddl
 
     db.tell(
         appenddl(A - B, B - C, A - C),
@@ -175,7 +172,7 @@ def difflist(db):
 
 @show(skip=False)
 def join_test(db):
-    from hornet import join  # type: ignore
+    from hornet import join
 
     for _ in db.ask(join([], "")):
         print("Yes.")
@@ -195,7 +192,7 @@ def join_test(db):
 
 @show(skip=False)
 def unify_test(db):
-    from hornet import join  # type: ignore
+    from hornet import join
 
     for _ in db.ask(join(["hallo", "welt"], "hallowelt")):
         print("Yes.")
@@ -205,31 +202,31 @@ def unify_test(db):
 
 
 def tribes(db):
-    from hornet import cut  # type: ignore
-    from hornet import findall  # type: ignore
-    from hornet import member  # type: ignore
-    from hornet.symbols import Seen  # type: ignore
-    from hornet.symbols import Tribe  # type: ignore
-    from hornet.symbols import X  # type: ignore
-    from hornet.symbols import Y  # type: ignore
-    from hornet.symbols import Z  # type: ignore
-    from hornet.symbols import _  # type: ignore
-    from hornet.symbols import ancestor  # type: ignore
-    from hornet.symbols import bob  # type: ignore
-    from hornet.symbols import dan  # type: ignore
-    from hornet.symbols import descendant  # type: ignore
-    from hornet.symbols import directly_related  # type: ignore
-    from hornet.symbols import hal  # type: ignore
-    from hornet.symbols import jim  # type: ignore
-    from hornet.symbols import joe  # type: ignore
-    from hornet.symbols import lee  # type: ignore
-    from hornet.symbols import patriarch  # type: ignore
-    from hornet.symbols import related  # type: ignore
-    from hornet.symbols import related_  # type: ignore
-    from hornet.symbols import sam  # type: ignore
-    from hornet.symbols import son  # type: ignore
-    from hornet.symbols import tom  # type: ignore
-    from hornet.symbols import tribe  # type: ignore
+    from hornet import cut, findall, member
+    from hornet.symbols import (
+        Seen,
+        Tribe,
+        X,
+        Y,
+        Z,
+        _,
+        ancestor,
+        bob,
+        dan,
+        descendant,
+        directly_related,
+        hal,
+        jim,
+        joe,
+        lee,
+        patriarch,
+        related,
+        related_,
+        sam,
+        son,
+        tom,
+        tribe,
+    )
 
     db.tell(
         son(joe, sam),  # joe is the son of sam, etc.
@@ -249,7 +246,7 @@ def tribes(db):
         related(X, Y, Seen) << directly_related(X, Z)
         & ~member(Z, Seen)
         & related_(Z, Y, Seen),
-        related_(X, X, _),  # type: ignore
+        related_(X, X, _),
         related_(X, Y, Seen) << related(X, Y, [X | Seen]),
         directly_related(X, Y) << son(X, Y) | son(Y, X),
         # Z is the patriarch of X:
@@ -268,22 +265,21 @@ def tribes(db):
 
 @show(skip=False)
 def genealogy(db):
-    from hornet import cut  # type: ignore
-    from hornet import fail  # type: ignore
-    from hornet import listing  # type: ignore
-    from hornet import writeln  # type: ignore
-    from hornet.symbols import A  # type: ignore
-    from hornet.symbols import B  # type: ignore
-    from hornet.symbols import X  # type: ignore
-    from hornet.symbols import ancestor  # type: ignore
-    from hornet.symbols import bob  # type: ignore
-    from hornet.symbols import dan  # type: ignore
-    from hornet.symbols import descendant  # type: ignore
-    from hornet.symbols import joe  # type: ignore
-    from hornet.symbols import lee  # type: ignore
-    from hornet.symbols import lwriteln  # type: ignore
-    from hornet.symbols import related  # type: ignore
-    from hornet.symbols import tribe  # type: ignore
+    from hornet import cut, fail, listing, writeln
+    from hornet.symbols import (
+        A,
+        B,
+        X,
+        ancestor,
+        bob,
+        dan,
+        descendant,
+        joe,
+        lee,
+        lwriteln,
+        related,
+        tribe,
+    )
 
     tribes(db)
 
@@ -371,9 +367,8 @@ def genealogy(db):
 
 @show(skip=False)
 def member_test(db):
-    from hornet import equal  # type: ignore
-    from hornet import member  # type: ignore
-    from hornet.symbols import W, X, Y, Z, a, b, c  # type: ignore
+    from hornet import equal, member
+    from hornet.symbols import W, X, Y, Z, a, b, c
 
     for subst in db.ask(member(X, [a, b, c])):
         print(subst[X])
@@ -398,9 +393,8 @@ def member_test(db):
 
 @show(skip=False)
 def length_test(db):
-    from hornet import equal  # type: ignore
-    from hornet import length  # type: ignore
-    from hornet.symbols import W, X, Y, a, b  # type: ignore
+    from hornet import equal, length
+    from hornet.symbols import W, X, Y, a, b
 
     for subst in db.ask(length([1, 2, 3, 4, 5], X)):
         print(subst[X])
@@ -430,9 +424,8 @@ def length_test(db):
 
 @show(skip=False)
 def member_length_test(db):
-    from hornet import length  # type: ignore
-    from hornet import member  # type: ignore
-    from hornet.symbols import X, tom  # type: ignore
+    from hornet import length, member
+    from hornet.symbols import X, tom
 
     for subst in db.ask(length(X, 3) & member(tom, X)):
         # for subst in db.ask(member(tom, X) & length(X, 3)):
@@ -441,8 +434,8 @@ def member_length_test(db):
 
 @show(skip=False)
 def append_test(db):
-    from hornet import append  # type: ignore
-    from hornet.symbols import X, Y, a, b, c, d, e  # type: ignore
+    from hornet import append
+    from hornet.symbols import X, Y, a, b, c, d, e
 
     for subst in db.ask(append([], [a, b, c, d, e], X)):
         print(subst[X])
@@ -478,9 +471,7 @@ def append_test(db):
 
 @show(skip=False)
 def ignore_test(db):
-    from hornet import fail  # type: ignore
-    from hornet import ignore  # type: ignore
-    from hornet import true  # type: ignore
+    from hornet import fail, ignore, true
 
     for _ in db.ask(ignore(true | true) & ignore(fail)):
         print("Yes, ignored.")
@@ -488,10 +479,8 @@ def ignore_test(db):
 
 @show(skip=False)
 def univ_test(db):
-    from hornet import equal  # type: ignore
-    from hornet import univ  # type: ignore
-    from hornet import var  # type: ignore
-    from hornet.symbols import A, B, C, X, Y, Z, a, blub  # type: ignore
+    from hornet import equal, univ, var
+    from hornet.symbols import A, B, C, X, Y, Z, a, blub
 
     for subst in db.ask(var(X)):
         print(subst)
@@ -576,8 +565,8 @@ def univ_test(db):
 
 @show(skip=False)
 def rec(db):
-    from hornet import equal  # type: ignore
-    from hornet.symbols import X, a  # type: ignore
+    from hornet import equal
+    from hornet.symbols import X, a
 
     for _ in db.ask(equal(X, a(X))):
         print("oh!")
@@ -586,17 +575,8 @@ def rec(db):
 
 @show(skip=False)
 def cut_test(db):
-    from hornet import cut  # type: ignore
-    from hornet import equal  # type: ignore
-    from hornet import writeln  # type: ignore
-    from hornet.symbols import A  # type: ignore
-    from hornet.symbols import B  # type: ignore
-    from hornet.symbols import X  # type: ignore
-    from hornet.symbols import Y  # type: ignore
-    from hornet.symbols import bar  # type: ignore
-    from hornet.symbols import branch  # type: ignore
-    from hornet.symbols import foo  # type: ignore
-    from hornet.symbols import root  # type: ignore
+    from hornet import cut, equal, writeln
+    from hornet.symbols import A, B, X, Y, bar, branch, foo, root
 
     # db.tell(
     # root(X, Y) <<
@@ -625,22 +605,8 @@ def cut_test(db):
 
 @show(skip=False)
 def transpose_test(db):
-    from hornet import equal  # type: ignore
-    from hornet import transpose  # type: ignore
-    from hornet.symbols import L  # type: ignore
-    from hornet.symbols import X  # type: ignore
-    from hornet.symbols import a  # type: ignore
-    from hornet.symbols import b  # type: ignore
-    from hornet.symbols import c  # type: ignore
-    from hornet.symbols import d  # type: ignore
-    from hornet.symbols import e  # type: ignore
-    from hornet.symbols import f  # type: ignore
-    from hornet.symbols import g  # type: ignore
-    from hornet.symbols import h  # type: ignore
-    from hornet.symbols import i  # type: ignore
-    from hornet.symbols import j  # type: ignore
-    from hornet.symbols import k  # type: ignore
-    from hornet.symbols import l  # type: ignore
+    from hornet import equal, transpose
+    from hornet.symbols import L, X, a, b, c, d, e, f, g, h, i, j, k, l
 
     L0 = [[a, b, c, d], [e, f, g, h], [i, j, k, l]]
     for subst in db.ask(equal(L0, L) & transpose(L, X)):
@@ -650,8 +616,7 @@ def transpose_test(db):
 
 @show(skip=False)
 def maplist_test(db):
-    from hornet import maplist  # type: ignore
-    from hornet import writeln  # type: ignore
+    from hornet import maplist, writeln
 
     for _ in db.ask(maplist(writeln, [1, 2, 3, 4, 5])):
         pass

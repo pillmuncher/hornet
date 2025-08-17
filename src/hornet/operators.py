@@ -105,7 +105,7 @@ HORNET_FIXITIES = {
 
 
 NON_OP = f(0)
-END = NON_OP(None)  # type: ignore
+END = NON_OP(None)
 
 
 def make_token(fixities, node):
@@ -187,10 +187,10 @@ class ASTFlattener(ast.NodeVisitor):
 
     def visit_Constant(self, node):
         if isinstance(node.value, numbers.Number):
-            if node.value >= 0:  # type: ignore
+            if node.value >= 0:
                 self.append(node)
             else:
-                self.visit((-promote(-node.n)).node)  # type: ignore
+                self.visit((-promote(-node.n)).node)
         elif isinstance(node.value, str):
             self.append(node)
         else:
@@ -214,17 +214,17 @@ class ASTFlattener(ast.NodeVisitor):
         self.append(node)
 
     def visit_Subscript(self, node: ast.Subscript):
-        if is_tuple(node.slice.lower):  # type: ignore
-            elts = node.slice.lower.elts  # type: ignore
+        if is_tuple(node.slice.lower):
+            elts = node.slice.lower.elts
             if all(callable(each.wrapped) for each in elts):
                 actions = [each.wrapped for each in elts]
             else:
                 raise TypeError("Subscript must be one or more callables!")
-        elif is_astwrapper(node.slice.lower):  # type: ignore
-            actions = [node.slice.lower.wrapped]  # type: ignore
+        elif is_astwrapper(node.slice.lower):
+            actions = [node.slice.lower.wrapped]
         else:
             raise TypeError("Subscript must be one or more callables!")
-        self.append(ast.Subscript(value=_rearrange(node.value), slice=actions))  # type: ignore
+        self.append(ast.Subscript(value=_rearrange(node.value), slice=actions))
 
     def visit_Call(self, node):
         if not is_name(node.func):

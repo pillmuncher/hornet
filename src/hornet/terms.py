@@ -99,7 +99,7 @@ class UnificationFailed(Exception):
 class Wildcard:
     __slots__ = ()
     __call__ = noop
-    __repr__ = const("_")  # type: ignore
+    __repr__ = const("_")
     __deepcopy__ = get_self
     fresh = get_self
     ref = property(identity)
@@ -113,8 +113,8 @@ WILDCARD = Wildcard()
 
 class Variable(collections.Counter):
     __slots__ = "env", "name"
-    __eq__ = object.__eq__  # type: ignore
-    __hash__ = object.__hash__  # type: ignore
+    __eq__ = object.__eq__
+    __hash__ = object.__hash__
 
     def __init__(self, *, env, name):
         self.env = env
@@ -304,8 +304,8 @@ class Structure:
 class Atomic(Structure):
     __slots__ = ()
     __call__ = get_name
-    __deepcopy__ = get_self  # type: ignore
-    fresh = get_self  # type: ignore
+    __deepcopy__ = get_self
+    fresh = get_self
 
 
 class Atom(Atomic):
@@ -316,18 +316,18 @@ class Atom(Atomic):
 class String(Atomic):
     __slots__ = ()
     __str__ = get_name
-    __repr__ = compose("'{}'".format, get_name)  # type: ignore
+    __repr__ = compose("'{}'".format, get_name)
 
 
 class Number(Atomic):
     __slots__ = ()
-    __repr__ = compose(str, get_name)  # type: ignore
+    __repr__ = compose(str, get_name)
 
 
 class EmptyList(Atomic):
     __slots__ = ()
     __call__ = list
-    __repr__ = const("[]")  # type: ignore
+    __repr__ = const("[]")
 
     def __init__(self):
         Atomic.__init__(self, env={}, name="[]")
