@@ -9,32 +9,30 @@ def test_dcg_transformation():
     from hornet.dcg import _C_, expand
     from hornet.expressions import mcompose, promote, unit
     from hornet.operators import rearrange
+    from hornet.symbols import X  # type: ignore
+    from hornet.symbols import _0  # type: ignore
+    from hornet.symbols import _1  # type: ignore
+    from hornet.symbols import _2  # type: ignore
+    from hornet.symbols import _3  # type: ignore
+    from hornet.symbols import _4  # type: ignore
+    from hornet.symbols import _5  # type: ignore
     from hornet.symbols import _6  # type: ignore
-    from hornet.symbols import (
-        X,
-        _0,
-        _1,
-        _2,
-        _3,
-        _4,
-        _5,
-        _7,  # type: ignore
-        _8,
-        a,
-        b,
-        c,
-        d,
-        e,
-        f,
-        g,
-        h,
-        np,
-        s,
-        vp,
-        x,
-        y,
-        z,
-    )
+    from hornet.symbols import _7  # type: ignore
+    from hornet.symbols import _8  # type: ignore
+    from hornet.symbols import a  # type: ignore
+    from hornet.symbols import b  # type: ignore
+    from hornet.symbols import c  # type: ignore
+    from hornet.symbols import d  # type: ignore
+    from hornet.symbols import e  # type: ignore
+    from hornet.symbols import f  # type: ignore
+    from hornet.symbols import g  # type: ignore
+    from hornet.symbols import h  # type: ignore
+    from hornet.symbols import np  # type: ignore
+    from hornet.symbols import s  # type: ignore
+    from hornet.symbols import vp  # type: ignore
+    from hornet.symbols import x  # type: ignore
+    from hornet.symbols import y  # type: ignore
+    from hornet.symbols import z  # type: ignore
 
     expression_all(
         ast_eq,
