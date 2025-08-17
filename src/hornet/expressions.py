@@ -8,7 +8,7 @@ from typing import Callable
 from astor import code_gen as codegen
 from toolz.functoolz import flip, identity
 
-from .util import compose, foldl, qualname, rpartial
+from .util import compose, foldl, rpartial
 
 __all__ = [
     # monad class:
@@ -206,29 +206,24 @@ def mcompose(*mfuncs):
 # they represent.
 
 
-@mlift
 def Name(name, **kwargs):
-    return ast.Name(id=name, **kwargs)
+    return Expression(ast.Name(id=name, **kwargs))
 
 
-@mlift
 def Constant(value):
-    return ast.Constant(value=value)
+    return Expression(ast.Constant(value=value))
 
 
-@mlift
 def Tuple(tuple_):
-    return ast.Tuple(elts=[astify(each) for each in tuple_])
+    return Expression(ast.Tuple(elts=[astify(each) for each in tuple_]))
 
 
-@mlift
 def List(list_):
-    return ast.List(elts=[astify(each) for each in list_])
+    return Expression(ast.List(elts=[astify(each) for each in list_]))
 
 
-@mlift
 def Set(set_):
-    return ast.Set(elts=[astify(each) for each in set_])
+    return Expression(ast.Set(elts=[astify(each) for each in set_]))
 
 
 # Although the following functions do not represent AST node types, they are
@@ -241,9 +236,8 @@ class AstWrapper[T](ast.AST):
         self.wrapped: T = wrapped
 
 
-@mlift
 def Wrapper(wrapped):
-    return AstWrapper(wrapped=wrapped)
+    return Expression(AstWrapper(wrapped=wrapped))
 
 
 Add = Expression.__add__

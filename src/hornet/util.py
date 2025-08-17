@@ -3,6 +3,7 @@
 from functools import partial
 from functools import reduce as foldl
 from itertools import count, tee, zip_longest
+from typing import Any, Callable, Self
 
 from toolz.functoolz import flip
 
@@ -13,9 +14,9 @@ def noop(*a, **k):
     return None
 
 
-def const(x):
+def const[T](x: T) -> Callable[..., T]:
     "The K combinator"
-    return lambda _: x
+    return lambda *a, **k: x
 
 
 def first_arg(x, *a, **k):
@@ -59,17 +60,6 @@ def pairwise(iterable, *, fillvalue=_sentinel):
         return zip(a, b)
     else:
         return zip_longest(a, b, fillvalue=fillvalue)
-
-
-def qualname(fullname):
-    name = fullname.rsplit(".", 1).pop()
-
-    def name_setter(func):
-        func.__name__ = name
-        func.__qualname__ = fullname
-        return func
-
-    return name_setter
 
 
 def rotate(iterable):
