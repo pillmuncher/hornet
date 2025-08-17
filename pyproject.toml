@@ -46,7 +46,7 @@ skip_covered = true
 current_version = "0.2.8"
 commit = true
 tag = true
-files = ["_version.py"]
+files = ["./_version.py"]
 
 [build-system]
 requires = ["setuptools>=61"]
