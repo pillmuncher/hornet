@@ -1,5 +1,5 @@
 [project]
-version = "0.2.8"
+version = "0.2.10a1"
 license = { file = "LICENSE.md" }
 authors = [{ name = "Mick Krippendorf", email = "m.krippendorf@freenet.de" }]
 description = "Hornet: An embedded DSL for Logic Programming in Python."
@@ -14,10 +14,6 @@ classifiers = [
 
 [project.urls]
 Homepage = "https://github.com/pillmuncher/hornet"
-
-[tool.setuptools_scm]
-# Ensure setuptools_scm manages a fallback _version.py file
-write_to = "src/_version.py"
 
 [tool.pdm]
 distribution = true
@@ -41,20 +37,12 @@ source = ["src"]
 show_missing = true
 skip_covered = true
 
-
-[tool.bumpversion]
-current_version = "0.2.8"
-commit = true
-tag = true
-files = ["src/_version.py"]
-
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [dependency-groups]
 dev = [
-    "bumpversion",
     "coverage",
     "flake8",
     "pytest",

@@ -1,11 +1,6 @@
 #!/usr/bin/env pytest
 # Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
-__version__ = "0.2.7"
-__date__ = "2014-09-27"
-__author__ = "Mick Krippendorf <m.krippendorf@freenet.de>"
-__license__ = "MIT"
-
 
 from . import expression_all, expression_all_raise, ast_eq
 from toolz.functoolz import identity
