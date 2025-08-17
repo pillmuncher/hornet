@@ -1,6 +1,4 @@
-#!/usr/bin/env pytest
 # Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
-
 
 from . import ast_eq, expression_all
 
@@ -11,7 +9,7 @@ def test_dcg_transformation():
     from hornet.dcg import _C_, expand
     from hornet.expressions import mcompose, promote, unit
     from hornet.operators import rearrange
-    from hornet.symbols import (  # type: ignore
+    from hornet.symbols import (
         X,
         _0,
         _1,
@@ -19,7 +17,7 @@ def test_dcg_transformation():
         _3,
         _4,
         _5,
-        _6,
+        _6,  # type: ignore
         _7,
         _8,
         a,

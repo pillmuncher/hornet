@@ -1,8 +1,4 @@
-#!/usr/bin/env pytest
 # Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
-
-
-# import nose
 
 import ast
 import itertools

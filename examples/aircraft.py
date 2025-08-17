@@ -1,26 +1,23 @@
-#!/usr/bin/env python3
 # Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
-
 
 import pprint
 
 from hornet import Database, findall  # type: ignore
-
-from hornet.symbols import (  # type: ignore
-    side,
-    left,
-    right,
-    wing,
-    segment,
-    segments,
-    section,
-    sections,
-    point,
-    Side,
+from hornet.symbols import (
     Id,
     S,
+    Side,
     Ss,
     W,
+    left,
+    point,  # type: ignore
+    right,
+    section,
+    sections,
+    segment,
+    segments,
+    side,
+    wing,
 )
 
 

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """turtle-example-suite:
 
          tdemo_minimal_hanoi.py
@@ -58,8 +57,8 @@ class Tower(list):
 
 
 def hanoi():
-    from hornet import Database, pyfunc, _, greater, let, cut
-    from hornet.symbols import play_hanoi, move, M, N, From, With, To
+    from hornet import Database, _, cut, greater, let, pyfunc
+    from hornet.symbols import From, M, N, To, With, move, play_hanoi
 
     @pyfunc
     def show_move(N, From, To, With):

@@ -1,6 +1,5 @@
 # Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
-
 import collections
 import copy
 import numbers

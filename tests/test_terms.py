@@ -1,11 +1,9 @@
-#!/usr/bin/env pytest
 # Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
 
 def test_builder():
     from hornet import build_term
-
-    from hornet.symbols import _, f, a, b, c, d, e, X, Y, Z  # type: ignore
+    from hornet.symbols import X, Y, Z, _, a, b, c, d, e, f  # type: ignore
 
     print(build_term(a))
     print(build_term(f(a, b) << b & c & d))
@@ -19,7 +17,7 @@ def test_resolver():
     from pprint import pprint
 
     from hornet import Database
-    from hornet.symbols import _, f, g, h, a, b, c, X, Y, Z  # type: ignore
+    from hornet.symbols import X, Y, Z, _, a, b, c, f, g, h  # type: ignore
 
     db = Database()
     db.tell(

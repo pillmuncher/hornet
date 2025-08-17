@@ -1,16 +1,14 @@
-#!/usr/bin/env python3
 # Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
-
 from hornet import (
-    greater,
-    findall,
-    let,
+    Database,
     arithmetic_equal,
     equal,
-    writeln,
+    findall,
+    greater,
     join,
-    Database,
+    let,
+    writeln,
 )
 from hornet.symbols import N1, D, Max, N, R, S, W, Ws, divisible, fizzbuzz, show, word
 

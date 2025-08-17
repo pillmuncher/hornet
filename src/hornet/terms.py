@@ -1,6 +1,5 @@
 # Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
-
 import ast
 import collections
 import copy

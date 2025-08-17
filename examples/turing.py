@@ -1,18 +1,15 @@
-#!/usr/bin/env python3
 # Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
-
 from hornet import *
-
 from hornet.symbols import (
+    Q0,
+    Q1,
     Action,
     L,
     Ls,
     Ls0,
     Ls1,
     NewSym,
-    Q0,
-    Q1,
     Rs,
     Rs0,
     Rs1,

@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
 # Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
-
 
 from hornet import Database, append
 from hornet.symbols import L1, L2

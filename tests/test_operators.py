@@ -1,15 +1,14 @@
-#!/usr/bin/env pytest
 # Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
-
-from . import expression_all, expression_all_raise, ast_eq
 from toolz.functoolz import identity
+
 from hornet.expressions import mlift
+
+from . import ast_eq, expression_all, expression_all_raise
 
 
 def test_rearrange():
-    from hornet.operators import rearrange, ParseError
-
+    from hornet.operators import ParseError, rearrange
     from hornet.symbols import a, b, c, d, e  # type: ignore
 
     expression_all(

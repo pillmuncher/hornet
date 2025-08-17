@@ -1,38 +1,15 @@
 # Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
-
 import ast
 import numbers
 import operator
+from dataclasses import dataclass
+from typing import Callable, Protocol, Self, cast
 
-from dataclasses import (
-    dataclass,
-)
-from typing import (
-    Callable,
-    Protocol,
-    Self,
-    cast,
-)
+from toolz.functoolz import identity
 
-from toolz.functoolz import (
-    identity,
-)
-
-from .expressions import (
-    is_astwrapper,
-    is_name,
-    is_operator,
-    is_tuple,
-    mlift,
-    promote,
-)
-from .util import (
-    const,
-    compose,
-    decrement,
-    pairwise,
-)
+from .expressions import is_astwrapper, is_name, is_operator, is_tuple, mlift, promote
+from .util import compose, const, decrement, pairwise
 
 # The following parser is based on the paper "Top Down Operator Precedence"
 # by Vaughan R. Pratt (1973). See https://tdop.github.io

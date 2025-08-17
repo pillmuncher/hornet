@@ -1,13 +1,11 @@
 # Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
-
-from functools import partial, reduce as foldl
+from functools import partial
+from functools import reduce as foldl
 from itertools import count, tee, zip_longest
 from typing import Callable
 
-
 from toolz.functoolz import flip
-
 
 decrement = (-1).__add__
 
@@ -91,9 +89,8 @@ def split_pairs(iterable):
 
 def install_symbols_module(name, factory):
     import sys
-
     from functools import lru_cache
-    from importlib.abc import MetaPathFinder, Loader
+    from importlib.abc import Loader, MetaPathFinder
     from importlib.machinery import ModuleSpec
     from types import ModuleType
 
