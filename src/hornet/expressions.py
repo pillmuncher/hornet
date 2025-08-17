@@ -80,6 +80,92 @@ class Expression:
     def __str__(self):
         return codegen.to_source(self.node)
 
+    def __getitem__(self, subscript):
+        return Expression(
+            ast.Subscript(
+                value=astify(self),
+                slice=ast.Slice(lower=astify(subscript)),
+            )
+        )
+
+    def __call__(self, *args):
+        return Expression(
+            ast.Call(
+                func=astify(self),
+                args=[astify(each) for each in args],
+                keywords=[],
+            )
+        )
+
+    def __neg__(self):
+        return Expression(ast.UnaryOp(ast.USub(), astify(self)))
+
+    def __pos__(self):
+        return Expression(ast.UnaryOp(ast.UAdd(), astify(self)))
+
+    def __invert__(self):
+        return Expression(ast.UnaryOp(ast.Invert(), astify(self)))
+
+    def __add__(self, other):
+        return Expression(ast.BinOp(astify(self), ast.Add(), astify(other)))
+
+    __radd__ = flip(__add__)
+
+    def __sub__(self, other):
+        return Expression(ast.BinOp(astify(self), ast.Sub(), astify(other)))
+
+    __rsub__ = flip(__sub__)
+
+    def __mul__(self, other):
+        return Expression(ast.BinOp(astify(self), ast.Mult(), astify(other)))
+
+    __rmul__ = flip(__mul__)
+
+    def __truediv__(self, other):
+        return Expression(ast.BinOp(astify(self), ast.Div(), astify(other)))
+
+    __rtruediv__ = flip(__truediv__)
+
+    def __floordiv__(self, other):
+        return Expression(ast.BinOp(astify(self), ast.FloorDiv(), astify(other)))
+
+    __rfloordiv__ = flip(__floordiv__)
+
+    def __mod__(self, other):
+        return Expression(ast.BinOp(astify(self), ast.Mod(), astify(other)))
+
+    __rmod__ = flip(__mod__)
+
+    def __pow__(self, other):
+        return Expression(ast.BinOp(astify(self), ast.Pow(), astify(other)))
+
+    __rpow__ = flip(__pow__)
+
+    def __lshift__(self, other):
+        return Expression(ast.BinOp(astify(self), ast.LShift(), astify(other)))
+
+    __rlshift__ = flip(__lshift__)
+
+    def __rshift__(self, other):
+        return Expression(ast.BinOp(astify(self), ast.RShift(), astify(other)))
+
+    __rrshift__ = flip(__rshift__)
+
+    def __and__(self, other):
+        return Expression(ast.BinOp(astify(self), ast.BitAnd(), astify(other)))
+
+    __rand__ = flip(__and__)
+
+    def __xor__(self, other):
+        return Expression(ast.BinOp(astify(self), ast.BitXor(), astify(other)))
+
+    __rxor__ = flip(__xor__)
+
+    def __or__(self, other):
+        return Expression(ast.BinOp(astify(self), ast.BitOr(), astify(other)))
+
+    __ror__ = flip(__or__)
+
 
 # In the Monad, unit is the same as Expression:
 unit = Expression
@@ -160,151 +246,23 @@ def Wrapper(wrapped):
     return AstWrapper(wrapped=wrapped)
 
 
-# The last set of factory functions are used as operator methods of Expression
-# objects.  They are bound to the Expression class below.
-#
-# When trying to understand what's going on in these functions, some questions
-# may arise: Where come the arguments from and, if these are supposed to be
-# operator methods in the Expression class, then where the heck is self?
-#
-# Let's see an example:
-
-# x = Name('x')
-# y = x + 3
-# z = y + 5
-
-# Here x is an Expression object created by Name('x'). It wraps around an AST
-# node ast.Name(id='x', ctx='ast.Load())
-#
-# x + 3 triggers Expression.__add__ to be called with arguments x and 3.
-# Expression.__add__ is bound to the Add factory function which has two
-# parameters left and right.  So, x gets passed as left and 3 gets passed as
-# right.  Add now calls astify on each argument. For left this just extracts
-# the already existing AST node, but for right (which is 3), astify first calls
-# the factory function Num, which in turn creates an Expression wrapped around
-# an AST node ast.Num(n=3) and then unwraps it again and returns just the AST.
-# Then Add attaches both AST nodes as children to an ast.BinOp node which it
-# returns.  Since Add was decorated with the mlift function, the result gets
-# wrapped in an Expression node, which is returned.  The return value then gets
-# bound to y.  In the next line, y + 5 triggers Expression.__add__ again and
-# the same thing as before happens, but with arguments y and 5.
-#
-# But what if we change the last line to:
-
-# z = 5 + y
-
-# 5 (an int) doesn't know how to add an Expression object to itself, so it
-# returns NotImplemented which causes Python to call the right argument's
-# reversed add method Expression.__radd__.  All reversed operator methods are
-# called with swapped operands, like so: Expression.__radd__(right, left). But
-# since we used the flip decorator when we bound Add to Expression.__radd__,
-# the order in which the arguments are passed are reversed again and we're back
-# at Expression.__radd__(left, right).  left is bound to 5 and right to y, as
-# we would expect when we saw 5 + y. When we construct our AST node, it comes
-# out correctly:
-
-# ast.BinOp(
-#         left=ast.Num(n=5),
-#         op=ast.Add(),
-#         right=ast.Name(id='y')
-#     )
-
-# For more complex cases like e.g.:
-
-# x - y * z + 1
-
-# we rely on the priority and associativity rules that Python imposes on us.
-# Then this expression is the same as ((x - (y * z)) + 1).
-
-
-@mlift
-@qualname("Expression.__getitem__")
-def Subscript(target, subscript):
-    return ast.Subscript(
-        value=astify(target),
-        slice=ast.Slice(lower=astify(subscript)),
-    )
-
-
-@mlift
-@qualname("Expression.__call__")
-def Call(target, *args):
-    return ast.Call(
-        func=astify(target),
-        args=[astify(each) for each in args],
-        keywords=[],
-    )
-
-
-def _unary_op(op, name):
-    @mlift
-    @qualname(name)
-    def op_method(right):
-        return ast.UnaryOp(op(), astify(right))
-
-    return op_method
-
-
-USub = _unary_op(ast.USub, "Expression.__neg__")
-UAdd = _unary_op(ast.UAdd, "Expression.__pos__")
-Invert = _unary_op(ast.Invert, "Expression.__invert__")
-
-
-def _binary_op(op, name):
-    @mlift
-    @qualname(name)
-    def op_method(left, right):
-        return ast.BinOp(astify(left), op(), astify(right))
-
-    return op_method
-
-
-Add = _binary_op(ast.Add, "Expression.__add__")
-Sub = _binary_op(ast.Sub, "Expression.__sub__")
-Mult = _binary_op(ast.Mult, "Expression.__mul__")
-Div = _binary_op(ast.Div, "Expression.__truediv__")
-FloorDiv = _binary_op(ast.FloorDiv, "Expression.__floordiv__")
-Mod = _binary_op(ast.Mod, "Expression.__mod__")
-Pow = _binary_op(ast.Pow, "Expression.__pow__")
-LShift = _binary_op(ast.LShift, "Expression.__lshift__")
-RShift = _binary_op(ast.RShift, "Expression.__rshift__")
-BitAnd = _binary_op(ast.BitAnd, "Expression.__and__")
-BitXor = _binary_op(ast.BitXor, "Expression.__xor__")
-BitOr = _binary_op(ast.BitOr, "Expression.__or__")
-
-
-# Here the Expression factory operator functions get finally bound to the
-# Expression class:
-
-Expression.__getitem__ = Subscript
-Expression.__call__ = Call
-Expression.__neg__ = USub
-Expression.__pos__ = UAdd
-Expression.__invert__ = Invert
-Expression.__add__ = Add
-Expression.__radd__ = flip(Add)
-Expression.__sub__ = Sub
-Expression.__rsub__ = flip(Sub)
-Expression.__mul__ = Mult
-Expression.__rmul__ = flip(Mult)
-Expression.__truediv__ = Div
-Expression.__rtruediv__ = flip(Div)
-Expression.__floordiv__ = FloorDiv
-Expression.__rfloordiv__ = flip(FloorDiv)
-Expression.__mod__ = Mod
-Expression.__rmod__ = flip(Mod)
-Expression.__pow__ = Pow
-Expression.__rpow__ = flip(Pow)
-Expression.__lshift__ = LShift
-Expression.__rlshift__ = flip(LShift)
-Expression.__rshift__ = RShift
-Expression.__rrshift__ = flip(RShift)
-Expression.__and__ = BitAnd
-Expression.__rand__ = flip(BitAnd)
-Expression.__xor__ = BitXor
-Expression.__rxor__ = flip(BitXor)
-Expression.__or__ = BitOr
-Expression.__ror__ = flip(BitOr)
+Add = Expression.__add__
+BitAnd = Expression.__and__
+BitOr = Expression.__or__
+BitXor = Expression.__xor__
+Call = Expression.__call__
+Div = Expression.__truediv__
+FloorDiv = Expression.__floordiv__
+Invert = Expression.__invert__
+LShift = Expression.__lshift__
+Mod = Expression.__mod__
+Mult = Expression.__mul__
+Pow = Expression.__pow__
+RShift = Expression.__rshift__
+Sub = Expression.__sub__
+Subscript = Expression.__getitem__
+UAdd = Expression.__pos__
+USub = Expression.__neg__
 
 
 # Any Python object 'obj' will be turned into an Expression object with its
