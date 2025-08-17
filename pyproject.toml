@@ -17,7 +17,7 @@ Homepage = "https://github.com/pillmuncher/hornet"
 
 [tool.setuptools_scm]
 # Ensure setuptools_scm manages a fallback _version.py file
-write_to = "src/_version.py"
+write_to = "_version.py"
 
 [tool.pdm]
 distribution = true
