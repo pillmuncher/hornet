@@ -1,5 +1,5 @@
 [project]
-version = "version = "version = "0.2.7"""
+version = "version = "version = "version = "0.2.7""""
 license = { file = "LICENSE.md" }
 authors = [{ name = "Mick Krippendorf", email = "m.krippendorf@freenet.de" }]
 description = "Hornet: An embedded DSL for Logic Programming in Python."
@@ -43,7 +43,7 @@ skip_covered = true
 
 
 [tool.bumpversion]
-current_version = "version = "version = "0.2.7"""
+current_version = "version = "version = "version = "0.2.7""""
 commit = true
 tag = true
 files = ["_version.py"]
