@@ -1,7 +1,5 @@
 # Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
 
-from functools import wraps
-
 
 def trampoline(bounce, *args, **kwargs):
     while bounce:
@@ -10,18 +8,11 @@ def trampoline(bounce, *args, **kwargs):
 
 
 def tailcall(function):
-    @wraps(function)
-    def launch(*args, **kwargs):
-        return (), function, args, kwargs
-
-    return launch
+    return lambda *args, **kwargs: ((), function, args, kwargs)
 
 
 def emit(*values):
-    def emitter(cont, *args, **kwargs):
-        return values, cont, args, kwargs
-
-    return emitter
+    return lambda cont, *args, **kwargs: (values, cont, args, kwargs)
 
 
 def abort(*args, **kwargs):
