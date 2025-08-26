@@ -1,4 +1,5 @@
-Copyright (C) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
+Copyright (c) 2014-2025 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
+SPDX-License-Identifier: MIT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

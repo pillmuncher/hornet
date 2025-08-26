@@ -1,4 +1,4 @@
-# Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
+# Copyright (c) 2014 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
 
 from hornet import Database, atomic, build_term, cut, equal, let, numeric, unequal
 from hornet.symbols import (

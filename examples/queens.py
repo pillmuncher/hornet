@@ -1,4 +1,4 @@
-# Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
+# Copyright (c) 2014 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
 
 from hornet import Database, arithmetic_not_equal, let, select
 from hornet.symbols import (
