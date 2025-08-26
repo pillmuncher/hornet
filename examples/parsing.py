@@ -1,4 +1,4 @@
-# Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
+# Copyright (c) 2014 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
 
 import pprint
 

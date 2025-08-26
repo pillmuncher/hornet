@@ -37,6 +37,12 @@ source = ["src"]
 show_missing = true
 skip_covered = true
 
+[tool.pyright]
+reportUnusedVariable = false
+
+[tool.ruff]
+ignore = ["F841"]  # F841 = local variable assigned but never used
+
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"

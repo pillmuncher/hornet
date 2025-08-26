@@ -1,81 +1,35 @@
-from functools import lru_cache
+# Copyright (c) 2025 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
+# SPDX-License-Identifier: MIT
 
-from hornet.expressions import Expression, Name
+from functools import cache as __cache__
 
-__all__ = [
-    "_",
-    "append",
-    "arithmetic_equal",
-    "arithmetic_not_equal",
-    "atomic",
-    "call",
-    "cut",
-    "equal",
-    "fail",
-    "findall",
-    "greater",
-    "ignore",
-    "integer",
-    "join",
-    "length",
-    "let",
-    "listing",
-    "lwriteln",
-    "maplist",
-    "member",
-    "nl",
-    "nonvar",
-    "numeric",
-    "once",
-    "real",
-    "repeat",
-    "reverse",
-    "select",
-    "smaller",
-    "throw",
-    "transpose",
-    "true",
-    "unequal",
-    "univ",
-    "var",
-    "write",
-    "writeln",
-]
-__getattr__ = lru_cache(Name)
-_ = Name("_")
-append: Expression = Name("append")
-arithmetic_equal: Expression = Name("arithmetic_equal")
-arithmetic_not_equal: Expression = Name("arithmetic_not_equal")
-atomic: Expression = Name("atomic")
-call: Expression = Name("call")
-cut: Expression = Name("cut")
-equal: Expression = Name("equal")
-fail: Expression = Name("fail")
-findall: Expression = Name("findall")
-greater: Expression = Name("greater")
-ignore: Expression = Name("ignore")
-integer: Expression = Name("integer")
-join: Expression = Name("join")
-length: Expression = Name("length")
-let: Expression = Name("let")
-listing: Expression = Name("listing")
-lwriteln: Expression = Name("lwriteln")
-maplist: Expression = Name("maplist")
-member: Expression = Name("member")
-nl: Expression = Name("nl")
-nonvar: Expression = Name("nonvar")
-numeric: Expression = Name("numeric")
-once: Expression = Name("once")
-real: Expression = Name("real")
-repeat: Expression = Name("repeat")
-reverse: Expression = Name("reverse")
-select: Expression = Name("select")
-smaller: Expression = Name("smaller")
-throw: Expression = Name("throw")
-transpose: Expression = Name("transpose")
-true: Expression = Name("true")
-unequal: Expression = Name("unequal")
-univ: Expression = Name("univ")
-var: Expression = Name("var")
-write: Expression = Name("write")
-writeln: Expression = Name("writeln")
+from .expressions import Expression as __Expression__
+
+__all__ = []
+
+
+@__cache__
+def __getattr__(name: str) -> __Expression__:
+    """
+    Convert a string into a Term according to Prolog conventions:
+      - "_" becomes the anonymous variable
+      - strings starting with uppercase or "_" become Variables
+      - strings starting with lowercase become Atoms
+    """
+
+    from . import terms
+    from .expressions import promote
+
+    match tuple(name):
+        case "_", "_", *_, "_", "_":
+            raise AttributeError(f"Invalid identifier: {name}")
+        case ("_",):
+            return __Expression__(promote(terms.AnonVariable()))
+        case "_", *_:
+            return __Expression__(promote(terms.Variable(name=name)))
+        case h, *_ if h.isupper():
+            return __Expression__(promote(terms.Variable(name=name)))
+        case h, *_ if h.islower():
+            return __Expression__(promote(terms.Atom(name=name)))
+        case _:
+            raise AttributeError(f"Invalid identifier: {name}")

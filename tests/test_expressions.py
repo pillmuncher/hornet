@@ -1,4 +1,4 @@
-# Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
+# Copyright (c) 2014 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
 
 import ast
 import itertools
@@ -44,9 +44,9 @@ def test_expression_factories():
 
     from hornet.expressions import (
         AstWrapper,
+        Atom,
         Constant,
         List,
-        Name,
         Set,
         Tuple,
         Wrapper,
@@ -58,7 +58,7 @@ def test_expression_factories():
     num = 123
     keys = [Constant("a"), Constant("b"), Constant("c")]
     pairs = (
-        [Name(name), ast.Name(id=name)],
+        [Atom(name), ast.Name(id=name)],
         [Constant(name), ast.Constant(value=name)],
         [Constant(num), ast.Constant(value=num)],
         [Tuple(keys), ast.Tuple(elts=keys)],
@@ -75,8 +75,8 @@ def test_expression_factories():
     from hornet.expressions import Constant, unit
     from hornet.symbols import x, y
 
-    x_name = x.node
-    y_name = y.node
+    x_name = x.term
+    y_name = y.term
     items = [Constant(1), Constant(2), Constant(3)]
 
     pairs = (
