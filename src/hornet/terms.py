@@ -191,11 +191,12 @@ class Variable(Term):
     def __deepcopy__(self, memo):
         if self.name in memo:
             return memo[self.name]
-        new_var = memo[self.name] = Variable(f"{self.name}!{next(Variable._counter)}")
+        new_var = memo[self.name] = self.fresh(self.name)
         return new_var
 
-    def normalize(self, lbp: int, rbp: int) -> Self:
-        return self
+    @classmethod
+    def fresh(cls, name: str):
+        return cls(f"{name}!{next(cls._counter)}")
 
 
 @dataclass(frozen=True, slots=True)
@@ -206,9 +207,6 @@ class Constant[T](Term):
         return str(self.value)
 
     def __deepcopy__(self, memo):
-        return self
-
-    def normalize(self, lbp: int, rbp: int) -> Self:
         return self
 
 

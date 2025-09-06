@@ -16,6 +16,8 @@ from .terms import (
     Atom,
     BitAnd,
     BitOr,
+    Cons,
+    Empty,
     Functor,
     Indicator,
     LShift,
@@ -78,14 +80,75 @@ class Subst(ChainMap[Variable, Term]):
             return frame
 
 
-# TODO: implement.
-def dcg_expand[H: MatchTerm, B: QueryTerm](head: H, body: B) -> tuple[H, B]:
+def dcg_expand(head: MatchTerm, body: QueryTerm) -> tuple[MatchTerm, QueryTerm]:
     """
-    In DCGs, certain syntactic sugar constructs are transformed into regular
-    Horn clauses. Currently, this is a no-op, but the function exists to
-    provide a hook for automatic DCG expansion in the future.
+    Expand a DCG-style rule (head >> body) into standard Horn clauses
+    using difference lists.
+
+    Each non-terminal predicate gets two extra arguments representing
+    the input and output lists. Terminals (Cons cells of atoms) are
+    expanded into unifications with the input list.
     """
-    return head, body
+    S0 = Variable.fresh("S")
+
+    def walk(term, inp):
+        match term:
+            case Atom(name=name):
+                # Atoms become Functors with two parameters
+                out = Variable.fresh("S")
+                return Functor(name, inp, out), out
+
+            case Functor(name=name, args=args) as term:
+                # Functors become Functors with two more parameters
+                out = Variable.fresh("S")
+                return Functor(name, *args, inp, out), out
+
+            case Empty():
+                # The empty list consumes nothing
+                return Functor("equal", inp, inp), inp
+
+            case Cons(head=head, tail=Empty() as tail):
+                # Recursively build the difference list
+                return Functor("equal", inp, Cons(head, inp)), inp
+
+            case Cons(head=head, tail=tail):
+                # Recursively build the difference list
+                tail_term, tail_out = walk(tail, Variable.fresh("S"))
+                return Functor("equal", inp, Cons(head, tail_term)), tail_out
+
+            case BitAnd(left=left, right=right):
+                # Thread from left to right
+                left_term, left_out = walk(left, inp)
+                right_term, right_out = walk(right, left_out)
+                return BitAnd(left_term, right_term), right_out
+
+            case BitOr(left=left, right=right):
+                # Thread left and right alternatives
+                left_term, left_out = walk(left, inp)
+                right_term, right_out = walk(right, inp)
+                final_out = Variable.fresh("S")
+                left_conj = BitAnd(left_term, Functor("equal", left_out, final_out))
+                right_conj = BitAnd(right_term, Functor("equal", right_out, final_out))
+                return BitOr(left_conj, right_conj), final_out
+
+            case Variable():
+                # Pass-through variable in DCG body
+                return term, inp
+
+            case _:
+                raise ValueError(f"Unexpected term in DCG body: {term}")
+
+    # Expand the body
+    body_expanded, final_out = walk(body, S0)
+
+    # Expand head with S0 and final_out
+    match head:
+        case Atom(name=name):
+            head_expanded = Functor(name, S0, final_out)
+        case Functor(name=name, args=args):
+            head_expanded = Functor(name, *args, S0, final_out)
+
+    return head_expanded, body_expanded
 
 
 def fact(head: MatchTerm) -> Clause:
@@ -140,8 +203,8 @@ def resolve(term: Term) -> Goal:
         case BitOr(left=left, right=right):
             return choice(resolve(left), resolve(right))
 
-        # Variable goals: resolve the term the variable is bound to.
-        # This allows variables to propagate their bindings recursively.
+        # Variable goals: substitute the variable for the term it is bound to.
+        # If the variable isn't bound, a KeyError is raised.
         case Variable() as variable:
             return lambda db, subst: tailcall(resolve(subst[variable])(db, subst))
 
