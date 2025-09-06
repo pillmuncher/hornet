@@ -10,6 +10,7 @@ from functools import reduce
 from typing import Callable, Iterable
 
 from .expressions import Expression
+from .tailcalls import Frame, tailcall, trampoline
 from .terms import (
     AnonVariable,
     Atom,
@@ -24,30 +25,16 @@ from .terms import (
     Variable,
 )
 
-type Frame = tuple[Subst | None, Next] | None
-type Next = Callable[[], Frame]
-type Emit = Callable[[Database, Subst, Next], Frame]
-type Step = Callable[[Emit, Next, Next], Frame]
+type Result = Frame[Subst]
+type Next = Callable[[], Result]
+type Emit = Callable[[Database, Subst, Next], Result]
+type Step = Callable[[Emit, Next, Next], Result]
 type Goal = Callable[[Database, Subst], Step]
 
 type MatchTerm = Atom | Functor
 type QueryTerm = Atom | BitAnd | BitOr | Functor | Variable
 type ClauseTerm = Atom | Functor | LShift | RShift
 type Clause = Callable[[QueryTerm], Goal]
-
-type Cont[Result] = Callable[..., Result]
-type Thunk[Result] = Callable[[], Result]
-
-
-def tailcall[R](cont: Cont[R]) -> Cont[tuple[None, Thunk[R]]]:
-    """Hand-rolled Tail-call elimination.
-    A continuation is wrapped in a thunk and returned so it can be called later
-    by a driver function."""
-
-    def decorated(*args, **kwargs) -> tuple[None, Thunk[R]]:
-        return None, lambda: cont(*args, **kwargs)
-
-    return decorated
 
 
 class Subst(ChainMap[Variable, Term]):
@@ -63,6 +50,7 @@ class Subst(ChainMap[Variable, Term]):
 
     def smooth(self, obj) -> Term:
         "Recursively replace all variables with their bindings."
+        # TODO: make it not blow the stack, i.e. replace recursion with tail-calls.
         match self.deref(obj):
             case Functor(name=name, args=args) as struct:
                 return type(struct)(name, *(self.smooth(each) for each in args))
@@ -90,14 +78,14 @@ class Subst(ChainMap[Variable, Term]):
             return frame
 
 
-def dcg_expand[T: ClauseTerm](term: T) -> T:
-    """Placeholder for DCG (Definite Clause Grammar) expansion.
-
+# TODO: implement.
+def dcg_expand[H: MatchTerm, B: QueryTerm](head: H, body: B) -> tuple[H, B]:
+    """
     In DCGs, certain syntactic sugar constructs are transformed into regular
     Horn clauses. Currently, this is a no-op, but the function exists to
     provide a hook for automatic DCG expansion in the future.
     """
-    return term
+    return head, body
 
 
 def fact(head: MatchTerm) -> Clause:
@@ -122,6 +110,7 @@ def rule(head: MatchTerm, body: QueryTerm) -> Clause:
     """
 
     def clause(query_term: QueryTerm) -> Goal:
+        # copy head and body at the same time to preserve common variables:
         fresh_head, fresh_body = deepcopy((head, body))
         return then(unify(query_term, fresh_head), resolve(fresh_body))
 
@@ -184,15 +173,23 @@ class Database(dict[Indicator, list[Clause]]):
                 # Left-shift expressions represent rules:
                 # head is true if body is true.
                 case LShift(head=head, body=body):
+                    if not isinstance(head, Atom | Functor):
+                        raise ValueError(f"invalid head clause {head}")
+                    if not isinstance(body, Atom | BitAnd | BitOr | Functor | Variable):
+                        raise ValueError(f"invalid body clause {body}")
                     self.setdefault(head.indicator, []).append(rule(head, body))
 
                 # Right-shift expressions represent DCG rules.
-                case RShift() as term:
+                case RShift(head=head, body=body) as term:
+                    if not isinstance(head, Atom | Functor):
+                        raise ValueError(f"invalid head clause {term.head}")
+                    if not isinstance(
+                        body, (Atom | BitAnd | BitOr | Functor | Variable)
+                    ):
+                        raise ValueError(f"invalid body clause {term.body}")
                     # Expand to standard clauses before adding to the database.
-                    term = dcg_expand(term)
-                    self.setdefault(term.head.indicator, []).append(
-                        rule(term.head, term.body)
-                    )
+                    head, body = dcg_expand(head, body)
+                    self.setdefault(head.indicator, []).append(rule(head, body))
 
     def ask(
         self, query: Expression[QueryTerm], subst: Subst | None = None
@@ -202,21 +199,19 @@ class Database(dict[Indicator, list[Clause]]):
         Returns an iterator of substitution mappings that satisfy the query.
         Each mapping represents a consistent set of variable bindings.
         """
-        query_term = query.term.normalize(0, 0)
-        frame = resolve(query_term)(self, subst or Subst())(success, failure, failure)
-        while frame is not None:
-            subst, backtrack = frame
-            if subst is not None:
-                yield subst.proxy
-            frame = backtrack()
+        term = query.term.normalize(0, 0)
+        goal = resolve(term)
+        step = goal(self, Subst() if subst is None else subst)
+        for subst in trampoline(lambda: step(success, failure, failure)):
+            yield subst.proxy
 
 
-def success(db: Database, subst: Subst, no: Next) -> Frame:
+def success(db: Database, subst: Subst, no: Next) -> Result:
     "Return the current solution and start searching for more."
     return subst, no
 
 
-def failure() -> Frame:
+def failure() -> Result:
     "Fail."
 
 
@@ -224,9 +219,9 @@ def bind(step: Step, goal: Goal) -> Step:
     "Return the frame of applying goal to step."
 
     @tailcall
-    def mb(yes: Emit, no: Next, prune: Next) -> Frame:
+    def mb(yes: Emit, no: Next, prune: Next) -> Result:
         @tailcall
-        def on_success(db: Database, subst: Subst, no: Next) -> Frame:
+        def on_success(db: Database, subst: Subst, no: Next) -> Result:
             return goal(db, subst)(yes, no, prune)
 
         return step(on_success, no, prune)
@@ -240,7 +235,7 @@ def unit(db: Database, subst: Subst) -> Step:
     with 'fail' and 'choice', this makes the monad also a lattice."""
 
     @tailcall
-    def step(yes: Emit, no: Next, prune: Next) -> Frame:
+    def step(yes: Emit, no: Next, prune: Next) -> Result:
         return yes(db, subst, no)
 
     return step
@@ -250,7 +245,7 @@ def cut(db: Database, subst: Subst) -> Step:
     "Succeed once, then prune the search tree at the previous choice point."
 
     @tailcall
-    def step(yes: Emit, no: Next, prune: Next) -> Frame:
+    def step(yes: Emit, no: Next, prune: Next) -> Result:
         # we commit to the current execution path by injecting
         # the prune continuation as our new backtracking path:
         return yes(db, subst, prune)
@@ -265,7 +260,7 @@ def fail(db: Database, subst: Subst) -> Step:
     It is also mzero."""
 
     @tailcall
-    def step(yes: Emit, no: Next, prune: Next) -> Frame:
+    def step(yes: Emit, no: Next, prune: Next) -> Result:
         return no()
 
     return step
@@ -299,11 +294,11 @@ def choice(goal1: Goal, goal2: Goal) -> Goal:
 
     def goal(db: Database, subst: Subst) -> Step:
         @tailcall
-        def step(yes: Emit, no: Next, prune: Next) -> Frame:
+        def step(yes: Emit, no: Next, prune: Next) -> Result:
             # we pass goal1 and goal2 the same success continuation, so we
             # can invoke goal1 and goal2 at the same point in the computation:
             @tailcall
-            def on_failure() -> Frame:
+            def on_failure() -> Result:
                 return goal2(db, subst)(yes, no, prune)
 
             return goal1(db, subst)(yes, on_failure, prune)
@@ -318,7 +313,7 @@ def amb_from_iterable(goals: Iterable[Goal]) -> Goal:
 
     def goal(db: Database, subst: Subst) -> Step:
         @tailcall
-        def step(yes: Emit, no: Next, prune: Next) -> Frame:
+        def step(yes: Emit, no: Next, prune: Next) -> Result:
             # we serialize the goals and inject the
             # fail continuation as the prune path:
             return joined(db, subst)(yes, no, no)
@@ -341,8 +336,11 @@ def neg(goal: Goal) -> Goal:
 def _unify_variable(variable: Variable, term: Term) -> Goal:
     def unifier(db: Database, subst: Subst) -> Step:
         if variable in subst:
+            # variable is already bound, so try to unify the bound thing:
             return tailcall(_unify(subst[variable], term)(db, subst))
-        return unit(db, subst.new_child({variable: term}))
+        else:
+            # otherwise just create a new binding:
+            return unit(db, subst.new_child({variable: term}))
 
     return unifier
 
@@ -362,7 +360,7 @@ def _unify(this: Term, that: Term) -> Goal:
         case _ if this == that:
             return unit
 
-        # Bind a Variable to another thing:
+        # Unify a Variable to another thing:
         case Variable(), _:
             return _unify_variable(this, that)
 

@@ -1,6 +1,8 @@
 # Copyright (c) 2014-2025 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
 # SPDX-License-Identifier: MIT
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from functools import partial, reduce
 from typing import Any, Callable, cast

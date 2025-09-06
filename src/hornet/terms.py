@@ -1,21 +1,17 @@
 # Copyright (c) 2014-2025 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
 # SPDX-License-Identifier: MIT
 
-
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from functools import cache
 from itertools import count
-from operator import attrgetter, itemgetter
-from typing import ClassVar, Self, override
-
-from toolz import compose
+from typing import ClassVar, Iterator, Self, override
 
 type Indicator = tuple[str, int | None]
 
 
-def fixity(lbp: int, rbp: int):
+def _fixity(lbp: int, rbp: int):
     "Attach class-level lbp and rbp to a Term subclasses."
 
     def decorator[T: type[Term]](cls: T) -> T:
@@ -27,27 +23,35 @@ def fixity(lbp: int, rbp: int):
 
 
 def operator_x():
-    return fixity(0, 0)
+    return _fixity(0, 0)
 
 
 def operator_fy(rank):
-    return fixity(rank, 0)
+    return _fixity(rank, 0)
 
 
 def operator_xfx(rank):
-    return fixity(rank, rank)
+    return _fixity(rank, rank)
 
 
 def operator_xfy(rank):
-    return fixity(rank - 1, rank)
+    return _fixity(rank - 1, rank)
 
 
 def operator_yfx(rank):
-    return fixity(rank, rank - 1)
+    return _fixity(rank, rank - 1)
 
 
-first_arg = property(compose(itemgetter(0), attrgetter("args")))
-second_arg = property(compose(itemgetter(1), attrgetter("args")))
+@property
+@cache
+def _first_arg(self: Structure):
+    return self.args[0]
+
+
+@property
+@cache
+def _second_arg(self: Structure):
+    return self.args[1]
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,13 +101,13 @@ class Functor(Structure):
 @dataclass(frozen=True, slots=True)
 class UnaryOperator(Structure):
     name: ClassVar[str]
-    arg = first_arg
+    operand = _first_arg
 
     def __init__(self, operand: Term):
         Structure.__init__(self, operand)
 
     def __str__(self):
-        return f"{self.name}{str(self.arg)}"
+        return f"{self.name}{str(self.operand)}"
 
     @property
     @cache
@@ -113,14 +117,14 @@ class UnaryOperator(Structure):
 
     @override
     def normalize(self, lbp: int, rbp: int) -> Term:
-        return type(self)(self.arg.normalize(0, 0))
+        return type(self)(self.operand.normalize(0, 0))
 
 
 @dataclass(frozen=True, slots=True)
 class BinaryOperator(Structure):
     name: ClassVar[str]
-    left = first_arg
-    right = second_arg
+    left = _first_arg
+    right = _second_arg
 
     def __init__(self, left: Term, right: Term):
         Structure.__init__(self, left, right)
@@ -160,45 +164,37 @@ class BinaryOperator(Structure):
                 return type(self)(left, right)
 
 
-_var_counter = count()
+@operator_x()
+@dataclass(frozen=True, slots=True, init=False)
+class AnonVariable(Term):
+    name: ClassVar[str] = "_"
+
+    def __eq__(self, _):
+        return False
+
+    def __deepcopy__(self, memo):
+        return self
 
 
 @operator_x()
 @dataclass(frozen=True, slots=True, eq=False)
 class Variable(Term):
     name: str
+    _counter: ClassVar[Iterator[int]] = count()
 
     def __str__(self):
         return self.name
 
-    def __eq__(self, other):
-        return self is other
-
+    __eq__ = object.__eq__  # pyright: ignore
     __hash__ = object.__hash__
 
     def __deepcopy__(self, memo):
         if self.name in memo:
             return memo[self.name]
-        new_var = Variable(f"{self.name}!{next(_var_counter)}")
-        memo[self.name] = new_var
+        new_var = memo[self.name] = Variable(f"{self.name}!{next(Variable._counter)}")
         return new_var
 
     def normalize(self, lbp: int, rbp: int) -> Self:
-        return self
-
-
-@operator_x()
-@dataclass(frozen=True, slots=True, init=False)
-class AnonVariable(Variable):
-    name: str = field(init=False, default="_")
-
-    def __init__(self):
-        pass
-
-    def __eq__(self, _):
-        return False
-
-    def __deepcopy__(self, memo):
         return self
 
 
@@ -284,16 +280,16 @@ class USub(UnaryOperator):
 @dataclass(frozen=True, slots=True, init=False)
 class LShift(BinaryOperator):
     name: ClassVar[str] = "<<"
-    head = first_arg
-    body = second_arg
+    head = _first_arg
+    body = _second_arg
 
 
 @operator_xfx(5)
 @dataclass(frozen=True, slots=True, init=False)
 class RShift(BinaryOperator):
     name: ClassVar[str] = ">>"
-    head = first_arg
-    body = second_arg
+    head = _first_arg
+    body = _second_arg
 
 
 @operator_xfy(10)
@@ -358,8 +354,11 @@ class Pow(BinaryOperator):
 
 @operator_x()
 @dataclass(frozen=True, slots=True)
-class Empty(Atom):
-    name: str = field(init=False, default="[]")
+class Empty(Term):
+    name: ClassVar[str] = "[]"
+
+    def __str__(self):
+        return "[]"
 
 
 EMPTY = Empty()
@@ -369,8 +368,8 @@ EMPTY = Empty()
 @dataclass(frozen=True, slots=True)
 class Cons(BinaryOperator):
     name: ClassVar[str] = "."
-    head = first_arg
-    tail = second_arg
+    head = _first_arg
+    tail = _second_arg
 
     def __init__(self, head: Term, tail: Term):
         BinaryOperator.__init__(self, head, tail)
@@ -388,10 +387,7 @@ class Cons(BinaryOperator):
 
     @override
     def normalize(self, lbp: int, rbp: int) -> Term:
-        head = self.head.normalize(self.head.lbp, self.head.rbp)
-        tail = self.tail.normalize(self.tail.lbp, self.tail.rbp)
-
-        match head, tail:
+        match self.head.normalize(0, 0), self.tail.normalize(0, 0):
             case BitOr(left=BitOr(), right=_), _:
                 raise SyntaxError("Invalid list head in `[Head|Tail]`")
 
@@ -401,8 +397,8 @@ class Cons(BinaryOperator):
             case BitOr(), _:
                 raise SyntaxError("Invalid list head in `[Head|Tail]`")
 
-            case _, BitOr(head=left, tail=right):
+            case head, BitOr(head=left, tail=right):
                 return Cons(head=head, tail=Cons(head=left, tail=right))
 
-            case _:
+            case head, tail:
                 return Cons(head=head, tail=tail)
