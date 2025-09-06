@@ -1,6 +1,8 @@
 # Copyright (c) 2025 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
 # SPDX-License-Identifier: MIT
 
+from __future__ import annotations
+
 from functools import cache as __cache__
 
 from .expressions import Expression as __Expression__
