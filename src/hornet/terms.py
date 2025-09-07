@@ -185,8 +185,15 @@ class Variable(Term):
     def __str__(self):
         return self.name
 
-    __eq__ = object.__eq__  # pyright: ignore
-    __hash__ = object.__hash__
+    # __eq__ = object.__eq__  # pyright: ignore
+    # __hash__ = object.__hash__
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, type(self)):
+            return False
+        return self.name == other.name
+
+    def __hash__(self):
+        return hash(self.name)
 
     def __deepcopy__(self, memo):
         if self.name in memo:

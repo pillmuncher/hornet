@@ -3,11 +3,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from itertools import count
-
-from .combinators import Goal
+from .combinators import Atom, Cons, Database, Goal, Step, Subst
+from .combinators import fail as _fail
+from .combinators import predicate, unify
+from .combinators import unit as _true
 from .symbols import (
+    L,
+    T,
     append,
     arithmetic_equal,
     arithmetic_not_equal,
@@ -45,7 +47,7 @@ from .symbols import (
     write,
     writeln,
 )
-from .terms import Term, Variable
+from .terms import Empty, Functor, Term
 
 __all__ = (
     "append",
@@ -87,15 +89,73 @@ __all__ = (
 )
 
 
-def var(name: str, _var_counter=count()) -> Variable:
-    return Variable(f"{name}{next(_var_counter)}")
+_db = Database()
 
 
-# Not sure yet if these are needed:
-@dataclass(frozen=True, slots=True)
-class Predicate(Term):
-    value: Goal
+@predicate(univ(T, L))
+def _univ(term: Functor) -> Goal:
+    def goal(db: Database, subst: Subst) -> Step:
+        """Convert between a functor/relation and its argument list (Cons only)."""
+
+        T = subst.smooth(term.args[0])
+        L = subst.smooth(term.args[1])
+
+        match T, L:
+            # T is an Atom or Relation, produce a Cons chain in L
+            case Atom(name=name), _:
+                # L = Cons(Atom(name), Empty())
+                result = Cons(Atom(name), Empty())
+                return unify(L, result)(db, subst)
+
+            case Functor(name=name, args=args), _:
+                # Build Cons chain of head Atom + parameters
+                def build_cons(item, *items: Term) -> Term:
+                    if not items:
+                        return Cons(item, Empty())
+                    return Cons(item, build_cons(*items))
+
+                result = build_cons(Atom(name), *args)
+                return unify(L, result)(db, subst)
+
+            # L is a Cons chain, convert into Atom or Relation
+            case _, Cons(head=head, tail=tail):
+                # head must be an Atom
+                if not isinstance(head, Atom):
+                    raise TypeError(
+                        f"First element of L must be Atom, got {type(head)}"
+                    )
+
+                # Collect tail elements into a list
+                items = []
+                cur = tail
+                while isinstance(cur, Cons):
+                    items.append(cur.head)
+                    cur = cur.tail
+                if not isinstance(cur, Empty):
+                    raise TypeError(
+                        f"L must be a proper list ending with Empty(), got {cur}"
+                    )
+
+                if items:
+                    new_term = Functor(head.name, *items)
+                else:
+                    new_term = Atom(head.name)
+
+                return unify(T, new_term)(db, subst)
+
+            # fallback: error
+            case _:
+                raise TypeError(f"Cannot unify {T} with {L}")
+
+    return goal
 
 
-def predicate(pred: Goal) -> Term:
-    return Predicate(pred)
+def const(value):
+    return lambda *_, **__: value
+
+
+_db.add_action(_univ)
+
+
+def database():
+    return _db.new_child()

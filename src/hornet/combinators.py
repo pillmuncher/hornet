@@ -6,6 +6,7 @@ from __future__ import annotations
 from collections import ChainMap
 from collections.abc import Mapping
 from copy import deepcopy
+from dataclasses import dataclass
 from functools import reduce
 from typing import Callable, Iterable
 
@@ -36,7 +37,7 @@ type Goal = Callable[[Database, Subst], Step]
 type MatchTerm = Atom | Functor
 type QueryTerm = Atom | BitAnd | BitOr | Functor | Variable
 type ClauseTerm = Atom | Functor | LShift | RShift
-type Clause = Callable[[QueryTerm], Goal]
+type Clause = Callable[[MatchTerm], Goal]
 
 
 class Subst(ChainMap[Variable, Term]):
@@ -61,6 +62,9 @@ class Subst(ChainMap[Variable, Term]):
             case term:
                 return term
 
+    def __getattr__(self, name: str):
+        return self.smooth(Variable(name=name))
+
     @property
     class proxy(Mapping):
         "A proxy interface to Subst."
@@ -78,6 +82,9 @@ class Subst(ChainMap[Variable, Term]):
             if variable.term == (frame := self._subst.smooth(variable.term)):
                 raise KeyError
             return frame
+
+        def __getattr__(self, name: str):
+            return self._subst.smooth(Variable(name=name))
 
 
 def dcg_expand(head: MatchTerm, body: QueryTerm) -> tuple[MatchTerm, QueryTerm]:
@@ -105,16 +112,16 @@ def dcg_expand(head: MatchTerm, body: QueryTerm) -> tuple[MatchTerm, QueryTerm]:
 
             case Empty():
                 # The empty list consumes nothing
-                return Functor("equal", inp, inp), inp
+                return Atom("true"), inp
 
             case Cons(head=head, tail=Empty() as tail):
                 # Recursively build the difference list
-                return Functor("equal", inp, Cons(head, inp)), inp
+                return Cons(head, inp), inp
 
             case Cons(head=head, tail=tail):
                 # Recursively build the difference list
                 tail_term, tail_out = walk(tail, Variable.fresh("S"))
-                return Functor("equal", inp, Cons(head, tail_term)), tail_out
+                return Cons(head, tail_term), tail_out
 
             case BitAnd(left=left, right=right):
                 # Thread from left to right
@@ -158,7 +165,7 @@ def fact(head: MatchTerm) -> Clause:
     function returns a clause that can unify a query term with the fact's head.
     """
 
-    def clause(query_term: QueryTerm) -> Goal:
+    def clause(query_term: MatchTerm) -> Goal:
         fresh_head = deepcopy(head)
         return unify(query_term, fresh_head)
 
@@ -172,7 +179,7 @@ def rule(head: MatchTerm, body: QueryTerm) -> Clause:
     that first unifies the head and then resolves the body.
     """
 
-    def clause(query_term: QueryTerm) -> Goal:
+    def clause(query_term: MatchTerm) -> Goal:
         # copy head and body at the same time to preserve common variables:
         fresh_head, fresh_body = deepcopy((head, body))
         return then(unify(query_term, fresh_head), resolve(fresh_body))
@@ -180,19 +187,19 @@ def rule(head: MatchTerm, body: QueryTerm) -> Clause:
     return clause
 
 
-def resolve(term: Term) -> Goal:
+def resolve(query_term: Term) -> Goal:
     """Convert a term into a monadic goal suitable for resolution.
 
     This function interprets different types of terms (atoms, functors,
     conjunctions, disjunctions, and variables) and returns a Goal that can
     be executed in the logic programming monad.
     """
-    match term:
+    match query_term:
         # Atomic or structured goals: find all clauses matching this term
         # in the database. Each clause represents a possible path of execution.
-        case Atom() | Functor() as head:
+        case Atom() | Functor():
             return lambda db, subst: amb_from_iterable(
-                clause(head) for clause in db[term.indicator]
+                clause(query_term) for clause in db[query_term.indicator]
             )(db, subst)
 
         # Conjunction goals: both left and right must succeed.
@@ -210,10 +217,10 @@ def resolve(term: Term) -> Goal:
 
         # Everything else is invalid.
         case _:
-            raise TypeError(f"expected clause, got {term}")
+            raise TypeError(f"expected query, got {query_term}")
 
 
-class Database(dict[Indicator, list[Clause]]):
+class Database(ChainMap[Indicator, list[Clause]]):
     """A container for storing Horn clauses, indexed by their indicator.
 
     The database supports facts, rules, and DCG-expanded clauses. Queries
@@ -253,6 +260,10 @@ class Database(dict[Indicator, list[Clause]]):
                     # Expand to standard clauses before adding to the database.
                     head, body = dcg_expand(head, body)
                     self.setdefault(head.indicator, []).append(rule(head, body))
+
+    def add_action(self, clause: Clause) -> None:
+        """Add a user-defined clause in the database."""
+        self.setdefault(clause.head.indicator, []).append(clause)  # type: ignore[attr-defined]
 
     def ask(
         self, query: Expression[QueryTerm], subst: Subst | None = None
@@ -468,3 +479,20 @@ def unify_any(variable: Variable, *values: Term) -> Goal:
     """Tries to unify a variable with any one of objects.
     Fails if no object is unifiable."""
     return amb_from_iterable(unify(variable, value) for value in values)
+
+
+@dataclass(frozen=True, slots=True)
+class PythonClause:
+    head: MatchTerm
+    fn: Clause
+
+    def __call__(self, query_term: MatchTerm) -> Goal:
+        fresh_head = deepcopy(self.head)
+        return then(unify(query_term, fresh_head), self.fn(fresh_head))
+
+
+def predicate(head: Expression[MatchTerm]) -> Callable[..., Clause]:
+    def decorator(fn: Callable[[Term], Goal]) -> Clause:
+        return PythonClause(head.term, fn)
+
+    return decorator
