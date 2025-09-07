@@ -207,7 +207,12 @@ class Variable(Term):
 
 
 @dataclass(frozen=True, slots=True)
-class Constant[T](Term):
+class Atomic(Term):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class Constant[T](Atomic):
     value: T
 
     def __str__(self):
@@ -256,7 +261,7 @@ class String(Constant[str]):
 
 @dataclass(frozen=True, slots=True)
 @operator_x()
-class Atom(Term):
+class Atom(Atomic):
     name: str
 
     def __str__(self):
