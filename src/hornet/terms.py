@@ -179,14 +179,12 @@ class AnonVariable(Term):
 @operator_x()
 @dataclass(frozen=True, slots=True, eq=False)
 class Variable(Term):
-    name: str
     _counter: ClassVar[Iterator[int]] = count()
+    name: str
 
     def __str__(self):
         return self.name
 
-    # __eq__ = object.__eq__  # pyright: ignore
-    # __hash__ = object.__hash__
     def __eq__(self, other) -> bool:
         if not isinstance(other, type(self)):
             return False

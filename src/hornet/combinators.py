@@ -88,7 +88,7 @@ class Subst(ChainMap[Variable, Term]):
             return Expression(self._subst.actualize(Variable(name=name)))
 
 
-def dcg_expand(head: MatchTerm, body: QueryTerm) -> tuple[MatchTerm, QueryTerm]:
+def dcg_expand(head: MatchTerm, body: QueryTerm | Cons) -> tuple[MatchTerm, QueryTerm]:
     """
     Expand a DCG clause head >> body into an ordinary clause head << body.
     Thread two extra arguments S0, Sn (a so-called Difference List) through the clause.
@@ -132,10 +132,13 @@ def dcg_expand(head: MatchTerm, body: QueryTerm) -> tuple[MatchTerm, QueryTerm]:
 
             # (A ; B) --> expand(A, Si, So) ; expand(B, Si, So)
             case BitOr(left=left, right=right):
+                left_exp, out_left = walk_body(left, inp)
+                right_exp, out_right = walk_body(right, inp)
                 out = Variable.fresh("S")
-                left_exp, _ = walk_body(left, inp)
-                right_exp, _ = walk_body(right, inp)
-                return BitOr(left_exp, right_exp), out
+                return BitOr(
+                    BitAnd(left_exp, Functor("equal", out_left, out)),
+                    BitAnd(right_exp, Functor("equal", out_right, out)),
+                ), out
 
             # {Goal} --> Goal (no DCG threading)
             case Inline(goal=goal):
@@ -277,7 +280,7 @@ class Database(ChainMap[Indicator, list[Clause]]):
                     assert isinstance(head, MatchTermClass), (
                         f"invalid head clause {head!r}"
                     )
-                    assert isinstance(body, QueryTermClass), (
+                    assert isinstance(body, QueryTermClass | Cons), (
                         f"invalid body clause {body!r}"
                     )
                     # Expand to standard clauses before adding to the database.

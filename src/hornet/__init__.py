@@ -156,11 +156,8 @@ def bootstrap_database() -> Database:
             """Convert between a functor/relation and its argument list (Cons only)."""
 
             match subst.actualize(term.args[0]), subst.actualize(term.args[1]):
-                # T is an Atom or Relation, produce a Cons chain in L
                 case Atom(name=name), L:
-                    # L = Cons(Atom(name), Empty())
-                    result = Cons(Atom(name), Empty())
-                    return _unify(L, result)(db, subst)
+                    return _unify(L, Cons(Atom(name), Empty()))(db, subst)
 
                 case Functor(name=name, args=args), L:
                     # Build Cons chain of head Atom + parameters
@@ -169,16 +166,14 @@ def bootstrap_database() -> Database:
                             return Cons(item, Empty())
                         return Cons(item, build_cons(*items))
 
-                    result = build_cons(Atom(name), *args)
-                    return _unify(L, result)(db, subst)
+                    return _unify(L, build_cons(Atom(name), *args))(db, subst)
+
+                # L is a single-element Cons cell
+                case _ as T, Cons(head=Atom(name), tail=Empty()):
+                    return _unify(T, Atom(name))(db, subst)
 
                 # L is a Cons chain, convert into Atom or Relation
-                case _ as T, Cons(head=head, tail=tail):
-                    # head must be an Atom
-                    assert isinstance(head, Atom), (
-                        f"First element of L must be Atom, got {type(head)}"
-                    )
-
+                case _ as T, Cons(head=Atom(name), tail=tail):
                     # Collect tail elements into a list
                     items = []
                     cur = tail
@@ -188,13 +183,7 @@ def bootstrap_database() -> Database:
                     assert isinstance(cur, Empty), (
                         f"L must be a proper list ending with Empty(), got {cur!r}"
                     )
-
-                    if items:
-                        new_term = Functor(head.name, *items)
-                    else:
-                        new_term = Atom(head.name)
-
-                    return _unify(T, new_term)(db, subst)
+                    return _unify(T, Functor(name, *items))(db, subst)
 
                 # fallback: error
                 case T, L:
