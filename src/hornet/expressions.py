@@ -142,6 +142,8 @@ def promote(obj: Any) -> Term:
             return terms.EMPTY
         case [head, *tail]:
             return terms.Cons(promote(head), promote(tail))
+        case set() if len(obj) == 1:
+            return terms.Inline(promote(obj.pop()))
         case _:
             raise TypeError(f"{type(obj)}")
 

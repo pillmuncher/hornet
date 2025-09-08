@@ -22,6 +22,7 @@ from .combinators import (
     Step,
     Subst,
     predicate,
+    resolve,
 )
 from .symbols import (
     append,
@@ -139,7 +140,7 @@ def bootstrap_database() -> Database:
     from .combinators import fail as _fail
     from .combinators import unify as _unify
     from .combinators import unit as _unit
-    from .symbols import L, T, V
+    from .symbols import G, L, T, V, X
     from .terms import Constant, Empty, Functor, Term
 
     def const(value):
@@ -234,6 +235,7 @@ def bootstrap_database() -> Database:
         return clause
 
     db.tell(
+        equal(X, X),
         check(is_atomic(V), lambda term: isinstance(term, Atom | Constant)),
         check(is_atom(V), lambda term: isinstance(term, Atom)),
         check(is_var(V), lambda term: isinstance(term, Variable)),
@@ -246,6 +248,7 @@ def bootstrap_database() -> Database:
         check(is_bytes(V), lambda term: isinstance(term, bytes)),
         predicate(true)(const(_unit)),
         predicate(fail)(const(_fail)),
+        call(G) << G,
     )
 
     return db

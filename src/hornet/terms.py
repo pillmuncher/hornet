@@ -412,3 +412,18 @@ class Cons(BinaryOperator):
 
             case head, tail:
                 return Cons(head=head, tail=tail)
+
+
+@dataclass(frozen=True, slots=True)
+class Inline(Term):  # or Curly, depending on preference
+    name: ClassVar[str] = "{}"
+    goal: Term
+
+    @property
+    @cache
+    def indicator(self) -> Indicator:
+        # distinguish from normal functor indicators
+        return self.name, None
+
+    def normalize(self, lbp: int, rbp: int) -> Self:
+        return type(self)(self.goal.normalize(0, 0))

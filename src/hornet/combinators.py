@@ -21,6 +21,7 @@ from .terms import (
     Empty,
     Functor,
     Indicator,
+    Inline,
     LShift,
     RShift,
     Structure,
@@ -88,73 +89,78 @@ class Subst(ChainMap[Variable, Term]):
             return self._subst.actualize(Variable(name=name))
 
 
-def dcg_expand(head: MatchTerm, body: QueryTerm) -> tuple[MatchTerm, QueryTerm]:
+def dcg_expand(head: "MatchTerm", body: "Term") -> tuple["MatchTerm", "QueryTerm"]:
     """
-    Expand a DCG-style rule (head >> body) into standard Horn clauses
-    using difference lists.
-
-    Each non-terminal predicate gets two extra arguments representing
-    the input and output lists. Terminals (Cons cells of atoms) are
-    expanded into unifications with the input list.
+    Expand a DCG clause head --> body into an ordinary clause head :- body.
+    Thread two extra arguments S0, Sn through the DCG body.
     """
-    S0 = Variable.fresh("S")
 
-    def walk(term, inp):
+    def walk(term: Term, inp: Variable) -> tuple[QueryTerm, Variable]:
+        """
+        Expand a DCG body term into a QueryTerm with threaded variables.
+        Returns (expanded_term, output_var).
+        """
         match term:
+            # foo --> foo(Si, So)
             case Atom(name=name):
-                # Atoms become Functors with two parameters
                 out = Variable.fresh("S")
                 return Functor(name, inp, out), out
 
-            case Functor(name=name, args=args) as term:
-                # Functors become Functors with two more parameters
+            # foo(X,Y) --> foo(X,Y,Si,So)
+            case Functor(name=name, args=args):
                 out = Variable.fresh("S")
                 return Functor(name, *args, inp, out), out
 
+            # [] --> true
             case Empty():
-                # The empty list consumes nothing
                 return Atom("true"), inp
 
-            case Cons(head=head, tail=Empty() as tail):
-                # Recursively build the difference list
-                return Cons(head, inp), inp
+            # [a] --> Si = [a|So]
+            case Cons(head=head, tail=Empty()):
+                out = Variable.fresh("S")
+                return Functor("equal", inp, Cons(head, out)), out
 
+            # [a|Rest] --> Si = [a|Mid], expand(Rest, Mid, So)
             case Cons(head=head, tail=tail):
-                # Recursively build the difference list
-                tail_term, tail_out = walk(tail, Variable.fresh("S"))
-                return Cons(head, tail_term), tail_out
+                mid = Variable.fresh("S")
+                eq = Functor("equal", inp, Cons(head, mid))
+                tail_exp, out = walk(tail, mid)
+                return BitAnd(eq, tail_exp), out
 
+            # (A , B) --> expand(A, Si, Mid), expand(B, Mid, So)
             case BitAnd(left=left, right=right):
-                # Thread from left to right
-                left_term, left_out = walk(left, inp)
-                right_term, right_out = walk(right, left_out)
-                return BitAnd(left_term, right_term), right_out
+                left_exp, mid = walk(left, inp)
+                right_exp, out = walk(right, mid)
+                return BitAnd(left_exp, right_exp), out
 
+            # (A ; B) --> expand(A, Si, So) ; expand(B, Si, So)
             case BitOr(left=left, right=right):
-                # Thread left and right alternatives
-                left_term, left_out = walk(left, inp)
-                right_term, right_out = walk(right, inp)
-                final_out = Variable.fresh("S")
-                left_conj = BitAnd(left_term, Functor("equal", left_out, final_out))
-                right_conj = BitAnd(right_term, Functor("equal", right_out, final_out))
-                return BitOr(left_conj, right_conj), final_out
+                out = Variable.fresh("S")
+                left_exp, _ = walk(left, inp)
+                right_exp, _ = walk(right, inp)
+                return BitOr(left_exp, right_exp), out
 
-            case Variable():
-                # Pass-through variable in DCG body
+            # X --> X(Si, So)
+            case Variable(name=name):
                 return term, inp
+
+            # {Goal} --> Goal (no DCG threading)
+            case Inline(goal=goal):
+                return goal, inp
 
             case _:
                 raise ValueError(f"Unexpected term in DCG body: {term}")
 
-    # Expand the body
-    body_expanded, final_out = walk(body, S0)
+    # Start walk with fresh input variable S0
+    S0 = Variable.fresh("S")
+    body_expanded, S_final = walk(body, S0)
 
-    # Expand head with S0 and final_out
+    # Expand the head
     match head:
         case Atom(name=name):
-            head_expanded = Functor(name, S0, final_out)
+            head_expanded = Functor(name, S0, S_final)
         case Functor(name=name, args=args):
-            head_expanded = Functor(name, *args, S0, final_out)
+            head_expanded = Functor(name, *args, S0, S_final)
 
     return head_expanded, body_expanded
 
@@ -219,8 +225,8 @@ def resolve(query_term: Term) -> Goal:
         case BitOr(left=left, right=right):
             return choice(resolve(left), resolve(right))
 
-        # Variable goals: substitute the variable for the term it is bound to.
-        # If the variable isn't bound, a KeyError is raised.
+        # # Variable goals: substitute the variable for the term it is bound to.
+        # # If the variable isn't bound, a KeyError is raised.
         case Variable() as variable:
             return lambda db, subst: tailcall(resolve(subst[variable])(db, subst))
 
@@ -236,7 +242,7 @@ class Database(ChainMap[Indicator, list[Clause]]):
     are resolved against the clauses in this database.
     """
 
-    def tell(self, *clauses: Expression[ClauseTerm]) -> None:
+    def tell(self, *clauses: Expression[Term]) -> None:
         """Add clauses to the database.
 
         Each expression is normalized and categorized as a fact, rule, or DCG
@@ -266,7 +272,8 @@ class Database(ChainMap[Indicator, list[Clause]]):
                     if not isinstance(head, Atom | Functor):
                         raise ValueError(f"invalid head clause {term.head}")
                     if not isinstance(
-                        body, (Atom | BitAnd | BitOr | Functor | Variable)
+                        body,
+                        (Atom | BitAnd | BitOr | Functor | Variable | Cons | Empty),
                     ):
                         raise ValueError(f"invalid body clause {term.body}")
                     # Expand to standard clauses before adding to the database.
