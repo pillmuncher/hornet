@@ -16,6 +16,7 @@ from .combinators import (
     Goal,
     MatchTerm,
     Next,
+    PythonClause,
     QueryTerm,
     Result,
     Step,
@@ -146,13 +147,13 @@ def bootstrap_database() -> Database:
 
     db = Database()
 
-    @db.add_action
+    @db.tell
     @predicate(univ(T, L))
     def _(term: Functor) -> Goal:
         def goal(db: Database, subst: Subst) -> Step:
             """Convert between a functor/relation and its argument list (Cons only)."""
 
-            match subst.smooth(term.args[0]), subst.smooth(term.args[1]):
+            match subst.actualize(term.args[0]), subst.actualize(term.args[1]):
                 # T is an Atom or Relation, produce a Cons chain in L
                 case Atom(name=name), L:
                     # L = Cons(Atom(name), Empty())
@@ -201,72 +202,51 @@ def bootstrap_database() -> Database:
 
         return goal
 
-    @db.add_action
+    @db.tell
     @predicate(write(V))
     def _(term: Functor) -> Goal:
         def goal(db: Database, subst: Subst) -> Step:
-            print(subst.smooth(term.args[0]), end="")
+            print(subst.actualize(term.args[0]), end="")
             return _unit(db, subst)
 
         return goal
 
-    @db.add_action
+    @db.tell
     @predicate(writeln(V))
     def _(term: Functor) -> Goal:
         def goal(db: Database, subst: Subst) -> Step:
-            print(subst.smooth(term.args[0]))
+            print(subst.actualize(term.args[0]))
             return _unit(db, subst)
 
         return goal
 
-    def is_category(fn: Expression[Functor], match: Callable[[Term], bool]) -> Clause:
-        @predicate(fn)
+    def check(
+        expr: Expression[Term], match: Callable[[Term], bool]
+    ) -> Expression[PythonClause]:
+        @predicate(expr)
         def clause(term: Functor) -> Goal:
             def goal(db: Database, subst: Subst) -> Step:
-                match_term = match(subst.smooth(term.args[0]))
+                match_term = match(subst.actualize(term.args[0]))
                 return _unit(db, subst) if match_term else _fail(db, subst)
 
             return goal
 
         return clause
 
-    def match_atom(term: Term) -> bool:
-        return isinstance(term, Atom)
-
-    def match_atomic(term: Term) -> bool:
-        return isinstance(term, Atom | Constant)
-
-    def match_variable(term: Term) -> bool:
-        return isinstance(term, Variable)
-
-    db.add_action(is_category(is_atom(V), match_atom))
-    db.add_action(is_category(is_atomic(V), match_atomic))
-    db.add_action(is_category(is_var(V), match_variable))
-
-    def is_type(head: Expression[Functor], T: type) -> Clause:
-        @predicate(head)
-        def clause(term: Functor) -> Goal:
-            def goal(db: Database, subst: Subst) -> Step:
-                value = subst.smooth(term.args[0])
-                if isinstance(value, Constant) and isinstance(value.value, T):
-                    return _unit(db, subst)
-                else:
-                    return _fail(db, subst)
-
-            return goal
-
-        return clause
-
-    db.add_action(is_type(is_int(V), int))
-    db.add_action(is_type(is_bool(V), bool))
-    db.add_action(is_type(is_float(V), float))
-    db.add_action(is_type(is_complex(V), complex))
-    db.add_action(is_type(is_numeric(V), Number))
-    db.add_action(is_type(is_str(V), str))
-    db.add_action(is_type(is_bytes(V), bytes))
-
-    db.add_action(predicate(true)(const(_unit)))
-    db.add_action(predicate(fail)(const(_fail)))
+    db.tell(
+        check(is_atomic(V), lambda term: isinstance(term, Atom | Constant)),
+        check(is_atom(V), lambda term: isinstance(term, Atom)),
+        check(is_var(V), lambda term: isinstance(term, Variable)),
+        check(is_int(V), lambda term: isinstance(term, int)),
+        check(is_bool(V), lambda term: isinstance(term, bool)),
+        check(is_float(V), lambda term: isinstance(term, float)),
+        check(is_complex(V), lambda term: isinstance(term, complex)),
+        check(is_numeric(V), lambda term: isinstance(term, Number)),
+        check(is_str(V), lambda term: isinstance(term, str)),
+        check(is_bytes(V), lambda term: isinstance(term, bytes)),
+        predicate(true)(const(_unit)),
+        predicate(fail)(const(_fail)),
+    )
 
     return db
 

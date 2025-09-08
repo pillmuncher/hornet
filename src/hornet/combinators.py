@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from functools import reduce
 from typing import Callable, Iterable
 
-from .expressions import Expression
+from .expressions import Expression, lift
 from .tailcalls import Frame, tailcall, trampoline
 from .terms import (
     AnonVariable,
@@ -36,8 +36,9 @@ type Goal = Callable[[Database, Subst], Step]
 
 type MatchTerm = Atom | Functor
 type QueryTerm = Atom | BitAnd | BitOr | Functor | Variable
-type ClauseTerm = Atom | Functor | LShift | RShift
+type ClauseTerm = Atom | Functor | LShift | RShift | PythonClause
 type Clause = Callable[[MatchTerm], Goal]
+type PythonBody = Callable[[MatchTerm], Goal]
 
 
 class Subst(ChainMap[Variable, Term]):
@@ -51,19 +52,19 @@ class Subst(ChainMap[Variable, Term]):
             obj = self[obj]
         return obj
 
-    def smooth(self, obj) -> Term:
+    def actualize(self, obj) -> Term:
         "Recursively replace all variables with their bindings."
         # TODO: make it not blow the stack, i.e. replace recursion with tail-calls.
         match self.deref(obj):
             case Functor(name=name, args=args) as struct:
-                return type(struct)(name, *(self.smooth(each) for each in args))
+                return type(struct)(name, *(self.actualize(each) for each in args))
             case Structure(args=args) as struct:
-                return type(struct)(*(self.smooth(each) for each in args))
+                return type(struct)(*(self.actualize(each) for each in args))
             case term:
                 return term
 
     def __getattr__(self, name: str):
-        return self.smooth(Variable(name=name))
+        return self.actualize(Variable(name=name))
 
     @property
     class proxy(Mapping):
@@ -79,12 +80,12 @@ class Subst(ChainMap[Variable, Term]):
             return len(self._subst)
 
         def __getitem__(self, variable: Expression[Variable]):
-            if variable.term == (frame := self._subst.smooth(variable.term)):
+            if variable.term == (frame := self._subst.actualize(variable.term)):
                 raise KeyError
             return frame
 
         def __getattr__(self, name: str):
-            return self._subst.smooth(Variable(name=name))
+            return self._subst.actualize(Variable(name=name))
 
 
 def dcg_expand(head: MatchTerm, body: QueryTerm) -> tuple[MatchTerm, QueryTerm]:
@@ -187,6 +188,14 @@ def rule(head: MatchTerm, body: QueryTerm) -> Clause:
     return clause
 
 
+def python_rule(head: MatchTerm, body: PythonBody) -> Clause:
+    def clause(query_term: MatchTerm) -> Goal:
+        fresh_head = deepcopy(head)
+        return then(unify(query_term, fresh_head), body(fresh_head))
+
+    return clause
+
+
 def resolve(query_term: Term) -> Goal:
     """Convert a term into a monadic goal suitable for resolution.
 
@@ -227,14 +236,17 @@ class Database(ChainMap[Indicator, list[Clause]]):
     are resolved against the clauses in this database.
     """
 
-    def add(self, *clause_exprs: Expression[ClauseTerm]) -> None:
+    def tell(self, *clauses: Expression[ClauseTerm]) -> None:
         """Add clauses to the database.
 
         Each expression is normalized and categorized as a fact, rule, or DCG
         construct. The corresponding Clause is then added to the database.
         """
-        for clause_expr in clause_exprs:
-            match clause_expr.term.normalize(0, 0):
+        for clause in clauses:
+            match clause.term:
+                case PythonClause(head=head, body=body):
+                    self.setdefault(head.indicator, []).append(python_rule(head, body))
+
                 # Single atoms or functors represent facts:
                 # statements that are always true.
                 case Atom() | Functor() as term:
@@ -261,10 +273,6 @@ class Database(ChainMap[Indicator, list[Clause]]):
                     head, body = dcg_expand(head, body)
                     self.setdefault(head.indicator, []).append(rule(head, body))
 
-    def add_action(self, clause: Clause) -> None:
-        """Add a user-defined clause in the database."""
-        self.setdefault(clause.head.indicator, []).append(clause)  # type: ignore[attr-defined]
-
     def ask(
         self, query: Expression[QueryTerm], subst: Subst | None = None
     ) -> Iterable[Mapping]:
@@ -273,8 +281,7 @@ class Database(ChainMap[Indicator, list[Clause]]):
         Returns an iterator of substitution mappings that satisfy the query.
         Each mapping represents a consistent set of variable bindings.
         """
-        term = query.term.normalize(0, 0)
-        goal = resolve(term)
+        goal = resolve(query.term)
         step = goal(self, Subst() if subst is None else subst)
         for subst in trampoline(lambda: step(success, failure, failure)):
             yield subst.proxy
@@ -482,17 +489,37 @@ def unify_any(variable: Variable, *values: Term) -> Goal:
 
 
 @dataclass(frozen=True, slots=True)
-class PythonClause:
+class PythonClause(Term):
+    """A clause implemented in Python rather than the DSL.
+
+    Attributes:
+        head: The term used for pattern matching in the database.
+        body: A callable representing the body of the clause, following the Clause protocol.
+    """
+
     head: MatchTerm
-    fn: Clause
-
-    def __call__(self, query_term: MatchTerm) -> Goal:
-        fresh_head = deepcopy(self.head)
-        return then(unify(query_term, fresh_head), self.fn(fresh_head))
+    body: PythonBody
 
 
-def predicate(head: Expression[MatchTerm]) -> Callable[..., Clause]:
-    def decorator(fn: Callable[[Term], Goal]) -> Clause:
-        return PythonClause(head.term, fn)
+def predicate(head: Expression[Term]) -> Callable[..., Expression[PythonClause]]:
+    """Decorator to define a Python-backed clause.
+
+    The decorated function becomes the body of a PythonClause. The given head
+    expression is used for matching against queries in the database.
+
+    Usage:
+        @predicate(foo(V))
+        def _(term: Functor) -> Goal:
+            ...
+
+    Args:
+        head: An Expression[Term] representing the head of the clause.
+
+    Returns:
+        A decorator that converts a Python function into an Expression[PythonClause].
+    """
+
+    def decorator(body: Callable[[Term], Goal]) -> Expression[PythonClause]:
+        return lift(PythonClause)(head.term, body)
 
     return decorator
