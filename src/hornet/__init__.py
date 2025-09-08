@@ -129,7 +129,7 @@ __all__ = (
 def bootstrap_database() -> Database:
     from numbers import Number
 
-    from .combinators import Atom, Cons
+    from .combinators import Atom, BitAnd, BitOr, Cons, PythonClause
     from .combinators import fail as _fail
     from .combinators import unify as _unify
     from .combinators import unit as _unit
@@ -175,10 +175,9 @@ def bootstrap_database() -> Database:
                 # L is a Cons chain, convert into Atom or Relation
                 case _ as T, Cons(head=head, tail=tail):
                     # head must be an Atom
-                    if not isinstance(head, Atom):
-                        raise TypeError(
-                            f"First element of L must be Atom, got {type(head)}"
-                        )
+                    assert isinstance(head, Atom), (
+                        f"First element of L must be Atom, got {type(head)}"
+                    )
 
                     # Collect tail elements into a list
                     items = []
@@ -186,10 +185,9 @@ def bootstrap_database() -> Database:
                     while isinstance(cur, Cons):
                         items.append(cur.head)
                         cur = cur.tail
-                    if not isinstance(cur, Empty):
-                        raise TypeError(
-                            f"L must be a proper list ending with Empty(), got {cur}"
-                        )
+                    assert isinstance(cur, Empty), (
+                        f"L must be a proper list ending with Empty(), got {cur!r}"
+                    )
 
                     if items:
                         new_term = Functor(head.name, *items)
@@ -235,8 +233,18 @@ def bootstrap_database() -> Database:
 
     db.tell(
         equal(X, X),
-        check(is_atomic(V), lambda term: isinstance(term, Atom | Constant)),
-        check(is_atom(V), lambda term: isinstance(term, Atom)),
+        check(
+            is_atomic(V),
+            lambda term: isinstance(
+                term, Atom | Functor | BitAnd | BitOr | PythonClause | Constant
+            ),
+        ),
+        check(
+            is_atom(V),
+            lambda term: isinstance(
+                term, Atom | Functor | BitAnd | BitOr | PythonClause
+            ),
+        ),
         check(is_var(V), lambda term: isinstance(term, Variable)),
         check(is_int(V), lambda term: isinstance(term, int)),
         check(is_bool(V), lambda term: isinstance(term, bool)),

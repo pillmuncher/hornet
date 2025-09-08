@@ -18,12 +18,12 @@ def normalize(term: Term) -> Term:
 
 
 @dataclass(frozen=True, slots=True)
-class Expression:
+class Expression[T: Term]:
     """
     An Expression object is a monadic wrapper around a Term.
     """
 
-    term: Term
+    term: T
 
     def __eq__(self, other):
         return isinstance(other, Expression) and self.term == other.term
@@ -143,7 +143,7 @@ def promote(obj: Any) -> Term:
         case [head, *tail]:
             return terms.Cons(promote(head), promote(tail))
         case set() if len(obj) == 1:
-            return terms.Inline(promote(obj.pop()))
+            return terms.Inline(normalize(promote(obj.pop())))
         case _:
             raise TypeError(f"{type(obj)}")
 

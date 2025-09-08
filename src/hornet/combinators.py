@@ -35,8 +35,10 @@ type Emit = Callable[[Database, Subst, Next], Result]
 type Step = Callable[[Emit, Next, Next], Result]
 type Goal = Callable[[Database, Subst], Step]
 
-type Clause = Callable[[Term], Goal]
-type PythonBody = Callable[[Term], Goal]
+type MatchTerm = Atom | Functor
+type QueryTerm = Atom | Functor | BitAnd | BitOr | PythonClause
+type Clause = Callable[[MatchTerm], Goal]
+type PythonBody = Callable[[MatchTerm], Goal]
 
 
 class Subst(ChainMap[Variable, Term]):
@@ -77,31 +79,29 @@ class Subst(ChainMap[Variable, Term]):
         def __len__(self):
             return len(self._subst)
 
-        def __getitem__(self, variable: Expression):
-            if variable.term == (frame := self._subst.actualize(variable.term)):
+        def __getitem__(self, variable: Expression[Variable]):
+            if variable.term == (term := self._subst.actualize(variable.term)):
                 raise KeyError
-            return frame
+            return Expression(term)
 
         def __getattr__(self, name: str):
-            return self._subst.actualize(Variable(name=name))
+            return Expression(self._subst.actualize(Variable(name=name)))
 
 
-def dcg_expand(head: Term, body: Term) -> tuple[Term, Term]:
+def dcg_expand(head: MatchTerm, body: QueryTerm) -> tuple[MatchTerm, QueryTerm]:
     """
-    Expand a DCG clause head --> body into an ordinary clause head :- body.
-    Thread two extra arguments S0, Sn through the DCG body.
+    Expand a DCG clause head >> body into an ordinary clause head << body.
+    Thread two extra arguments S0, Sn (a so-called Difference List) through the clause.
     """
 
-    def walk(term: Term, inp: Variable) -> tuple[Term, Variable]:
-        """
-        Expand a DCG body term into a Term with threaded variables.
-        Returns (expanded_term, output_var).
-        """
+    def walk_body(term: Term, inp: Variable) -> tuple[QueryTerm, Variable]:
+        # Expand a DCG body term into a Term with threaded variables.
+        # Returns (expanded_term, output_var).
         match term:
             # foo --> foo(Si, So)
-            case Atom(name=name):
-                out = Variable.fresh("S")
-                return Functor(name, inp, out), out
+            case Atom(name=name):  # pyright: ignore
+                out = Variable.fresh("S")  # pyright: ignore
+                return Functor(name, inp, out), out  # pyright: ignore
 
             # foo(X,Y) --> foo(X,Y,Si,So)
             case Functor(name=name, args=args):
@@ -121,32 +121,35 @@ def dcg_expand(head: Term, body: Term) -> tuple[Term, Term]:
             case Cons(head=head, tail=tail):
                 mid = Variable.fresh("S")
                 eq = Functor("equal", inp, Cons(head, mid))
-                tail_exp, out = walk(tail, mid)
+                tail_exp, out = walk_body(tail, mid)
                 return BitAnd(eq, tail_exp), out
 
             # (A , B) --> expand(A, Si, Mid), expand(B, Mid, So)
             case BitAnd(left=left, right=right):
-                left_exp, mid = walk(left, inp)
-                right_exp, out = walk(right, mid)
+                left_exp, mid = walk_body(left, inp)
+                right_exp, out = walk_body(right, mid)
                 return BitAnd(left_exp, right_exp), out
 
             # (A ; B) --> expand(A, Si, So) ; expand(B, Si, So)
             case BitOr(left=left, right=right):
                 out = Variable.fresh("S")
-                left_exp, _ = walk(left, inp)
-                right_exp, _ = walk(right, inp)
+                left_exp, _ = walk_body(left, inp)
+                right_exp, _ = walk_body(right, inp)
                 return BitOr(left_exp, right_exp), out
 
             # {Goal} --> Goal (no DCG threading)
             case Inline(goal=goal):
+                assert isinstance(goal, QueryTermClass), (
+                    f"Expected query term in DCG body, got: {goal!r}"
+                )
                 return goal, inp
 
             case _:
-                raise TypeError(f"Unexpected term in DCG body: {term!r}")
+                raise TypeError(f"Expected query term in DCG body, got: {term!r}")
 
     # Start walk with fresh input variable S0
     S0 = Variable.fresh("S")
-    body_expanded, S_final = walk(body, S0)
+    body_expanded, S_final = walk_body(body, S0)
 
     # Expand the head
     match head:
@@ -154,34 +157,32 @@ def dcg_expand(head: Term, body: Term) -> tuple[Term, Term]:
             head_expanded = Functor(name, S0, S_final)
         case Functor(name=name, args=args):
             head_expanded = Functor(name, *args, S0, S_final)
-        case _:
-            raise TypeError(f"Invalid head {head!r}")
 
     return head_expanded, body_expanded
 
 
-def fact(head: Term) -> Clause:
+def fact(head: MatchTerm) -> Clause:
     """Create a Horn clause that represents a fact.
 
     Facts are statements that are always true in the knowledge base. This
     function returns a clause that can unify a query term with the fact's head.
     """
 
-    def clause(query: Term) -> Goal:
+    def clause(query: MatchTerm) -> Goal:
         fresh_head = deepcopy(head)
         return unify(query, fresh_head)
 
     return clause
 
 
-def rule(head: Term, body: Term) -> Clause:
+def rule(head: MatchTerm, body: QueryTerm) -> Clause:
     """Create a Horn clause that represents a rule.
 
     Rules relate a head to a body of conditions. This function returns a clause
     that first unifies the head and then resolves the body.
     """
 
-    def clause(query: Term) -> Goal:
+    def clause(query: MatchTerm) -> Goal:
         # copy head and body at the same time to preserve common variables:
         fresh_head, fresh_body = deepcopy((head, body))
         return then(unify(query, fresh_head), resolve(fresh_body))
@@ -189,8 +190,8 @@ def rule(head: Term, body: Term) -> Clause:
     return clause
 
 
-def python_rule(head: Term, body: PythonBody) -> Clause:
-    def clause(query: Term) -> Goal:
+def python_rule(head: MatchTerm, body: PythonBody) -> Clause:
+    def clause(query: MatchTerm) -> Goal:
         fresh_head = deepcopy(head)
         return then(unify(query, fresh_head), body(fresh_head))
 
@@ -200,10 +201,10 @@ def python_rule(head: Term, body: PythonBody) -> Clause:
 def resolve(query: Term) -> Goal:
     """Convert a term into a monadic goal suitable for resolution.
 
-    This function interprets different types of terms (atoms, functors,
-    conjunctions, disjunctions, and variables) and returns a Goal that can
-    be executed in the logic programming monad.
+    This function interprets different types of terms (atoms, functors, conjunctions,
+    disjunctions) and returns a Goal that can be executed in the logic monad.
     """
+
     match query:
         # Atomic or structured goals: find all clauses matching this term
         # in the database. Each clause represents a possible path of execution.
@@ -214,10 +215,22 @@ def resolve(query: Term) -> Goal:
 
         # Conjunction goals: both left and right must succeed.
         case BitAnd(left=left, right=right):
+            assert isinstance(left, QueryTermClass), (
+                f"Expected query term, got: {left!r}"
+            )
+            assert isinstance(right, QueryTermClass), (
+                f"Expected query term, got: {right!r}"
+            )
             return then(resolve(left), resolve(right))
 
         # Disjunction goals: either left or right can satisfy the query.
         case BitOr(left=left, right=right):
+            assert isinstance(left, QueryTermClass), (
+                f"Expected query term, got: {left!r}"
+            )
+            assert isinstance(right, QueryTermClass), (
+                f"Expected query term, got: {right!r}"
+            )
             return choice(resolve(left), resolve(right))
 
         # Everything else is invalid.
@@ -232,7 +245,7 @@ class Database(ChainMap[Indicator, list[Clause]]):
     are resolved against the clauses in this database.
     """
 
-    def tell(self, *clauses: Expression) -> None:
+    def tell(self, *clauses: Expression[Term]) -> None:
         """Add clauses to the database.
 
         Each expression is normalized and categorized as a fact, rule, or DCG
@@ -251,18 +264,22 @@ class Database(ChainMap[Indicator, list[Clause]]):
                 # Left-shift expressions represent rules:
                 # head is true if body is true.
                 case LShift(head=head, body=body):
-                    if not is_matchable(head):
-                        raise TypeError(f"invalid head clause {head!r}")
-                    if not is_callable(body):
-                        raise TypeError(f"invalid body clause {body!r}")
+                    assert isinstance(head, MatchTermClass), (
+                        f"invalid head clause {head!r}"
+                    )
+                    assert isinstance(body, QueryTermClass), (
+                        f"invalid body clause {body!r}"
+                    )
                     self.setdefault(head.indicator, []).append(rule(head, body))
 
                 # Right-shift expressions represent DCG rules.
                 case RShift(head=head, body=body) as term:
-                    if not is_matchable(head):
-                        raise TypeError(f"invalid head clause {term.head!r}")
-                    if not is_callable(body):
-                        raise TypeError(f"invalid body clause {term.body!r}")
+                    assert isinstance(head, MatchTermClass), (
+                        f"invalid head clause {head!r}"
+                    )
+                    assert isinstance(body, QueryTermClass), (
+                        f"invalid body clause {body!r}"
+                    )
                     # Expand to standard clauses before adding to the database.
                     head, body = dcg_expand(head, body)
                     self.setdefault(head.indicator, []).append(rule(head, body))
@@ -489,11 +506,11 @@ class PythonClause(Term):
         body: A callable representing the body of the clause, following the Clause protocol.
     """
 
-    head: Term
+    head: MatchTerm
     body: PythonBody
 
 
-def predicate(head: Expression) -> Callable[..., Expression]:
+def predicate(head: Expression[Term]) -> Callable[..., Expression[PythonClause]]:
     """Decorator to define a Python-backed clause.
 
     The decorated function becomes the body of a PythonClause. The given head
@@ -505,25 +522,17 @@ def predicate(head: Expression) -> Callable[..., Expression]:
             ...
 
     Args:
-        head: An Expression representing the head of the clause.
+        head: An Expression[MatchTerm] representing the head of the clause.
 
     Returns:
-        A decorator that converts a Python function into an Expression.
+        A decorator that converts a Python function into an Expression[PythonClause].
     """
 
-    def decorator(body: Callable[[Term], Goal]) -> Expression:
+    def decorator(body: Callable[[Term], Goal]) -> Expression[PythonClause]:
         return lift(PythonClause)(head.term, body)
 
     return decorator
 
 
-HeadTerm = Atom | Functor
-QueryTerm = Atom | BitAnd | BitOr | Functor | PythonClause
-
-
-def is_matchable(term: Term) -> bool:
-    return isinstance(term, HeadTerm)
-
-
-def is_callable(term: Term) -> bool:
-    return isinstance(term, QueryTerm)
+MatchTermClass = Atom | Functor
+QueryTermClass = Atom | Functor | BitAnd | BitOr | PythonClause

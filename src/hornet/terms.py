@@ -10,9 +10,6 @@ from typing import ClassVar, Iterator, Self, override
 
 type Indicator = tuple[str, int | None]
 
-type MatchTerm = Atom | Functor
-type QueryTerm = Atom | BitAnd | BitOr | Functor | Variable
-
 
 def _fixity(lbp: int, rbp: int):
     "Attach class-level lbp and rbp to a Term subclasses."
