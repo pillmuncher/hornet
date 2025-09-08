@@ -18,12 +18,12 @@ def normalize(term: Term) -> Term:
 
 
 @dataclass(frozen=True, slots=True)
-class Expression[T: Term]:
+class Expression:
     """
     An Expression object is a monadic wrapper around a Term.
     """
 
-    term: T
+    term: Term
 
     def __eq__(self, other):
         return isinstance(other, Expression) and self.term == other.term

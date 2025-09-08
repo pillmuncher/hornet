@@ -10,14 +10,10 @@ from hornet.terms import Variable
 
 from .combinators import (
     Clause,
-    ClauseTerm,
     Database,
     Emit,
     Goal,
-    MatchTerm,
     Next,
-    PythonClause,
-    QueryTerm,
     Result,
     Step,
     Subst,
@@ -74,13 +70,10 @@ from .symbols import (
 
 __all__ = (
     "Clause",
-    "ClauseTerm",
     "Database",
     "Emit",
     "Goal",
-    "MatchTerm",
     "Next",
-    "QueryTerm",
     "Result",
     "Step",
     "Subst",
@@ -144,9 +137,17 @@ def bootstrap_database() -> Database:
     from .terms import Constant, Empty, Functor, Term
 
     def const(value):
-        return lambda *_, **__: value
+        return lambda *_: value
 
     db = Database()
+
+    @db.tell
+    @predicate(call(G))
+    def _(term: Functor) -> Goal:
+        def goal(db: Database, subst: Subst) -> Step:
+            return resolve(subst.actualize(term.args[0]))(db, subst)
+
+        return goal
 
     @db.tell
     @predicate(univ(T, L))
@@ -221,9 +222,7 @@ def bootstrap_database() -> Database:
 
         return goal
 
-    def check(
-        expr: Expression[Term], match: Callable[[Term], bool]
-    ) -> Expression[PythonClause]:
+    def check(expr: Expression, match: Callable[[Term], bool]) -> Expression:
         @predicate(expr)
         def clause(term: Functor) -> Goal:
             def goal(db: Database, subst: Subst) -> Step:
@@ -248,7 +247,6 @@ def bootstrap_database() -> Database:
         check(is_bytes(V), lambda term: isinstance(term, bytes)),
         predicate(true)(const(_unit)),
         predicate(fail)(const(_fail)),
-        call(G) << G,
     )
 
     return db
