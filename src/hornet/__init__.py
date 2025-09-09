@@ -6,7 +6,6 @@ from __future__ import annotations
 from typing import Callable
 
 from hornet.expressions import Expression
-from hornet.terms import Variable
 
 from .combinators import (
     Clause,
@@ -129,12 +128,20 @@ __all__ = (
 def bootstrap_database() -> Database:
     from numbers import Number
 
-    from .combinators import Atom, BitAnd, BitOr, Cons, PythonClause
+    from .combinators import (
+        Atom,
+        BitAnd,
+        BitOr,
+        Cons,
+        MatchTermClass,
+        PythonClause,
+        QueryTermClass,
+    )
     from .combinators import fail as _fail
     from .combinators import unify as _unify
     from .combinators import unit as _unit
     from .symbols import G, L, T, V, X
-    from .terms import Constant, Empty, Functor, Term
+    from .terms import Constant, Empty, Functor, Term, Variable
 
     def const(value):
         return lambda *_: value
@@ -222,26 +229,16 @@ def bootstrap_database() -> Database:
 
     db.tell(
         equal(X, X),
-        check(
-            is_atomic(V),
-            lambda term: isinstance(
-                term, Atom | Functor | BitAnd | BitOr | PythonClause | Constant
-            ),
-        ),
-        check(
-            is_atom(V),
-            lambda term: isinstance(
-                term, Atom | Functor | BitAnd | BitOr | PythonClause
-            ),
-        ),
-        check(is_var(V), lambda term: isinstance(term, Variable)),
-        check(is_int(V), lambda term: isinstance(term, int)),
+        check(is_atom(V), lambda term: isinstance(term, Atom)),
+        check(is_atomic(V), lambda term: isinstance(term, Atom | Constant)),
         check(is_bool(V), lambda term: isinstance(term, bool)),
-        check(is_float(V), lambda term: isinstance(term, float)),
+        check(is_bytes(V), lambda term: isinstance(term, bytes)),
         check(is_complex(V), lambda term: isinstance(term, complex)),
+        check(is_float(V), lambda term: isinstance(term, float)),
+        check(is_int(V), lambda term: isinstance(term, int)),
         check(is_numeric(V), lambda term: isinstance(term, Number)),
         check(is_str(V), lambda term: isinstance(term, str)),
-        check(is_bytes(V), lambda term: isinstance(term, bytes)),
+        check(is_var(V), lambda term: isinstance(term, Variable)),
         predicate(true)(const(_unit)),
         predicate(fail)(const(_fail)),
     )

@@ -1,36 +1,23 @@
 # Copyright (c) 2014 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
 
-import pprint
-
-from hornet import Database, equal, join
-
-# from hornet.symbols import A
-from hornet.symbols import vp  # C, ; type: ignore
+from hornet import database
 from hornet.symbols import (
-    NP,
-    VP,
-    Adj,
     B,
+    C,
     Case,
     D,
-    Det,
     E,
     F,
     Gender,
-    Noun,
     Number,
     S,
-    T,
     Trans,
-    Verb,
     W,
-    X,
-    Y,
     _,
     accusative,
-    adj,
     dative,
     det,
+    equal,
     feminine,
     genitive,
     intransitive,
@@ -44,6 +31,7 @@ from hornet.symbols import (
     singular,
     transitive,
     verb,
+    vp,
 )
 
 
@@ -202,21 +190,21 @@ def grammar(db):
 
     # for subst in db.ask(s(A) & member('jagen', A)):
 
-    # words = [B, 'hunde', 'jagen', C, 'katzen']
+    # words = [B, "hunde", "jagen", C, "katzen"]
     # words = ['manche', 'maeuse', 'jagen' | B]
     # words = [D, 'kater', 'jagen' | B]
     # words = 'manche maeuse jagen viele katze'.split()
     # words = 'eine maus jagt viele katzen'.split()
     # words = [B, C, 'jagen']
     # words = ['manche', B, C]
-    # words = ['der', C, D, 'die', F]
-    words = [B, "hund", D, E, F]
+    words = ["der", C, D, "die", F]
+    # words = [B, "hund", D, E, F]
     # words = [B, C, 'jagt', D, E]
     # words = [A, 'jagen' | E]
 
     # for i, subst in enumerate(db.ask(s(W) & join(W, S, ' '))):
-    for subst in db.ask(equal(words, W) & s(W) & join(W, S, " ")):
-        print(subst[S]())
+    for subst in db.ask(equal(words, W) & s(W)):
+        print(subst[W])
         # print('Yes.')
     # else:
     # print('No.')
@@ -225,73 +213,6 @@ def grammar(db):
     # print(i)
 
 
-def grammar2(db):
-    db.tell(
-        s(S, T) << s(T, S, []),
-        s(s(NP, VP)) >> np(NP, Number, nominative)
-        & vp(VP, Number, nominative, intransitive),
-        np(np(Det, Noun, [Gender, Number]), Number, Case)
-        >> det(Det, Gender, Number, Case)
-        & noun(Noun, Gender, Number, Case),
-        np(np(Det, Adj, Noun, [Gender, Number]), Number, Case)
-        >> det(Det, Gender, Number, Case)
-        & adj(Adj, Gender, Number, Case)
-        & noun(Noun, Gender, Number, Case),
-        vp(vp(Verb, NP), Number, nominative, intransitive)
-        >> verb(Verb, Number, nominative, intransitive)
-        & np(NP, Number, nominative),
-        det(det("der"), masculine, singular, nominative) >> ["der"],
-        det(det("die"), feminine, singular, nominative) >> ["die"],
-        det(det("das"), neuter, singular, nominative) >> ["das"],
-        det(det("ein"), masculine, singular, nominative) >> ["ein"],
-        det(det("eine"), feminine, singular, nominative) >> ["eine"],
-        det(det("kein"), masculine, singular, nominative) >> ["kein"],
-        det(det("keine"), feminine, singular, nominative) >> ["keine"],
-        det(det("jeder"), masculine, singular, nominative) >> ["jeder"],
-        det(det("jede"), feminine, singular, nominative) >> ["jede"],
-        adj(adj("betretbarer"), masculine, singular, nominative) >> ["betretbarer"],
-        # noun(noun('raum'), masculine, singular, nominative) >>
-        # ['raum'] & {cut},
-        verb(verb("ist"), singular, nominative, intransitive) >> ["ist"] & {cut},
-    )
-
-
-"""
-    Die Kabine ist ein Raum. "Kabinen an Bord eines Raumschiffs..."
-    Das Bad ist östlich von der Kabine. Die Beschreibung ist "Wie eine Kabine, ist auch das Bad..."
-    Die Broschüre ist in der Kabine. "Sie beschreibt die Herrlichkeit..."
-    Das Bett ist in der Kabine.
-    Das Bett ist ein betretbarer Raum.
-    Setze "Möbel" mit Bett gleich.
-    Der Spiegel ist Kulisse im Bad.
-    Die Dusche ist hier. Sie ist unbeweglich.
-"""
-
-
-def mudlang2(db):
-    nouns = {}
-
-    def test(term, env, db, trail):
-        nouns[env.X.name] = dict(
-            gender=str(env.Gender),
-            number=str(env.Number),
-            case=str(env.Case),
-        )
-
-    grammar2(db)
-
-    db.tell(
-        # noun(noun(X), Gender, Number, Case, [X|Y], Y)
-        noun(noun(X), Gender, Number, Case, [X | Y], Y)[test],
-    )
-
-    L = "die kabine ist ein betretbarer raum".split()
-    for subst in db.ask(equal(L, S) & s(S, T)):
-        print(subst[S])
-        print(subst[T])
-    pprint.pprint(nouns)
-
-
-db = Database()
+db = database()
 grammar(db)
 # mudlang2(db)

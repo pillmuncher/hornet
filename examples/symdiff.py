@@ -1,6 +1,6 @@
 # Copyright (c) 2014 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
 
-from hornet import Database, atomic, build_term, cut, equal, let, numeric, unequal
+from hornet import database
 from hornet.symbols import (
     C1,
     A,
@@ -13,12 +13,19 @@ from hornet.symbols import (
     X,
     Y,
     Z,
+    atomic,
+    build_term,
     cos,
+    cut,
     d,
+    equal,
     exp,
+    let,
     log,
+    numeric,
     simp,
     sin,
+    unequal,
     x,
 )
 
@@ -153,7 +160,7 @@ def expr_eval(expr, globals):
 
 
 def main():
-    db = Database()
+    db = database()
     diff_rules(db)
     simp_rules(db)
     diff_test(db)
