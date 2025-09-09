@@ -129,15 +129,7 @@ __all__ = (
 def bootstrap_database() -> Database:
     from numbers import Number
 
-    from .combinators import (
-        Atom,
-        BitAnd,
-        BitOr,
-        Cons,
-        MatchTermClass,
-        PythonClause,
-        QueryTermClass,
-    )
+    from .combinators import Atom, Cons
     from .combinators import fail as _fail
     from .combinators import unify as _unify
     from .combinators import unit as _unit
