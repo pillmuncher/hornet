@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from . import combinators, expressions, symbols, terms
+from . import _builtins, combinators, expressions, symbols, terms
 from .combinators import (
     Clause,
     Database,
@@ -65,6 +65,8 @@ from .symbols import (
 )
 
 __all__ = (
+    "database",
+    "is_constant",
     "combinators",
     "expressions",
     "symbols",
@@ -124,128 +126,4 @@ __all__ = (
     "write",
     "writeln",
 )
-
-
-def bootstrap_database() -> Database:
-    from numbers import Number
-    from typing import Callable
-
-    from hornet.combinators import Atom, Cons
-    from hornet.combinators import fail as _fail
-    from hornet.combinators import predicate, resolve
-    from hornet.combinators import unify as _unify
-    from hornet.combinators import unit as _unit
-    from hornet.expressions import Expression
-    from hornet.terms import Constant, Empty, Functor, Term, Variable
-
-    from .symbols import G, L, T, V, X
-
-    def const(value):
-        return lambda *_: value
-
-    db = Database()
-
-    @db.tell
-    @predicate(call(G))
-    def _(term: Functor) -> Goal:
-        def goal(db: Database, subst: Subst) -> Step:
-            return resolve(subst.actualize(term.args[0]))(db, subst)
-
-        return goal
-
-    @db.tell
-    @predicate(univ(T, L))
-    def _(term: Functor) -> Goal:
-        def goal(db: Database, subst: Subst) -> Step:
-            """Convert between a functor/relation and its argument list (Cons only)."""
-
-            match subst.actualize(term.args[0]), subst.actualize(term.args[1]):
-                case Atom(name=name), L:
-                    return _unify(L, Cons(Atom(name), Empty()))(db, subst)
-
-                case Functor(name=name, args=args), L:
-                    # Build Cons chain of head Atom + parameters
-                    def build_cons(item, *items: Term) -> Term:
-                        if not items:
-                            return Cons(item, Empty())
-                        return Cons(item, build_cons(*items))
-
-                    return _unify(L, build_cons(Atom(name), *args))(db, subst)
-
-                # L is a single-element Cons cell
-                case _ as T, Cons(head=Atom(name), tail=Empty()):
-                    return _unify(T, Atom(name))(db, subst)
-
-                # L is a Cons chain, convert into Atom or Relation
-                case _ as T, Cons(head=Atom(name), tail=tail):
-                    # Collect tail elements into a list
-                    items = []
-                    cur = tail
-                    while isinstance(cur, Cons):
-                        items.append(cur.head)
-                        cur = cur.tail
-                    assert isinstance(cur, Empty), (
-                        f"L must be a proper list ending with Empty(), got {cur!r}"
-                    )
-                    return _unify(T, Functor(name, *items))(db, subst)
-
-                # fallback: error
-                case T, L:
-                    raise TypeError(f"Cannot unify {T} with {L}")
-
-        return goal
-
-    @db.tell
-    @predicate(write(V))
-    def _(term: Functor) -> Goal:
-        def goal(db: Database, subst: Subst) -> Step:
-            print(subst.actualize(term.args[0]), end="")
-            return _unit(db, subst)
-
-        return goal
-
-    @db.tell
-    @predicate(writeln(V))
-    def _(term: Functor) -> Goal:
-        def goal(db: Database, subst: Subst) -> Step:
-            print(subst.actualize(term.args[0]))
-            return _unit(db, subst)
-
-        return goal
-
-    def check(expr: Expression, match: Callable[[Term], bool]) -> Expression:
-        @predicate(expr)
-        def clause(term: Functor) -> Goal:
-            def goal(db: Database, subst: Subst) -> Step:
-                match_term = match(subst.actualize(term.args[0]))
-                return _unit(db, subst) if match_term else _fail(db, subst)
-
-            return goal
-
-        return clause
-
-    db.tell(
-        equal(X, X),
-        check(is_atom(V), lambda term: isinstance(term, Atom)),
-        check(is_atomic(V), lambda term: isinstance(term, Atom | Constant)),
-        check(is_constant(V), lambda term: isinstance(term, Constant)),
-        check(is_bool(V), lambda term: isinstance(term, bool)),
-        check(is_bytes(V), lambda term: isinstance(term, bytes)),
-        check(is_complex(V), lambda term: isinstance(term, complex)),
-        check(is_float(V), lambda term: isinstance(term, float)),
-        check(is_int(V), lambda term: isinstance(term, int)),
-        check(is_numeric(V), lambda term: isinstance(term, Number)),
-        check(is_str(V), lambda term: isinstance(term, str)),
-        check(is_var(V), lambda term: isinstance(term, Variable)),
-        predicate(true)(const(_unit)),
-        predicate(fail)(const(_fail)),
-    )
-
-    return db
-
-
-_db = bootstrap_database()
-
-
-def database():
-    return _db.new_child()
+database = _builtins.bootstrap_database()
