@@ -3,7 +3,8 @@
 
 from __future__ import annotations
 
-from . import _builtins, combinators, expressions, symbols, terms
+from . import combinators, expressions, symbols, terms
+from ._builtins import _bootstrap_database
 from .combinators import (
     Clause,
     Database,
@@ -126,4 +127,4 @@ __all__ = (
     "write",
     "writeln",
 )
-database = _builtins.bootstrap_database()
+database = _bootstrap_database()

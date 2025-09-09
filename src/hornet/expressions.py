@@ -17,6 +17,13 @@ def normalize(term: Term) -> Term:
     return term.normalize(term.lbp, term.rbp)
 
 
+_mathematical_expression = compose(
+    lambda term: Expression(term),
+    terms.Paren,
+    normalize,
+)
+
+
 @dataclass(frozen=True, slots=True)
 class Expression[T: Term]:
     """
@@ -38,47 +45,46 @@ class Expression[T: Term]:
         return str(self.term)
 
     def __neg__(self):
-        return Expression(normalize(terms.USub(promote(self))))
+        return _mathematical_expression(terms.USub(promote(self)))
 
     def __pos__(self):
-        return Expression(normalize(terms.UAdd(promote(self))))
+        return _mathematical_expression(terms.UAdd(promote(self)))
 
     def __invert__(self):
-        return Expression(normalize(terms.Invert(promote(self))))
+        return _mathematical_expression(terms.Invert(promote(self)))
 
     def __add__(self, other):
-        rhs = other.term if isinstance(other, Expression) else other
-        return Expression(normalize(terms.Add(promote(self), rhs)))
+        return _mathematical_expression(terms.Add(promote(self), promote(other)))
 
     __radd__ = flip(__add__)
 
     def __sub__(self, other):
-        return Expression(normalize(terms.Sub(promote(self), promote(other))))
+        return _mathematical_expression(terms.Sub(promote(self), promote(other)))
 
     __rsub__ = flip(__sub__)
 
     def __mul__(self, other):
-        return Expression(normalize(terms.Mult(promote(self), promote(other))))
+        return _mathematical_expression(terms.Mult(promote(self), promote(other)))
 
     __rmul__ = flip(__mul__)
 
     def __truediv__(self, other):
-        return Expression(normalize(terms.Div(promote(self), promote(other))))
+        return _mathematical_expression(terms.Div(promote(self), promote(other)))
 
     __rtruediv__ = flip(__truediv__)
 
     def __floordiv__(self, other):
-        return Expression(normalize(terms.FloorDiv(promote(self), promote(other))))
+        return _mathematical_expression(terms.FloorDiv(promote(self), promote(other)))
 
     __rfloordiv__ = flip(__floordiv__)
 
     def __mod__(self, other):
-        return Expression(normalize(terms.Mod(promote(self), promote(other))))
+        return _mathematical_expression(terms.Mod(promote(self), promote(other)))
 
     __rmod__ = flip(__mod__)
 
     def __pow__(self, other):
-        return Expression(normalize(terms.Pow(promote(self), promote(other))))
+        return _mathematical_expression(terms.Pow(promote(self), promote(other)))
 
     __rpow__ = flip(__pow__)
 

@@ -266,6 +266,15 @@ class Atom(Atomic):
         return self.name
 
 
+@operator_fy(0)
+@dataclass(frozen=True, slots=True, init=False)
+class Paren(UnaryOperator):
+    name: ClassVar[str] = "()"
+
+    def __str__(self):
+        return f"({self.operand})"
+
+
 @operator_fy(70)
 @dataclass(frozen=True, slots=True, init=False)
 class Invert(UnaryOperator):

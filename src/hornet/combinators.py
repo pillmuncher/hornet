@@ -22,6 +22,7 @@ from .terms import (
     Functor,
     Indicator,
     Inline,
+    Invert,
     LShift,
     RShift,
     Structure,
@@ -235,6 +236,9 @@ def resolve(query: Term) -> Goal:
                 f"Expected query term, got: {right!r}"
             )
             return choice(resolve(left), resolve(right))
+
+        case Invert(operand=operand):
+            return neg(resolve(operand))
 
         # Everything else is invalid.
         case _:
