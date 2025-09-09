@@ -3,10 +3,7 @@
 
 from __future__ import annotations
 
-from typing import Callable
-
-from hornet.expressions import Expression
-
+from . import combinators, expressions, symbols, terms
 from .combinators import (
     Clause,
     Database,
@@ -17,7 +14,6 @@ from .combinators import (
     Step,
     Subst,
     predicate,
-    resolve,
 )
 from .symbols import (
     append,
@@ -69,8 +65,12 @@ from .symbols import (
 )
 
 __all__ = (
-    "Clause",
+    "combinators",
+    "expressions",
+    "symbols",
+    "terms",
     "Database",
+    "Clause",
     "Emit",
     "Goal",
     "Next",
@@ -128,13 +128,17 @@ __all__ = (
 
 def bootstrap_database() -> Database:
     from numbers import Number
+    from typing import Callable
 
-    from .combinators import Atom, Cons
-    from .combinators import fail as _fail
-    from .combinators import unify as _unify
-    from .combinators import unit as _unit
+    from hornet.combinators import Atom, Cons
+    from hornet.combinators import fail as _fail
+    from hornet.combinators import predicate, resolve
+    from hornet.combinators import unify as _unify
+    from hornet.combinators import unit as _unit
+    from hornet.expressions import Expression
+    from hornet.terms import Constant, Empty, Functor, Term, Variable
+
     from .symbols import G, L, T, V, X
-    from .terms import Constant, Empty, Functor, Term, Variable
 
     def const(value):
         return lambda *_: value
