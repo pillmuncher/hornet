@@ -5,23 +5,66 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import partial, reduce
-from typing import Any, Callable, cast
+from typing import Any, Callable, Protocol, cast
 
 from toolz.functoolz import compose, flip
 
-from . import terms
-from .terms import Term
-
-
-def normalize(term: Term) -> Term:
-    return term.normalize(term.lbp, term.rbp)
-
-
-_mathematical_expression = compose(
-    lambda term: Expression(term),
-    terms.Paren,
-    normalize,
+from .terms import (
+    EMPTY,
+    Add,
+    Atom,
+    BitAnd,
+    BitOr,
+    BitXor,
+    Bool,
+    Bytes,
+    Complex,
+    Cons,
+    Div,
+    Float,
+    FloorDiv,
+    Functor,
+    Integer,
+    Invert,
+    LShift,
+    Mod,
+    Mult,
+    Pow,
+    RShift,
+    String,
+    Sub,
+    Term,
+    UAdd,
+    USub,
 )
+
+
+class HasTerm(Protocol):
+    @property
+    def term(self) -> object: ...
+
+
+@dataclass(frozen=True, slots=True)
+class Rule:
+    head: Expression[Atom | Functor]
+    body: tuple[Term, ...]
+
+    @property
+    def term(self):
+        return self
+
+
+@dataclass(frozen=True, slots=True)
+class DCGRule(Rule):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class DCG:
+    head: Expression[Atom | Functor]
+
+    def when(self, *args):
+        return DCGRule(self.head, tuple(promote(arg) for arg in args))
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,6 +74,13 @@ class Expression[T: Term]:
     """
 
     term: T
+
+    def when(self, *args) -> Rule:
+        assert isinstance(self.term, Atom | Functor)
+        return Rule(
+            head=cast(Expression[Atom | Functor], self),
+            body=tuple(promote(arg) for arg in args),
+        )
 
     def __eq__(self, other):
         return isinstance(other, Expression) and self.term == other.term
@@ -45,80 +95,83 @@ class Expression[T: Term]:
         return str(self.term)
 
     def __neg__(self):
-        return _mathematical_expression(terms.USub(promote(self)))
+        return Expression(USub(promote(self)))
 
     def __pos__(self):
-        return _mathematical_expression(terms.UAdd(promote(self)))
+        return Expression(UAdd(promote(self)))
 
     def __invert__(self):
-        return _mathematical_expression(terms.Invert(promote(self)))
+        return Expression(Invert(promote(self)))
 
     def __add__(self, other):
-        return _mathematical_expression(terms.Add(promote(self), promote(other)))
+        return Expression(Add(promote(self), promote(other)))
 
     __radd__ = flip(__add__)
 
     def __sub__(self, other):
-        return _mathematical_expression(terms.Sub(promote(self), promote(other)))
+        return Expression(Sub(promote(self), promote(other)))
 
     __rsub__ = flip(__sub__)
 
     def __mul__(self, other):
-        return _mathematical_expression(terms.Mult(promote(self), promote(other)))
+        return Expression(Mult(promote(self), promote(other)))
 
     __rmul__ = flip(__mul__)
 
+    def __matmul__(self, other):
+        return Expression(Mult(promote(self), promote(other)))
+
+    __rmatmul__ = flip(__mul__)
+
     def __truediv__(self, other):
-        return _mathematical_expression(terms.Div(promote(self), promote(other)))
+        return Expression(Div(promote(self), promote(other)))
 
     __rtruediv__ = flip(__truediv__)
 
     def __floordiv__(self, other):
-        return _mathematical_expression(terms.FloorDiv(promote(self), promote(other)))
+        return Expression(FloorDiv(promote(self), promote(other)))
 
     __rfloordiv__ = flip(__floordiv__)
 
     def __mod__(self, other):
-        return _mathematical_expression(terms.Mod(promote(self), promote(other)))
+        return Expression(Mod(promote(self), promote(other)))
 
     __rmod__ = flip(__mod__)
 
     def __pow__(self, other):
-        return _mathematical_expression(terms.Pow(promote(self), promote(other)))
+        return Expression(Pow(promote(self), promote(other)))
 
     __rpow__ = flip(__pow__)
 
     def __lshift__(self, other):
-        return Expression(normalize(terms.LShift(promote(self), promote(other))))
+        return Expression(LShift(promote(self), promote(other)))
 
     __rlshift__ = flip(__lshift__)
 
     def __rshift__(self, other):
-        return Expression(normalize(terms.RShift(promote(self), promote(other))))
+        return Expression(RShift(promote(self), promote(other)))
 
     __rrshift__ = flip(__rshift__)
 
     def __and__(self, other):
-        return Expression(normalize(terms.BitAnd(promote(self), promote(other))))
+        return Expression(BitAnd(promote(self), promote(other)))
 
     __rand__ = flip(__and__)
 
     def __xor__(self, other):
-        return Expression(normalize(terms.BitXor(promote(self), promote(other))))
+        return Expression(BitXor(promote(self), promote(other)))
 
     __rxor__ = flip(__xor__)
 
     def __or__(self, other):
-        return Expression(normalize(terms.BitOr(promote(self), promote(other))))
+        return Expression(BitOr(promote(self), promote(other)))
 
     __ror__ = flip(__or__)
 
     def __call__(self, *args):
         match promote(self):
-            case terms.Atom(name):
-                return Expression(
-                    normalize(terms.Functor(name, *(promote(arg) for arg in args)))
-                )
+            case Atom(name):
+                return Expression((Functor(name, *(promote(arg) for arg in args))))
             case _:
                 raise TypeError(f"Atom required, not {self}")
 
@@ -128,28 +181,26 @@ def promote(obj: Any) -> Term:
     Convert a Python object to a Term.
     """
     match obj:
-        case terms.Term():
+        case Term():
             return obj
         case Expression(node):
             return node
         case str():
-            return terms.String(obj)
+            return String(obj)
         case bytes():
-            return terms.Bytes(obj)
+            return Bytes(obj)
         case int():
-            return terms.Integer(obj)
+            return Integer(obj)
         case bool():
-            return terms.Bool(obj)
+            return Bool(obj)
         case float():
-            return terms.Float(obj)
+            return Float(obj)
         case complex():
-            return terms.Complex(obj)
+            return Complex(obj)
         case []:
-            return terms.EMPTY
+            return EMPTY
         case [head, *tail]:
-            return terms.Cons(promote(head), promote(tail))
-        case set() if len(obj) == 1:
-            return terms.Inline(normalize(promote(obj.pop())))
+            return Cons(promote(head), promote(tail))
         case _:
             raise TypeError(f"{type(obj)}")
 

@@ -11,37 +11,6 @@ from typing import ClassVar, Iterator, Self, override
 type Indicator = tuple[str, int | None]
 
 
-def _fixity(lbp: int, rbp: int):
-    "Attach class-level lbp and rbp to a Term subclasses."
-
-    def decorator[T: type[Term]](cls: T) -> T:
-        cls.lbp = lbp
-        cls.rbp = rbp
-        return cls
-
-    return decorator
-
-
-def operator_x():
-    return _fixity(0, 0)
-
-
-def operator_fy(rank):
-    return _fixity(rank, 0)
-
-
-def operator_xfx(rank):
-    return _fixity(rank, rank)
-
-
-def operator_xfy(rank):
-    return _fixity(rank - 1, rank)
-
-
-def operator_yfx(rank):
-    return _fixity(rank, rank - 1)
-
-
 @property
 @cache
 def _first_arg(self: Structure):
@@ -64,7 +33,10 @@ class Term:
     def indicator(self) -> Indicator:
         return type(self).__name__, None
 
-    def normalize(self, lbp: int, rbp: int) -> Self:
+    def normalize(self) -> Self:
+        return self
+
+    def __deepcopy__(self, _):
         return self
 
 
@@ -94,8 +66,8 @@ class Functor(Structure):
         return self.name, len(self.args)
 
     @override
-    def normalize(self: Functor, lbp: int, rbp: int) -> Term:
-        return type(self)(self.name, *(arg.normalize(0, 0) for arg in self.args))
+    def normalize(self: Functor) -> Term:
+        return type(self)(self.name, *(arg.normalize() for arg in self.args))
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,10 +86,6 @@ class UnaryOperator(Structure):
     @override
     def indicator(self) -> Indicator:
         return self.name, 1
-
-    @override
-    def normalize(self, lbp: int, rbp: int) -> Term:
-        return type(self)(self.operand.normalize(0, 0))
 
 
 @dataclass(frozen=True, slots=True)
@@ -138,33 +106,7 @@ class BinaryOperator(Structure):
     def indicator(self) -> Indicator:
         return self.name, 2
 
-    # precedence-based operator reordering inspired by Pratt parsers
-    @override
-    def normalize(self, lbp: int, rbp: int) -> Term:
-        """
-        Normalize a Term according to left/right binding powers so that the
-        resulting tree reflects Prolog-style fixities.
-        """
-        # first descend:
-        left = self.left.normalize(lbp, self.lbp)
-        right = self.right.normalize(self.rbp, rbp)
-        # assure we're not non-associative:
-        if left.rbp == self.lbp and self.lbp == self.rbp:
-            raise ValueError(
-                f"Non-associative operator {type(self).__name__} used in chain"
-            )
-        match left:
-            # If the left child is a binary operator with *lower* rbp than our lbp,
-            # rotate right: ((a ◁ b) ▷ c)  ==>  a ◁ (b ▷ c)
-            case BinaryOperator() if left.rbp < self.lbp:
-                left_left, left_right = left.args
-                return type(left)(left_left, type(self)(left_right, right))
-            # otherwise keep as-is
-            case _:
-                return type(self)(left, right)
 
-
-@operator_x()
 @dataclass(frozen=True, slots=True, init=False)
 class AnonVariable(Term):
     name: ClassVar[str] = "_"
@@ -172,11 +114,7 @@ class AnonVariable(Term):
     def __eq__(self, _):
         return False
 
-    def __deepcopy__(self, memo):
-        return self
 
-
-@operator_x()
 @dataclass(frozen=True, slots=True, eq=False)
 class Variable(Term):
     _counter: ClassVar[Iterator[int]] = count()
@@ -216,41 +154,31 @@ class Constant[T](Atomic):
     def __str__(self):
         return str(self.value)
 
-    def __deepcopy__(self, memo):
-        return self
 
-
-@operator_x()
 @dataclass(frozen=True, slots=True)
 class Bytes(Constant[bytes]):
     pass
 
 
-@operator_x()
-@dataclass(frozen=True, slots=True)
 class Integer(Constant[int]):
     pass
 
 
-@operator_x()
 @dataclass(frozen=True, slots=True)
 class Bool(Constant[bool]):
     pass
 
 
-@operator_x()
 @dataclass(frozen=True, slots=True)
 class Float(Constant[float]):
     pass
 
 
-@operator_x()
 @dataclass(frozen=True, slots=True)
 class Complex(Constant[complex]):
     pass
 
 
-@operator_x()
 @dataclass(frozen=True, slots=True)
 class String(Constant[str]):
     def __str__(self):
@@ -258,7 +186,6 @@ class String(Constant[str]):
 
 
 @dataclass(frozen=True, slots=True)
-@operator_x()
 class Atom(Atomic):
     name: str
 
@@ -266,34 +193,21 @@ class Atom(Atomic):
         return self.name
 
 
-@operator_fy(0)
-@dataclass(frozen=True, slots=True, init=False)
-class Paren(UnaryOperator):
-    name: ClassVar[str] = "()"
-
-    def __str__(self):
-        return f"({self.operand})"
-
-
-@operator_fy(70)
 @dataclass(frozen=True, slots=True, init=False)
 class Invert(UnaryOperator):
     name: ClassVar[str] = "~"
 
 
-@operator_fy(70)
 @dataclass(frozen=True, slots=True, init=False)
 class UAdd(UnaryOperator):
     name: ClassVar[str] = "+"
 
 
-@operator_fy(70)
 @dataclass(frozen=True, slots=True, init=False)
 class USub(UnaryOperator):
     name: ClassVar[str] = "-"
 
 
-@operator_xfx(5)
 @dataclass(frozen=True, slots=True, init=False)
 class LShift(BinaryOperator):
     name: ClassVar[str] = "<<"
@@ -301,7 +215,6 @@ class LShift(BinaryOperator):
     body = _second_arg
 
 
-@operator_xfx(5)
 @dataclass(frozen=True, slots=True, init=False)
 class RShift(BinaryOperator):
     name: ClassVar[str] = ">>"
@@ -309,67 +222,56 @@ class RShift(BinaryOperator):
     body = _second_arg
 
 
-@operator_xfy(10)
 @dataclass(frozen=True, slots=True, init=False)
 class BitOr(BinaryOperator):
     name: ClassVar[str] = "|"
 
 
-@operator_xfy(20)
 @dataclass(frozen=True, slots=True, init=False)
 class BitXor(BinaryOperator):
     name: ClassVar[str] = "^"
 
 
-@operator_xfy(30)
 @dataclass(frozen=True, slots=True, init=False)
 class BitAnd(BinaryOperator):
     name: ClassVar[str] = "&"
 
 
-@operator_yfx(50)
 @dataclass(frozen=True, slots=True, init=False)
 class Add(BinaryOperator):
     name: ClassVar[str] = "+"
 
 
-@operator_yfx(50)
 @dataclass(frozen=True, slots=True, init=False)
 class Sub(BinaryOperator):
     name: ClassVar[str] = "-"
 
 
-@operator_yfx(60)
 @dataclass(frozen=True, slots=True, init=False)
 class Mult(BinaryOperator):
     name: ClassVar[str] = "*"
 
 
-@operator_yfx(60)
 @dataclass(frozen=True, slots=True, init=False)
 class Div(BinaryOperator):
     name: ClassVar[str] = "/"
 
 
-@operator_yfx(60)
 @dataclass(frozen=True, slots=True, init=False)
 class FloorDiv(BinaryOperator):
     name: ClassVar[str] = "//"
 
 
-@operator_yfx(60)
 @dataclass(frozen=True, slots=True, init=False)
 class Mod(BinaryOperator):
     name: ClassVar[str] = "%"
 
 
-@operator_xfy(80)
 @dataclass(frozen=True, slots=True, init=False)
 class Pow(BinaryOperator):
     name: ClassVar[str] = "**"
 
 
-@operator_x()
 @dataclass(frozen=True, slots=True)
 class Empty(Term):
     name: ClassVar[str] = "[]"
@@ -381,7 +283,6 @@ class Empty(Term):
 EMPTY = Empty()
 
 
-@operator_xfx(0)
 @dataclass(frozen=True, slots=True)
 class Cons(BinaryOperator):
     name: ClassVar[str] = "."
@@ -403,8 +304,8 @@ class Cons(BinaryOperator):
             return f"[{', '.join(acc)} | {tail}]"
 
     @override
-    def normalize(self, lbp: int, rbp: int) -> Term:
-        match self.head.normalize(0, 0), self.tail.normalize(0, 0):
+    def normalize(self) -> Term:
+        match self.head.normalize(), self.tail.normalize():
             case BitOr(left=BitOr(), right=_), _:
                 raise SyntaxError("Invalid list head in `[Head|Tail]`")
 
@@ -419,18 +320,3 @@ class Cons(BinaryOperator):
 
             case head, tail:
                 return Cons(head=head, tail=tail)
-
-
-@dataclass(frozen=True, slots=True)
-class Inline(Term):  # or Curly, depending on preference
-    name: ClassVar[str] = "{}"
-    goal: Term
-
-    @property
-    @cache
-    def indicator(self) -> Indicator:
-        # distinguish from normal functor indicators
-        return self.name, None
-
-    def normalize(self, lbp: int, rbp: int) -> Self:
-        return type(self)(self.goal.normalize(0, 0))

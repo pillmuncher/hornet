@@ -8,23 +8,21 @@ from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import dataclass
 from functools import reduce
-from typing import Callable, Iterable
+from typing import Callable, ClassVar, Iterable, cast
 
-from .expressions import Expression, lift
+from toolz import flip
+
+from .expressions import DCGRule, Expression, HasTerm, lift
 from .tailcalls import Frame, tailcall, trampoline
 from .terms import (
     AnonVariable,
     Atom,
-    BitAnd,
-    BitOr,
+    BinaryOperator,
     Cons,
     Empty,
     Functor,
     Indicator,
-    Inline,
     Invert,
-    LShift,
-    RShift,
     Structure,
     Term,
     Variable,
@@ -37,7 +35,7 @@ type Step = Callable[[Emit, Next, Next], Result]
 type Goal = Callable[[Database, Subst], Step]
 
 type MatchTerm = Atom | Functor
-type QueryTerm = Atom | Functor | BitAnd | BitOr | PythonClause
+type QueryTerm = Atom | Functor | And | Or | PythonClause
 type Clause = Callable[[MatchTerm], Goal]
 type PythonBody = Callable[[MatchTerm], Goal]
 
@@ -89,6 +87,32 @@ class Subst(ChainMap[Variable, Term]):
             return Expression(self._subst.actualize(Variable(name=name)))
 
 
+@dataclass(frozen=True, slots=True, init=False)
+class And(BinaryOperator):
+    name: ClassVar[str] = "and"
+
+
+@dataclass(frozen=True, slots=True, init=False)
+class Or(BinaryOperator):
+    name: ClassVar[str] = "or"
+
+
+def join(
+    op: Callable[[QueryTerm, QueryTerm], QueryTerm],
+    goals: tuple[QueryTerm, ...],
+    empty_identity: QueryTerm,
+) -> QueryTerm:
+    """Build a right-associative chain of binary goals.
+
+    - goals: a tuple of Term objects
+    - op: a binary operator constructor (And or Or)
+    - empty_identity: what to return if goals is empty (Fail for And, Unit for Or)
+    """
+    if not goals:
+        return empty_identity
+    return reduce(flip(op), reversed(goals))  # pyright: ignore
+
+
 def dcg_expand(head: MatchTerm, body: QueryTerm | Cons) -> tuple[MatchTerm, QueryTerm]:
     """
     Expand a DCG clause head >> body into an ordinary clause head << body.
@@ -123,30 +147,23 @@ def dcg_expand(head: MatchTerm, body: QueryTerm | Cons) -> tuple[MatchTerm, Quer
                 mid = Variable.fresh("S")
                 eq = Functor("equal", inp, Cons(head, mid))
                 tail_exp, out = walk_body(tail, mid)
-                return BitAnd(eq, tail_exp), out
+                return And(eq, tail_exp), out
 
             # (A , B) --> expand(A, Si, Mid), expand(B, Mid, So)
-            case BitAnd(left=left, right=right):
+            case And(left=left, right=right):
                 left_exp, mid = walk_body(left, inp)
                 right_exp, out = walk_body(right, mid)
-                return BitAnd(left_exp, right_exp), out
+                return And(left_exp, right_exp), out
 
             # (A ; B) --> expand(A, Si, So) ; expand(B, Si, So)
-            case BitOr(left=left, right=right):
+            case Or(left=left, right=right):
                 left_exp, out_left = walk_body(left, inp)
                 right_exp, out_right = walk_body(right, inp)
                 out = Variable.fresh("S")
-                return BitOr(
-                    BitAnd(left_exp, Functor("equal", out_left, out)),
-                    BitAnd(right_exp, Functor("equal", out_right, out)),
+                return Or(
+                    And(left_exp, Functor("equal", out_left, out)),
+                    And(right_exp, Functor("equal", out_right, out)),
                 ), out
-
-            # {Goal} --> Goal (no DCG threading)
-            case Inline(goal=goal):
-                assert isinstance(goal, QueryTermClass), (
-                    f"Expected query term in DCG body, got: {goal!r}"
-                )
-                return goal, inp
 
             case _:
                 raise TypeError(f"Expected query term in DCG body, got: {term!r}")
@@ -218,7 +235,7 @@ def resolve(query: Term) -> Goal:
             )(db, subst)
 
         # Conjunction goals: both left and right must succeed.
-        case BitAnd(left=left, right=right):
+        case And(left=left, right=right):
             assert isinstance(left, QueryTermClass), (
                 f"Expected query term, got: {left!r}"
             )
@@ -228,7 +245,7 @@ def resolve(query: Term) -> Goal:
             return then(resolve(left), resolve(right))
 
         # Disjunction goals: either left or right can satisfy the query.
-        case BitOr(left=left, right=right):
+        case Or(left=left, right=right):
             assert isinstance(left, QueryTermClass), (
                 f"Expected query term, got: {left!r}"
             )
@@ -252,7 +269,7 @@ class Database(ChainMap[Indicator, list[Clause]]):
     are resolved against the clauses in this database.
     """
 
-    def tell(self, *clauses: Expression[Term]) -> None:
+    def tell(self, *clauses: HasTerm) -> None:
         """Add clauses to the database.
 
         Each expression is normalized and categorized as a fact, rule, or DCG
@@ -263,41 +280,44 @@ class Database(ChainMap[Indicator, list[Clause]]):
                 case PythonClause(head=head, body=body):
                     self.setdefault(head.indicator, []).append(python_rule(head, body))
 
-                # Single atoms or functors represent facts:
-                # statements that are always true.
                 case Atom() | Functor() as term:
                     self.setdefault(term.indicator, []).append(fact(term))
 
-                # Left-shift expressions represent rules:
-                # head is true if body is true.
-                case LShift(head=head, body=body):
-                    assert isinstance(head, MatchTermClass), (
-                        f"invalid head clause {head!r}"
-                    )
-                    assert isinstance(body, QueryTermClass), (
+                case DCGRule(head=Expression(term), body=body):
+                    assert all(isinstance(b, QueryTermClass) for b in body), (
                         f"invalid body clause {body!r}"
                     )
-                    self.setdefault(head.indicator, []).append(rule(head, body))
+                    assert isinstance(body, QueryTermClass | Cons), (
+                        f"invalid body clause {body!r}"
+                    )
+                    self.setdefault(term.indicator, []).append(
+                        rule(
+                            term, join(And, cast(tuple[QueryTerm], body), Atom("fail"))
+                        )
+                    )
 
-                # Right-shift expressions represent DCG rules.
-                case RShift(head=head, body=body) as term:
-                    assert isinstance(head, MatchTermClass), (
-                        f"invalid head clause {head!r}"
+                case DCGRule(head=Expression(term), body=body):
+                    assert isinstance(term, MatchTermClass), (
+                        f"invalid term clause {term!r}"
                     )
                     assert isinstance(body, QueryTermClass | Cons), (
                         f"invalid body clause {body!r}"
                     )
                     # Expand to standard clauses before adding to the database.
-                    head, body = dcg_expand(head, body)
-                    self.setdefault(head.indicator, []).append(rule(head, body))
+                    term, body = dcg_expand(term, body)
+                    self.setdefault(term.indicator, []).append(
+                        rule(
+                            term, join(And, cast(tuple[QueryTerm], body), Atom("fail"))
+                        )
+                    )
 
-    def ask(self, query: Expression, subst: Subst | None = None) -> Iterable[Mapping]:
+    def ask(self, *query: Expression, subst: Subst | None = None) -> Iterable[Mapping]:
         """Query the database for solutions.
 
         Returns an iterator of substitution mappings that satisfy the query.
         Each mapping represents a consistent set of variable bindings.
         """
-        goal = resolve(query.term)
+        goal = resolve(join(And, tuple(q.term for q in query), Atom("fail")))
         step = goal(self, Subst() if subst is None else subst)
         for subst in trampoline(lambda: step(success, failure, failure)):
             yield subst.proxy
@@ -542,4 +562,4 @@ def predicate(head: Expression[Term]) -> Callable[..., Expression[PythonClause]]
 
 
 MatchTermClass = Atom | Functor
-QueryTermClass = Atom | Functor | BitAnd | BitOr | PythonClause
+QueryTermClass = Atom | Functor | And | Or | PythonClause

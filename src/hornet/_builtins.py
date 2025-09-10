@@ -40,7 +40,6 @@ def _bootstrap_database() -> Callable[[], Database]:
         LShift,
         Mod,
         Mult,
-        Paren,
         Pow,
         RShift,
         Sub,
@@ -134,8 +133,6 @@ def _bootstrap_database() -> Callable[[], Database]:
                 return v
 
             # Unary operators
-            case Paren(operand=a):
-                return eval_term(a)
             case Invert(operand=a):
                 r = eval_term(a)
                 assert not isinstance(r, bool | float | complex)
@@ -146,6 +143,18 @@ def _bootstrap_database() -> Callable[[], Database]:
                 return -eval_term(a)
 
             # Binary operators
+            case LShift(left=l, right=r):
+                rl = eval_term(l)
+                assert not isinstance(rl, float | complex)
+                rr = eval_term(r)
+                assert not isinstance(rr, float | complex)
+                return rl << rr
+            case RShift(left=l, right=r):
+                rl = eval_term(l)
+                assert not isinstance(rl, float | complex)
+                rr = eval_term(r)
+                assert not isinstance(rr, float | complex)
+                return rl >> rr
             case BitOr(left=l, right=r):
                 rl = eval_term(l)
                 assert not isinstance(rl, float | complex)
@@ -242,7 +251,7 @@ def _bootstrap_database() -> Callable[[], Database]:
         return goal
 
     @db.tell
-    @predicate(univ(T, L))
+    @predicate(univ(F, L))
     def _(term: Functor) -> Goal:
         def goal(db: Database, subst: Subst) -> Step:
             match subst.actualize(term.args[0]), subst.actualize(term.args[1]):
@@ -256,18 +265,18 @@ def _bootstrap_database() -> Callable[[], Database]:
                         return Cons(item, build_cons(*items))
 
                     return _unify(L, build_cons(Atom(name), *args))(db, subst)
-                case _ as T, Cons(head=Atom(name), tail=Empty()):
-                    return _unify(T, Atom(name))(db, subst)
-                case _ as T, Cons(head=Atom(name), tail=tail):
+                case _ as F, Cons(head=Atom(name), tail=Empty()):
+                    return _unify(F, Atom(name))(db, subst)
+                case _ as F, Cons(head=Atom(name), tail=tail):
                     items = []
                     cur = tail
                     while isinstance(cur, Cons):
                         items.append(cur.head)
                         cur = cur.tail
                     assert isinstance(cur, Empty)
-                    return _unify(T, Functor(name, *items))(db, subst)
-                case T, L:
-                    raise TypeError(f"Cannot unify {T} with {L}")
+                    return _unify(F, Functor(name, *items))(db, subst)
+                case F, L:
+                    raise TypeError(f"Cannot unify {F} with {L}")
 
         return goal
 
@@ -323,50 +332,131 @@ def _bootstrap_database() -> Callable[[], Database]:
         check(is_str(V), lambda term: isinstance(term, str)),
         check(is_var(V), lambda term: isinstance(term, Variable)),
     )
+    # from .symbols import (
+    #     Args,
+    #     Body,
+    #     F,
+    #     Head,
+    #     Rule,
+    #     assertz,
+    #     foo,
+    #     is_list,
+    #     make_conjunction,
+    #     rule,
+    # )
+    #
+    # db.tell(
+    #     foo(Head, Args, Body).when(
+    #         is_list(Args),
+    #         is_list(Body),
+    #         univ(F, [Head | Args]),
+    #         make_conjunction(B, Body),
+    #         univ(Rule, [rule, F, B]),
+    #         assertz(Rule),
+    #     )
+    # )
     db.tell(
-        append([A | B], C, [A | D]) << append(B, C, D),
+        #
+        # append two lists:
+        append([A | B], C, [A | D]).when(
+            append(B, C, D),
+        ),
+    )
+    db.tell(
         append([], A, A),
     )
     db.tell(
+        #
+        # test if two terms can be unified:
         equal(X, X),
     )
     db.tell(
-        ignore(G) << call(G) & cut,
+        #
+        # test if two terms cannot be unified:
+        unequal(X, X).when(
+            cut,
+        ),
+    )
+    db.tell(
+        #
+        # call goal G but ignore if it succeeds:
+        ignore(G).when(
+            call(G),
+            cut,
+        ),
         ignore(symbols._),
     )
     db.tell(
-        lwriteln([H | T]) << writeln(H) & lwriteln(T),
-        lwriteln([]) << nl,
+        #
+        # write out a list, end with newline:
+        lwriteln([H | T]).when(
+            writeln(H),
+            lwriteln(T),
+        ),
+        lwriteln([]).when(
+            nl,
+        ),
     )
     db.tell(
-        maplist(G, [H | T]) << cut & univ(G1, [G, H]) & G1 & maplist(G, T),
+        #
+        # call goal G on every element of a list and collect the results:
+        maplist(G, [H | T]).when(
+            cut,
+            univ(G1, [G, H]),
+            G1,
+            maplist(G, T),
+        ),
         maplist(symbols._, []),
     )
     db.tell(
+        #
+        # test if an item occurs in a list:
         member(H, [H | T]),
-        member(G, [H | T]) << member(G, T),
+        member(G, [H | T]).when(
+            member(G, T),
+        ),
     )
     db.tell(
-        nl << writeln(""),
+        #
+        # write out a newline:
+        nl.when(
+            writeln(""),
+        ),
     )
     db.tell(
-        once(G) << call(G) & cut,
+        #
+        # call a goal G but never backtrack:
+        once(G).when(
+            call(G),
+            cut,
+        ),
     )
     db.tell(
+        #
+        # repeat infinitely:
         repeat,
-        repeat << repeat,
+        repeat.when(
+            repeat,
+        ),
     )
     db.tell(
-        reverse([X | P], Q, Y) << reverse(P, [X | Q], Y),
-        reverse(X, Y) << reverse(X, [], Y),
+        #
+        # reverse a list:
+        reverse([X | P], Q, Y).when(
+            reverse(P, [X | Q], Y),
+        ),
+        reverse(X, Y).when(
+            reverse(X, [], Y),
+        ),
         reverse([], Y, Y),
     )
     db.tell(
+        #
+        # select an item from a list:
         select(X, [X | T], T),
-        select(X, [H | T], [H | Rest]) << select(X, T, Rest),
-    )
-    db.tell(
-        unequal(X, X) << cut,
+        select(X, [H | T], [H | Rest]).when(
+            select(X, T, Rest),
+        ),
     )
 
     def database() -> Database:
