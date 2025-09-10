@@ -16,6 +16,7 @@ from .combinators import (
     Subst,
     predicate,
 )
+from .expressions import DCG
 from .symbols import (
     append,
     arithmetic_equal,
@@ -66,6 +67,7 @@ from .symbols import (
 )
 
 __all__ = (
+    "DCG",
     "database",
     "is_constant",
     "combinators",

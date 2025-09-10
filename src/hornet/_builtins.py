@@ -403,7 +403,7 @@ def _bootstrap_database() -> Callable[[], Database]:
         maplist(G, [H | T]).when(
             cut,
             univ(G1, [G, H]),
-            G1,
+            call(G1),
             maplist(G, T),
         ),
         maplist(symbols._, []),

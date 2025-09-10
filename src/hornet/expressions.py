@@ -4,8 +4,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from functools import partial, reduce
-from typing import Any, Callable, Protocol, cast
+from functools import cache, partial, reduce
+from typing import Any, Callable, ClassVar, Protocol, cast, override
 
 from toolz.functoolz import compose, flip
 
@@ -24,6 +24,7 @@ from .terms import (
     Float,
     FloorDiv,
     Functor,
+    Indicator,
     Integer,
     Invert,
     LShift,
@@ -39,32 +40,58 @@ from .terms import (
 )
 
 
-class HasTerm(Protocol):
+class ExpressionLike[T: Term](Protocol):
     @property
-    def term(self) -> object: ...
+    def term(self) -> T: ...
 
 
 @dataclass(frozen=True, slots=True)
-class Rule:
-    head: Expression[Atom | Functor]
-    body: tuple[Term, ...]
+class BaseRuleTerm(Term):
+    name: ClassVar[str]
+    term: Term
+    args: tuple[Term, ...]
 
     @property
-    def term(self):
-        return self
+    @cache
+    @override
+    def indicator(self) -> Indicator:
+        return self.name, 1
+
+    @override
+    def normalize(self) -> Term:
+        return type(self)(
+            self.term.normalize(),
+            tuple(arg.normalize() for arg in self.args),
+        )
 
 
-@dataclass(frozen=True, slots=True)
-class DCGRule(Rule):
+@dataclass(frozen=True, slots=True, init=False)
+class RuleTerm(BaseRuleTerm):
+    name: ClassVar[str] = "RuleTerm"
+
+
+@dataclass(frozen=True, slots=True, init=False)
+class DCGRuleTerm(BaseRuleTerm):
+    name: ClassVar[str] = "DCGRuleTerm"
     pass
 
 
 @dataclass(frozen=True, slots=True)
+class Rule:
+    term: Term
+
+
+@dataclass(frozen=True, slots=True)
 class DCG:
-    head: Expression[Atom | Functor]
+    expr: Expression[Atom | Functor]
 
     def when(self, *args):
-        return DCGRule(self.head, tuple(promote(arg) for arg in args))
+        return Rule(
+            term=DCGRuleTerm(
+                term=self.expr.term,
+                args=tuple(promote(arg) for arg in args),
+            )
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,8 +105,10 @@ class Expression[T: Term]:
     def when(self, *args) -> Rule:
         assert isinstance(self.term, Atom | Functor)
         return Rule(
-            head=cast(Expression[Atom | Functor], self),
-            body=tuple(promote(arg) for arg in args),
+            term=RuleTerm(
+                term=self.term,
+                args=tuple(promote(arg) for arg in args),
+            )
         )
 
     def __eq__(self, other):

@@ -36,9 +36,6 @@ class Term:
     def normalize(self) -> Self:
         return self
 
-    def __deepcopy__(self, _):
-        return self
-
 
 @dataclass(frozen=True, slots=True)
 class Structure(Term):
@@ -87,6 +84,10 @@ class UnaryOperator(Structure):
     def indicator(self) -> Indicator:
         return self.name, 1
 
+    @override
+    def normalize(self) -> Term:
+        return type(self)(self.operand.normalize())
+
 
 @dataclass(frozen=True, slots=True)
 class BinaryOperator(Structure):
@@ -106,6 +107,10 @@ class BinaryOperator(Structure):
     def indicator(self) -> Indicator:
         return self.name, 2
 
+    @override
+    def normalize(self) -> Term:
+        return type(self)(self.left.normalize(), self.right.normalize())
+
 
 @dataclass(frozen=True, slots=True, init=False)
 class AnonVariable(Term):
@@ -113,6 +118,9 @@ class AnonVariable(Term):
 
     def __eq__(self, _):
         return False
+
+    def __deepcopy__(self, _):
+        return self
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -154,6 +162,9 @@ class Constant[T](Atomic):
     def __str__(self):
         return str(self.value)
 
+    def __deepcopy__(self, _):
+        return self
+
 
 @dataclass(frozen=True, slots=True)
 class Bytes(Constant[bytes]):
@@ -192,6 +203,12 @@ class Atom(Atomic):
     def __str__(self):
         return self.name
 
+    @property
+    @cache
+    @override
+    def indicator(self) -> Indicator:
+        return self.name, None
+
 
 @dataclass(frozen=True, slots=True, init=False)
 class Invert(UnaryOperator):
@@ -211,15 +228,11 @@ class USub(UnaryOperator):
 @dataclass(frozen=True, slots=True, init=False)
 class LShift(BinaryOperator):
     name: ClassVar[str] = "<<"
-    head = _first_arg
-    body = _second_arg
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class RShift(BinaryOperator):
     name: ClassVar[str] = ">>"
-    head = _first_arg
-    body = _second_arg
 
 
 @dataclass(frozen=True, slots=True, init=False)

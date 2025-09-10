@@ -12,7 +12,7 @@ from typing import Callable, ClassVar, Iterable, cast
 
 from toolz import flip
 
-from .expressions import DCGRule, Expression, HasTerm, lift
+from .expressions import DCGRuleTerm, Expression, ExpressionLike, RuleTerm, lift
 from .tailcalls import Frame, tailcall, trampoline
 from .terms import (
     AnonVariable,
@@ -269,47 +269,44 @@ class Database(ChainMap[Indicator, list[Clause]]):
     are resolved against the clauses in this database.
     """
 
-    def tell(self, *clauses: HasTerm) -> None:
+    def tell(self, *clauses: ExpressionLike) -> None:
         """Add clauses to the database.
 
         Each expression is normalized and categorized as a fact, rule, or DCG
         construct. The corresponding Clause is then added to the database.
         """
         for clause in clauses:
-            match clause.term:
+            match clause.term.normalize():
                 case PythonClause(head=head, body=body):
                     self.setdefault(head.indicator, []).append(python_rule(head, body))
 
-                case Atom() | Functor() as term:
-                    self.setdefault(term.indicator, []).append(fact(term))
+                case Atom() | Functor() as head:
+                    self.setdefault(head.indicator, []).append(fact(head))
 
-                case DCGRule(head=Expression(term), body=body):
-                    assert all(isinstance(b, QueryTermClass) for b in body), (
-                        f"invalid body clause {body!r}"
+                case DCGRuleTerm(term=head, args=args):
+                    assert isinstance(head, MatchTermClass), (
+                        f"invalid term clause {head!r}"
                     )
-                    assert isinstance(body, QueryTermClass | Cons), (
-                        f"invalid body clause {body!r}"
-                    )
-                    self.setdefault(term.indicator, []).append(
-                        rule(
-                            term, join(And, cast(tuple[QueryTerm], body), Atom("fail"))
-                        )
-                    )
-
-                case DCGRule(head=Expression(term), body=body):
-                    assert isinstance(term, MatchTermClass), (
-                        f"invalid term clause {term!r}"
-                    )
-                    assert isinstance(body, QueryTermClass | Cons), (
-                        f"invalid body clause {body!r}"
+                    assert all(isinstance(a, QueryTermClass | Cons) for a in args), (
+                        f"invalid body clause {args!r}"
                     )
                     # Expand to standard clauses before adding to the database.
-                    term, body = dcg_expand(term, body)
-                    self.setdefault(term.indicator, []).append(
-                        rule(
-                            term, join(And, cast(tuple[QueryTerm], body), Atom("fail"))
-                        )
+                    head, body = dcg_expand(
+                        head, join(And, cast(tuple[QueryTerm], args), Atom("fail"))
                     )
+                    self.setdefault(head.indicator, []).append(rule(head, body))
+
+                case RuleTerm(term=head, args=args):
+                    assert isinstance(head, MatchTermClass), (
+                        f"invalid term clause {head!r}"
+                    )
+                    assert all(isinstance(a, QueryTermClass | Cons) for a in args), (
+                        f"invalid body clause {args!r}"
+                    )
+                    new_body = join(And, cast(tuple[QueryTerm], args), Atom("fail"))
+                    self.setdefault(head.indicator, []).append(rule(head, new_body))
+                case x:
+                    __import__("pprint").pprint(x)
 
     def ask(self, *query: Expression, subst: Subst | None = None) -> Iterable[Mapping]:
         """Query the database for solutions.
@@ -317,7 +314,8 @@ class Database(ChainMap[Indicator, list[Clause]]):
         Returns an iterator of substitution mappings that satisfy the query.
         Each mapping represents a consistent set of variable bindings.
         """
-        goal = resolve(join(And, tuple(q.term for q in query), Atom("fail")))
+        query_term = join(And, tuple(q.term for q in query), Atom("fail"))
+        goal = resolve(query_term)
         step = goal(self, Subst() if subst is None else subst)
         for subst in trampoline(lambda: step(success, failure, failure)):
             yield subst.proxy
