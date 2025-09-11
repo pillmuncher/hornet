@@ -12,7 +12,7 @@ from typing import Callable, ClassVar, Iterable, cast
 
 from toolz import flip
 
-from .expressions import DCGRuleTerm, Expression, ExpressionLike, RuleTerm, lift
+from .expressions import DCGRuleTerm, Expression, HasTerm, RuleTerm, lift
 from .tailcalls import Frame, tailcall, trampoline
 from .terms import (
     AnonVariable,
@@ -47,7 +47,11 @@ class Subst(ChainMap[Variable, Term]):
 
     def deref(self, obj) -> Term:
         "Chase down Variable bindings."
+        visited = set()
         while isinstance(obj, Variable) and obj in self:
+            if obj in visited:
+                raise RuntimeError(f"Cyclic variable binding detected: {obj}")
+            visited.add(obj)
             obj = self[obj]
         return obj
 
@@ -73,7 +77,7 @@ class Subst(ChainMap[Variable, Term]):
             self._subst = subst
 
         def __iter__(self):
-            return iter(self._subst)
+            yield from self._subst.items()
 
         def __len__(self):
             return len(self._subst)
@@ -257,6 +261,9 @@ def resolve(query: Term) -> Goal:
         case Invert(operand=operand):
             return neg(resolve(operand))
 
+        # case ParenthesizedTerm(operand=operand):
+        #     return resolve(operand)
+
         # Everything else is invalid.
         case _:
             raise TypeError(f"Type error: `callable' expected, found {query!r}")
@@ -269,14 +276,14 @@ class Database(ChainMap[Indicator, list[Clause]]):
     are resolved against the clauses in this database.
     """
 
-    def tell(self, *clauses: ExpressionLike) -> None:
+    def tell(self, *clauses: HasTerm) -> None:
         """Add clauses to the database.
 
-        Each expression is normalized and categorized as a fact, rule, or DCG
-        construct. The corresponding Clause is then added to the database.
+        Each expression is categorized as a fact, rule, or DCG construct.
+        The corresponding Clause is then added to the database.
         """
         for clause in clauses:
-            match clause.term.normalize():
+            match clause.term:
                 case PythonClause(head=head, body=body):
                     self.setdefault(head.indicator, []).append(python_rule(head, body))
 
@@ -291,9 +298,8 @@ class Database(ChainMap[Indicator, list[Clause]]):
                         f"invalid body clause {args!r}"
                     )
                     # Expand to standard clauses before adding to the database.
-                    head, body = dcg_expand(
-                        head, join(And, cast(tuple[QueryTerm], args), Atom("fail"))
-                    )
+                    new_body = join(And, cast(tuple[QueryTerm], args), Atom("fail"))
+                    head, body = dcg_expand(head, cast(QueryTerm, new_body))
                     self.setdefault(head.indicator, []).append(rule(head, body))
 
                 case RuleTerm(term=head, args=args):
@@ -304,9 +310,9 @@ class Database(ChainMap[Indicator, list[Clause]]):
                         f"invalid body clause {args!r}"
                     )
                     new_body = join(And, cast(tuple[QueryTerm], args), Atom("fail"))
-                    self.setdefault(head.indicator, []).append(rule(head, new_body))
-                case x:
-                    __import__("pprint").pprint(x)
+                    self.setdefault(head.indicator, []).append(
+                        rule(head, cast(QueryTerm, new_body))
+                    )
 
     def ask(self, *query: Expression, subst: Subst | None = None) -> Iterable[Mapping]:
         """Query the database for solutions.
@@ -560,4 +566,4 @@ def predicate(head: Expression[Term]) -> Callable[..., Expression[PythonClause]]
 
 
 MatchTermClass = Atom | Functor
-QueryTermClass = Atom | Functor | And | Or | PythonClause
+QueryTermClass = Atom | Functor | And | Or | PythonClause | Invert

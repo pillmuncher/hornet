@@ -5,7 +5,9 @@ from __future__ import annotations
 
 from typing import Callable
 
-from .combinators import Database, Step
+from hornet.terms import Atomic
+
+from .combinators import Database, Step, then
 
 __all__ = ("_bootstrap_database",)
 
@@ -74,6 +76,7 @@ def _bootstrap_database() -> Callable[[], Database]:
         cut,
         equal,
         fail,
+        greater,
         ignore,
         is_atom,
         is_atomic,
@@ -97,6 +100,7 @@ def _bootstrap_database() -> Callable[[], Database]:
         repeat,
         reverse,
         select,
+        smaller,
         true,
         unequal,
         univ,
@@ -204,12 +208,41 @@ def _bootstrap_database() -> Callable[[], Database]:
         return lambda *_: value
 
     @db.tell
+    @predicate(smaller(A, B))
+    def _(term: Functor) -> Goal:
+        def goal(db: Database, subst: Subst) -> Step:
+            a = subst.actualize(term.args[0])
+            b = subst.actualize(term.args[1])
+            match eval_term(a), eval_term(b):
+                case int() | float() as m, int() | float() as n:
+                    if m < n:
+                        return _unit(db, subst)
+            return _fail(db, subst)
+
+        return goal
+
+    @db.tell
+    @predicate(greater(A, B))
+    def _(term: Functor) -> Goal:
+        def goal(db: Database, subst: Subst) -> Step:
+            a = subst.actualize(term.args[0])
+            b = subst.actualize(term.args[1])
+            match eval_term(a), eval_term(b):
+                case int() | float() as m, int() | float() as n:
+                    if m > n:
+                        return _unit(db, subst)
+            return _fail(db, subst)
+
+        return goal
+
+    @db.tell
     @predicate(let(R, F))
     def _(term: Functor) -> Goal:
         def goal(db: Database, subst: Subst) -> Step:
             r = subst.actualize(term.args[0])
+            assert isinstance(r, Variable)
             f = eval_term(subst.actualize(term.args[1]))
-            return _unify(r, promote(f))(db, subst)
+            return then(_unify(r, promote(f)), _cut)(db, subst)
 
         return goal
 
@@ -315,22 +348,43 @@ def _bootstrap_database() -> Callable[[], Database]:
         return clause
 
     db.tell(
+        check(is_var(V), lambda term: isinstance(term, Variable)),
+        check(is_atom(V), lambda term: isinstance(term, Atom)),
+        check(is_atomic(V), lambda term: isinstance(term, Atomic)),
+        check(is_constant(V), lambda term: isinstance(term, Constant)),
+        check(
+            is_bool(V),
+            lambda term: isinstance(term, Constant) and isinstance(term.value, bool),
+        ),
+        check(
+            is_bytes(V),
+            lambda term: isinstance(term, Constant) and isinstance(term.value, bytes),
+        ),
+        check(
+            is_complex(V),
+            lambda term: isinstance(term, Constant) and isinstance(term.value, complex),
+        ),
+        check(
+            is_float(V),
+            lambda term: isinstance(term, Constant) and isinstance(term.value, float),
+        ),
+        check(
+            is_int(V),
+            lambda term: isinstance(term, Constant) and isinstance(term.value, int),
+        ),
+        check(
+            is_numeric(V),
+            lambda term: isinstance(term, Constant) and isinstance(term.value, Number),
+        ),
+        check(
+            is_str(V),
+            lambda term: isinstance(term, Constant) and isinstance(term.value, str),
+        ),
+    )
+    db.tell(
         predicate(cut)(const(_cut)),
         predicate(fail)(const(_fail)),
         predicate(true)(const(_unit)),
-    )
-    db.tell(
-        check(is_atom(V), lambda term: isinstance(term, Atom)),
-        check(is_atomic(V), lambda term: isinstance(term, Atom | Constant)),
-        check(is_bool(V), lambda term: isinstance(term, bool)),
-        check(is_bytes(V), lambda term: isinstance(term, bytes)),
-        check(is_complex(V), lambda term: isinstance(term, complex)),
-        check(is_constant(V), lambda term: isinstance(term, Constant)),
-        check(is_float(V), lambda term: isinstance(term, float)),
-        check(is_int(V), lambda term: isinstance(term, int)),
-        check(is_numeric(V), lambda term: isinstance(term, Number)),
-        check(is_str(V), lambda term: isinstance(term, str)),
-        check(is_var(V), lambda term: isinstance(term, Variable)),
     )
     # from .symbols import (
     #     Args,
@@ -373,9 +427,7 @@ def _bootstrap_database() -> Callable[[], Database]:
     db.tell(
         #
         # test if two terms cannot be unified:
-        unequal(X, X).when(
-            cut,
-        ),
+        unequal(X, X).when(~equal(X)),
     )
     db.tell(
         #

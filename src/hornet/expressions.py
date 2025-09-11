@@ -40,7 +40,7 @@ from .terms import (
 )
 
 
-class ExpressionLike[T: Term](Protocol):
+class HasTerm[T: Term](Protocol):
     @property
     def term(self) -> T: ...
 
@@ -57,13 +57,6 @@ class BaseRuleTerm(Term):
     def indicator(self) -> Indicator:
         return self.name, 1
 
-    @override
-    def normalize(self) -> Term:
-        return type(self)(
-            self.term.normalize(),
-            tuple(arg.normalize() for arg in self.args),
-        )
-
 
 @dataclass(frozen=True, slots=True, init=False)
 class RuleTerm(BaseRuleTerm):
@@ -77,15 +70,15 @@ class DCGRuleTerm(BaseRuleTerm):
 
 
 @dataclass(frozen=True, slots=True)
-class Rule:
-    term: Term
+class Rule[T: BaseRuleTerm]:
+    term: T
 
 
 @dataclass(frozen=True, slots=True)
 class DCG:
     expr: Expression[Atom | Functor]
 
-    def when(self, *args):
+    def when(self, *args) -> Rule[DCGRuleTerm]:
         return Rule(
             term=DCGRuleTerm(
                 term=self.expr.term,
@@ -102,7 +95,7 @@ class Expression[T: Term]:
 
     term: T
 
-    def when(self, *args) -> Rule:
+    def when(self, *args) -> Rule[RuleTerm]:
         assert isinstance(self.term, Atom | Functor)
         return Rule(
             term=RuleTerm(
@@ -124,83 +117,109 @@ class Expression[T: Term]:
         return str(self.term)
 
     def __neg__(self):
-        return Expression(USub(promote(self)))
+        return expression(USub(promote(self)))
 
     def __pos__(self):
-        return Expression(UAdd(promote(self)))
+        return expression(UAdd(promote(self)))
 
     def __invert__(self):
-        return Expression(Invert(promote(self)))
+        return expression(Invert(promote(self)))
 
     def __add__(self, other):
-        return Expression(Add(promote(self), promote(other)))
+        return expression(Add(promote(self), promote(other)))
 
-    __radd__ = flip(__add__)
+    @flip
+    def __radd__(self, other):
+        return expression(Add(promote(self), promote(other)))
 
     def __sub__(self, other):
-        return Expression(Sub(promote(self), promote(other)))
+        return expression(Sub(promote(self), promote(other)))
 
-    __rsub__ = flip(__sub__)
+    @flip
+    def __rsub__(self, other):
+        return expression(Sub(promote(self), promote(other)))
 
     def __mul__(self, other):
-        return Expression(Mult(promote(self), promote(other)))
+        return expression(Mult(promote(self), promote(other)))
 
-    __rmul__ = flip(__mul__)
+    @flip
+    def __rmul__(self, other):
+        return expression(Mult(promote(self), promote(other)))
 
     def __matmul__(self, other):
-        return Expression(Mult(promote(self), promote(other)))
+        return expression(Mult(promote(self), promote(other)))
 
-    __rmatmul__ = flip(__mul__)
+    @flip
+    def __rmatmul__(self, other):
+        return expression(Mult(promote(self), promote(other)))
 
     def __truediv__(self, other):
-        return Expression(Div(promote(self), promote(other)))
+        return expression(Div(promote(self), promote(other)))
 
-    __rtruediv__ = flip(__truediv__)
+    @flip
+    def __rtruediv__(self, other):
+        return expression(Div(promote(self), promote(other)))
 
     def __floordiv__(self, other):
-        return Expression(FloorDiv(promote(self), promote(other)))
+        return expression(FloorDiv(promote(self), promote(other)))
 
-    __rfloordiv__ = flip(__floordiv__)
+    @flip
+    def __rfloordiv__(self, other):
+        return expression(FloorDiv(promote(self), promote(other)))
 
     def __mod__(self, other):
-        return Expression(Mod(promote(self), promote(other)))
+        return expression(Mod(promote(self), promote(other)))
 
-    __rmod__ = flip(__mod__)
+    @flip
+    def __rmod__(self, other):
+        return expression(Mod(promote(self), promote(other)))
 
     def __pow__(self, other):
-        return Expression(Pow(promote(self), promote(other)))
+        return expression(Pow(promote(self), promote(other)))
 
-    __rpow__ = flip(__pow__)
+    @flip
+    def __rpow__(self, other):
+        return expression(Pow(promote(self), promote(other)))
 
     def __lshift__(self, other):
-        return Expression(LShift(promote(self), promote(other)))
+        return expression(LShift(promote(self), promote(other)))
 
-    __rlshift__ = flip(__lshift__)
+    @flip
+    def __rlshift__(self, other):
+        return expression(LShift(promote(self), promote(other)))
 
     def __rshift__(self, other):
-        return Expression(RShift(promote(self), promote(other)))
+        return expression(RShift(promote(self), promote(other)))
 
-    __rrshift__ = flip(__rshift__)
+    @flip
+    def __rrshift__(self, other):
+        return expression(RShift(promote(self), promote(other)))
 
     def __and__(self, other):
-        return Expression(BitAnd(promote(self), promote(other)))
+        return expression(BitAnd(promote(self), promote(other)))
 
-    __rand__ = flip(__and__)
+    @flip
+    def __rand__(self, other):
+        return expression(BitAnd(promote(self), promote(other)))
 
     def __xor__(self, other):
-        return Expression(BitXor(promote(self), promote(other)))
+        return expression(BitXor(promote(self), promote(other)))
 
-    __rxor__ = flip(__xor__)
+    @flip
+    def __rxor__(self, other):
+        return expression(BitXor(promote(self), promote(other)))
 
     def __or__(self, other):
-        return Expression(BitOr(promote(self), promote(other)))
+        return expression(BitOr(promote(self), promote(other)))
 
-    __ror__ = flip(__or__)
+    @flip
+    def __ror__(self, other):
+        return expression(BitOr(promote(self), promote(other)))
 
     def __call__(self, *args):
         match promote(self):
             case Atom(name):
-                return Expression((Functor(name, *(promote(arg) for arg in args))))
+                return expression((Functor(name, *(promote(arg) for arg in args))))
             case _:
                 raise TypeError(f"Atom required, not {self}")
 
@@ -210,10 +229,10 @@ def promote(obj: Any) -> Term:
     Convert a Python object to a Term.
     """
     match obj:
-        case Term():
-            return obj
-        case Expression(node):
-            return node
+        case Term() as term:
+            return term
+        case Expression(term):
+            return term
         case str():
             return String(obj)
         case bytes():
@@ -265,3 +284,7 @@ def chain(*mfuncs: MFunc) -> MFunc:
     Chain monadic functions of type Term --> Expression.
     """
     return cast(MFunc, partial(reduce, bind, tuple(reversed(mfuncs))))
+
+
+def expression[T: Term](term: T) -> Expression[T]:
+    return Expression(term)

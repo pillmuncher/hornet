@@ -6,7 +6,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import cache
 from itertools import count
-from typing import ClassVar, Iterator, Self, override
+from typing import ClassVar, Iterator, override
 
 type Indicator = tuple[str, int | None]
 
@@ -25,16 +25,12 @@ def _second_arg(self: Structure):
 
 @dataclass(frozen=True, slots=True)
 class Term:
-    lbp: ClassVar[int] = 0
-    rbp: ClassVar[int] = 0
+    rank: ClassVar[int] = 0
 
     @property
     @cache
     def indicator(self) -> Indicator:
         return type(self).__name__, None
-
-    def normalize(self) -> Self:
-        return self
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,10 +58,6 @@ class Functor(Structure):
     def indicator(self) -> Indicator:
         return self.name, len(self.args)
 
-    @override
-    def normalize(self: Functor) -> Term:
-        return type(self)(self.name, *(arg.normalize() for arg in self.args))
-
 
 @dataclass(frozen=True, slots=True)
 class UnaryOperator(Structure):
@@ -76,17 +68,21 @@ class UnaryOperator(Structure):
         Structure.__init__(self, operand)
 
     def __str__(self):
-        return f"{self.name}{str(self.operand)}"
+        match self.operand:
+            case UnaryOperator() as u:
+                operand_str = f"({u})" if u.rank > self.rank else str(u)
+            case BinaryOperator() as b:
+                operand_str = f"({b})" if b.rank > self.rank else str(b)
+            case _:
+                operand_str = str(self.operand)
+
+        return f"{self.name}{operand_str}"
 
     @property
     @cache
     @override
     def indicator(self) -> Indicator:
         return self.name, 1
-
-    @override
-    def normalize(self) -> Term:
-        return type(self)(self.operand.normalize())
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,17 +95,27 @@ class BinaryOperator(Structure):
         Structure.__init__(self, left, right)
 
     def __str__(self):
-        return f"{str(self.left)} {self.name} {str(self.right)}"
+        match self.left, self.right:
+            case BinaryOperator() as l, BinaryOperator() as r:
+                left_str = f"({l})" if l.rank < self.rank else str(l)
+                right_str = f"({r})" if r.rank < self.rank else str(r)
+            case BinaryOperator() as l, _:
+                left_str = f"({l})" if l.rank < self.rank else str(l)
+                right_str = str(self.right)
+            case _, BinaryOperator() as r:
+                left_str = str(self.left)
+                right_str = f"({r})" if r.rank < self.rank else str(r)
+            case _:
+                left_str = str(self.left)
+                right_str = str(self.right)
+
+        return f"{left_str} {self.name} {right_str}"
 
     @property
     @cache
     @override
     def indicator(self) -> Indicator:
         return self.name, 2
-
-    @override
-    def normalize(self) -> Term:
-        return type(self)(self.left.normalize(), self.right.normalize())
 
 
 @dataclass(frozen=True, slots=True, init=False)
@@ -212,76 +218,91 @@ class Atom(Atomic):
 
 @dataclass(frozen=True, slots=True, init=False)
 class Invert(UnaryOperator):
+    rank: ClassVar[int] = 70
     name: ClassVar[str] = "~"
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class UAdd(UnaryOperator):
+    rank: ClassVar[int] = 70
     name: ClassVar[str] = "+"
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class USub(UnaryOperator):
+    rank: ClassVar[int] = 70
     name: ClassVar[str] = "-"
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class LShift(BinaryOperator):
+    rank: ClassVar[int] = 40
     name: ClassVar[str] = "<<"
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class RShift(BinaryOperator):
+    rank: ClassVar[int] = 40
     name: ClassVar[str] = ">>"
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class BitOr(BinaryOperator):
+    rank: ClassVar[int] = 10
     name: ClassVar[str] = "|"
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class BitXor(BinaryOperator):
+    rank: ClassVar[int] = 20
     name: ClassVar[str] = "^"
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class BitAnd(BinaryOperator):
+    rank: ClassVar[int] = 30
     name: ClassVar[str] = "&"
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class Add(BinaryOperator):
+    rank: ClassVar[int] = 50
     name: ClassVar[str] = "+"
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class Sub(BinaryOperator):
+    rank: ClassVar[int] = 50
     name: ClassVar[str] = "-"
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class Mult(BinaryOperator):
+    rank: ClassVar[int] = 60
     name: ClassVar[str] = "*"
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class Div(BinaryOperator):
+    rank: ClassVar[int] = 60
     name: ClassVar[str] = "/"
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class FloorDiv(BinaryOperator):
+    rank: ClassVar[int] = 60
     name: ClassVar[str] = "//"
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class Mod(BinaryOperator):
+    rank: ClassVar[int] = 60
     name: ClassVar[str] = "%"
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class Pow(BinaryOperator):
+    rank: ClassVar[int] = 80
     name: ClassVar[str] = "**"
 
 
@@ -315,21 +336,3 @@ class Cons(BinaryOperator):
             return f"[{', '.join(acc)}]"
         else:
             return f"[{', '.join(acc)} | {tail}]"
-
-    @override
-    def normalize(self) -> Term:
-        match self.head.normalize(), self.tail.normalize():
-            case BitOr(left=BitOr(), right=_), _:
-                raise SyntaxError("Invalid list head in `[Head|Tail]`")
-
-            case BitOr(left=left, right=right), Empty():
-                return Cons(head=left, tail=right)
-
-            case BitOr(), _:
-                raise SyntaxError("Invalid list head in `[Head|Tail]`")
-
-            case head, BitOr(head=left, tail=right):
-                return Cons(head=head, tail=Cons(head=left, tail=right))
-
-            case head, tail:
-                return Cons(head=head, tail=tail)
