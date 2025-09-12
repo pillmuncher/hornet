@@ -1,40 +1,64 @@
 # Copyright (c) 2014 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
 
-from hornet import (
-    Database,
-    arithmetic_equal,
+from toolz import take
+
+from hornet import database
+from hornet.symbols import (
+    Current,
+    M,
+    N,
+    Next,
+    R,
+    Result,
+    S,
+    W,
+    Ws,
     equal,
+    fb,
     findall,
-    greater,
+    fizzbuzz,
+    ifelse,
     join,
     let,
-    writeln,
+    word,
 )
-from hornet.symbols import N1, D, Max, N, R, S, W, Ws, divisible, fizzbuzz, show, word
 
 
 def main():
-    db = Database()
+    db = database()
 
     db.tell(
-        fizzbuzz(N, Max) << ~greater(N, Max)
-        & findall(W, word(W, N), Ws)
-        & show(N, Ws)
-        & let(N1, N + 1)
-        & fizzbuzz(N1, Max),
-        word("fizz", N) << divisible(N, 3),
-        word("buzz", N) << divisible(N, 5),
-        word("blub", N) << divisible(N, 7),
-        divisible(N, D) << arithmetic_equal(0, N % D),
-        show(N, Ws) << equal(Ws, []) >> writeln(N) | join(Ws, S) & writeln(S),
+        word("fizz", N).when(let(M, N % 3), equal(M, 0)),
+        word("buzz", N).when(let(M, N % 5), equal(M, 0)),
+        word("blub", N).when(let(M, N % 7), equal(M, 0)),
+        fb(N, Result).when(
+            findall(W, word(W, N), Ws),
+            join(Ws, S),
+            ifelse(
+                equal(S, ""),
+                equal(N, Result),
+                equal(S, Result),
+            ),
+        ),
+        fb(Current, Result).when(
+            let(Next, Current + 1),
+            fb(Next, Result),
+        ),
+        fizzbuzz(Result).when(
+            fb(1, Result),
+        ),
     )
 
     try:
-        for subst in db.ask(fizzbuzz(1, 1111)):
-            print(subst[R])
+        for s in take(1000, db.ask(fizzbuzz(R))):
+            # print(s[R])
+            pass
     except RuntimeError:
         print("oops!")
 
 
 if __name__ == "__main__":
-    main()
+    from examples.utils import timer
+
+    with timer("FizzBuzz run"):
+        main()

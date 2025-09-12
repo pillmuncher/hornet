@@ -6,10 +6,11 @@ from __future__ import annotations
 from collections import ChainMap
 from collections.abc import Mapping
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import reduce
-from typing import Callable, ClassVar, Iterable, cast
+from typing import Callable, ClassVar, Iterable, Self, cast
 
+from immutables import Map
 from toolz import flip
 
 from .expressions import DCGRuleTerm, Expression, HasTerm, RuleTerm, lift
@@ -40,10 +41,16 @@ type Clause = Callable[[MatchTerm], Goal]
 type PythonBody = Callable[[MatchTerm], Goal]
 
 
-class Subst(ChainMap[Variable, Term]):
+@dataclass(frozen=True, slots=True)
+class Subst(Mapping[Variable, Term]):
     """A substitution environment that maps Variables to values. Such a mapping
     is called a variable binding. Variables are bound during computations and
     unbound again during backtracking. This process is called trailing."""
+
+    map: Map = field(default_factory=Map)
+
+    def clone_with(self, variable: Variable, term: Term) -> Self:
+        return type(self)(self.map.set(variable, term))
 
     def deref(self, obj) -> Term:
         "Chase down Variable bindings."
@@ -68,6 +75,15 @@ class Subst(ChainMap[Variable, Term]):
 
     def __getattr__(self, name: str):
         return self.actualize(Variable(name=name))
+
+    def __len__(self):
+        return len(self.map)
+
+    def __iter__(self):
+        return iter(self.map)
+
+    def __getitem__(self, variable: Variable) -> Term:
+        return self.map[variable]
 
     @property
     class proxy(Mapping):
@@ -131,6 +147,21 @@ def dcg_expand(head: MatchTerm, body: QueryTerm | Cons) -> tuple[MatchTerm, Quer
             case Atom(name=name):  # pyright: ignore
                 out = Variable.fresh("S")  # pyright: ignore
                 return Functor(name, inp, out), out  # pyright: ignore
+
+            # inline(foo(*X)) --> foo(*X)
+            case Functor(name="inline", args=inlined):
+                out = Variable.fresh("S")
+                return cast(
+                    QueryTerm,
+                    join(
+                        And,
+                        cast(
+                            tuple[QueryTerm],
+                            tuple(Functor("call", each) for each in inlined),
+                        ),
+                        Atom("fail"),
+                    ),
+                ), inp
 
             # foo(X,Y) --> foo(X,Y,Si,So)
             case Functor(name=name, args=args):
@@ -461,7 +492,7 @@ def _unify_variable(variable: Variable, term: Term) -> Goal:
             return tailcall(_unify(subst[variable], term)(db, subst))
         else:
             # otherwise just create a new binding:
-            return unit(db, subst.new_child({variable: term}))
+            return unit(db, subst.clone_with(variable, term))
 
     return unifier
 

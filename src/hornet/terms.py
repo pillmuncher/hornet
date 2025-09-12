@@ -199,7 +199,7 @@ class Complex(Constant[complex]):
 @dataclass(frozen=True, slots=True)
 class String(Constant[str]):
     def __str__(self):
-        return f"'{self.value}'"
+        return f"{self.value}"
 
 
 @dataclass(frozen=True, slots=True)

@@ -7,9 +7,13 @@ from typing import Callable
 
 from hornet.terms import Atomic
 
-from .combinators import Database, Step, then
+from .combinators import Database, Step, amb_from_iterable, seq_from_iterable, then
 
 __all__ = ("_bootstrap_database",)
+
+# TODO:
+# assertz
+# is_list
 
 
 # Bootstrap a default database with builtins
@@ -63,20 +67,26 @@ def _bootstrap_database() -> Callable[[], Database]:
         H,
         L,
         N,
+        O,
         P,
         Q,
         R,
-        Rest,
+        S,
         T,
         V,
         X,
         Y,
+        Z,
+        all_of,
         append,
+        arithmetic_equal,
         call,
         cut,
         equal,
         fail,
+        findall,
         greater,
+        ifelse,
         ignore,
         is_atom,
         is_atomic,
@@ -89,6 +99,7 @@ def _bootstrap_database() -> Callable[[], Database]:
         is_numeric,
         is_str,
         is_var,
+        join,
         length,
         let,
         lwriteln,
@@ -111,13 +122,7 @@ def _bootstrap_database() -> Callable[[], Database]:
     # TODO: implement the following builtin predicates:
     #
     # arithmetic_equal,
-    # arithmetic_not_equal,
-    # findall,
-    # greater,
-    # join,
-    # let,
     # listing,
-    # smaller,
     # throw,
     # transpose,
     db = Database()
@@ -225,11 +230,11 @@ def _bootstrap_database() -> Callable[[], Database]:
     @predicate(greater(A, B))
     def _(term: Functor) -> Goal:
         def goal(db: Database, subst: Subst) -> Step:
-            a = subst.actualize(term.args[0])
-            b = subst.actualize(term.args[1])
-            match eval_term(a), eval_term(b):
-                case int() | float() as m, int() | float() as n:
-                    if m > n:
+            a = eval_term(subst.actualize(term.args[0]))
+            b = eval_term(subst.actualize(term.args[1]))
+            match a, b:
+                case int() | float(), int() | float():
+                    if a > b:
                         return _unit(db, subst)
             return _fail(db, subst)
 
@@ -262,6 +267,26 @@ def _bootstrap_database() -> Callable[[], Database]:
     def _(term: Functor) -> Goal:
         def goal(db: Database, subst: Subst) -> Step:
             return resolve(subst.actualize(term.args[0]))(db, subst)
+
+        return goal
+
+    @db.tell
+    @predicate(all_of())
+    def _(term: Functor) -> Goal:
+        def goal(db: Database, subst: Subst) -> Step:
+            return amb_from_iterable(
+                map(resolve, (subst.actualize(term) for term in term.args))
+            )(db, subst)
+
+        return goal
+
+    @db.tell
+    @predicate(all_of())
+    def _(term: Functor) -> Goal:
+        def goal(db: Database, subst: Subst) -> Step:
+            return seq_from_iterable(
+                map(resolve, (subst.actualize(term) for term in term.args))
+            )(db, subst)
 
         return goal
 
@@ -386,29 +411,8 @@ def _bootstrap_database() -> Callable[[], Database]:
         predicate(fail)(const(_fail)),
         predicate(true)(const(_unit)),
     )
-    # from .symbols import (
-    #     Args,
-    #     Body,
-    #     F,
-    #     Head,
-    #     Rule,
-    #     assertz,
-    #     foo,
-    #     is_list,
-    #     make_conjunction,
-    #     rule,
     # )
-    #
-    # db.tell(
-    #     foo(Head, Args, Body).when(
-    #         is_list(Args),
-    #         is_list(Body),
-    #         univ(F, [Head | Args]),
-    #         make_conjunction(B, Body),
-    #         univ(Rule, [rule, F, B]),
-    #         assertz(Rule),
-    #     )
-    # )
+
     db.tell(
         #
         # append two lists:
@@ -506,10 +510,84 @@ def _bootstrap_database() -> Callable[[], Database]:
         #
         # select an item from a list:
         select(X, [X | T], T),
-        select(X, [H | T], [H | Rest]).when(
-            select(X, T, Rest),
+        select(X, [H | T], [H | R]).when(
+            select(X, T, R),
         ),
     )
+    db.tell(
+        arithmetic_equal(X, Y).when(
+            let(Z, X),
+            let(Z, Y),
+        )
+    )
+
+    def to_python_list(cons_list: Term, subst: Subst) -> list:
+        """Convert a Hornet Cons list into a Python list, actualizing each element."""
+        result = []
+
+        while True:
+            match subst.actualize(cons_list):
+                case Cons(head=head, tail=tail):
+                    result.append(head)
+                    cons_list = tail
+                case Empty():
+                    return result
+                case other:
+                    raise TypeError(f"Expected Cons list, got {other!r}")
+
+    @db.tell
+    @predicate(join(L, S))
+    def _(term: Functor) -> Goal:
+        def goal(db: Database, subst: Subst) -> Step:
+            items = subst.actualize(term.args[0])
+            result = to_python_list(items, subst)
+            return _unify(
+                term.args[1],
+                promote("".join([str(each.value) for each in result])),
+            )(db, subst)
+
+        return goal
+
+    # def _findall_4(term, env, db, trail):
+    #     results = [copy.deepcopy(env.Object) for _ in env.Goal.resolve(db)]
+    #     unify(env.List, make_list(env, results, env.R), trail)
+
+    # def _findall_3(term, env, db, trail):
+    #     results = [copy.deepcopy(env.Object.ref) for _ in env.Goal.resolve(db)]
+    #     unify(env.List, make_list(env, results), trail)
+
+    @db.tell
+    @predicate(findall(O, G, L))
+    def _(term: Functor) -> Goal:
+        def goal(db: Database, subst: Subst) -> Step:
+            obj = Expression(subst.actualize(term.args[0]))
+            goal = Expression(subst.actualize(term.args[1]))
+            items = subst.actualize(term.args[2])
+            return _unify(
+                items,
+                promote([s[obj] for s in db.ask(goal, subst=subst)]),
+            )(db, subst)
+
+        return goal
+
+    @db.tell
+    @predicate(call(G))
+    def _(term: Functor) -> Goal:
+        def goal(db: Database, subst: Subst) -> Step:
+            return resolve(subst.actualize(term.args[0]))(db, subst)
+
+        return goal
+
+    @db.tell
+    @predicate(ifelse(T, Y, N))
+    def _(term: Functor) -> Goal:
+        def goal(db: Database, subst: Subst) -> Step:
+            for s in db.ask(Expression(subst.actualize(term.args[0]))):
+                return resolve(subst.actualize(term.args[1]))(db, subst)
+            else:
+                return resolve(subst.actualize(term.args[2]))(db, subst)
+
+        return goal
 
     def database() -> Database:
         """Return a new child of the default database."""

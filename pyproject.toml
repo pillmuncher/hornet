@@ -3,7 +3,7 @@ version = "0.2.12a2"
 license = { file = "LICENSE.md" }
 authors = [{ name = "Mick Krippendorf", email = "m.krippendorf@freenet.de" }]
 description = "Hornet: An embedded DSL for Logic Programming in Python."
-dependencies = ["toolz"]
+dependencies = ["toolz", "immutables"]
 readme = "README.md"
 requires-python = ">=3.13"
 classifiers = [

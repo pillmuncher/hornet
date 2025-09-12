@@ -220,7 +220,8 @@ class Expression[T: Term]:
         match promote(self):
             case Atom(name):
                 return expression((Functor(name, *(promote(arg) for arg in args))))
-            case _:
+            case wat:
+                print("!!!", type(wat), wat)
                 raise TypeError(f"Atom required, not {self}")
 
 
