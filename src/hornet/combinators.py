@@ -1,600 +1,273 @@
-# Copyright (c) 2025 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
-# SPDX-License-Identifier: MIT
-
 from __future__ import annotations
 
-from collections import ChainMap
 from collections.abc import Mapping
-from copy import deepcopy
 from dataclasses import dataclass, field
-from functools import reduce
-from typing import Callable, ClassVar, Iterable, Self, cast
+from functools import cache, reduce
+from typing import Callable, Iterable, Self
 
 from immutables import Map
-from toolz import flip
 
-from .expressions import DCGRuleTerm, Expression, HasTerm, RuleTerm, lift
-from .tailcalls import Frame, tailcall, trampoline
-from .terms import (
-    AnonVariable,
-    Atom,
-    BinaryOperator,
-    Cons,
-    Empty,
-    Functor,
-    Indicator,
-    Invert,
-    Structure,
-    Term,
-    Variable,
-)
+from .tailcalls import Frame, tailcall
+from .terms import Atom, Functor, Structure, Term, Variable, Wildcard
 
 type Result = Frame[Subst]
 type Next = Callable[[], Result]
-type Emit = Callable[[Database, Subst, Next], Result]
-type Step = Callable[[Emit, Next, Next], Result]
-type Goal = Callable[[Database, Subst], Step]
-
-type MatchTerm = Atom | Functor
-type QueryTerm = Atom | Functor | And | Or | PythonClause
-type Clause = Callable[[MatchTerm], Goal]
-type PythonBody = Callable[[MatchTerm], Goal]
+type Emit[Ctx] = Callable[[Ctx, Subst, Next], Result]
+type Step[Ctx] = Callable[[Emit[Ctx], Next, Next], Result]
+type Goal[Ctx] = Callable[[Ctx, Subst], Step[Ctx]]
+type Executable = Callable[[Head], Goal]
+type Head = Atom | Functor
 
 
 @dataclass(frozen=True, slots=True)
 class Subst(Mapping[Variable, Term]):
-    """A substitution environment that maps Variables to values. Such a mapping
-    is called a variable binding. Variables are bound during computations and
-    unbound again during backtracking. This process is called trailing."""
-
     map: Map = field(default_factory=Map)
 
-    def clone_with(self, variable: Variable, term: Term) -> Self:
-        return type(self)(self.map.set(variable, term))
+    def clone_with(self, variable: Variable, value: Term) -> Self:
+        return type(self)(self.map.set(variable, value))
 
-    def deref(self, obj) -> Term:
-        "Chase down Variable bindings."
+    @cache
+    def actualize(self, obj) -> Term:
+        match self[obj]:
+            case Functor(name=name, args=args):
+                return Functor(name, *(self.actualize(a) for a in args))
+            case Structure(args=args) as struct:
+                return type(struct)(*(self.actualize(a) for a in args))
+            case obj:
+                return obj
+
+    def __getitem__(self, obj) -> Term:
         visited = set()
-        while isinstance(obj, Variable) and obj in self:
+        while isinstance(obj, Variable) and obj in self.map:
             if obj in visited:
                 raise RuntimeError(f"Cyclic variable binding detected: {obj}")
             visited.add(obj)
-            obj = self[obj]
+            obj = self.map[obj]
         return obj
-
-    def actualize(self, obj) -> Term:
-        "Recursively replace all variables with their bindings."
-        # TODO: make it not blow the stack, i.e. replace recursion with tail-calls.
-        match self.deref(obj):
-            case Functor(name=name, args=args) as struct:
-                return type(struct)(name, *(self.actualize(each) for each in args))
-            case Structure(args=args) as struct:
-                return type(struct)(*(self.actualize(each) for each in args))
-            case term:
-                return term
-
-    def __getattr__(self, name: str):
-        return self.actualize(Variable(name=name))
-
-    def __len__(self):
-        return len(self.map)
 
     def __iter__(self):
         return iter(self.map)
 
-    def __getitem__(self, variable: Variable) -> Term:
-        return self.map[variable]
-
-    @property
-    class proxy(Mapping):
-        "A proxy interface to Subst."
-
-        def __init__(self, subst: Subst):
-            self._subst = subst
-
-        def __iter__(self):
-            yield from self._subst.items()
-
-        def __len__(self):
-            return len(self._subst)
-
-        def __getitem__(self, variable: Expression[Variable]):
-            if variable.term == (term := self._subst.actualize(variable.term)):
-                raise KeyError
-            return Expression(term)
-
-        def __getattr__(self, name: str):
-            return Expression(self._subst.actualize(Variable(name=name)))
+    def __len__(self):
+        return len(self.map)
 
 
-@dataclass(frozen=True, slots=True, init=False)
-class And(BinaryOperator):
-    name: ClassVar[str] = "and"
+@dataclass(frozen=True, slots=True)
+class start_query[Ctx]:
+    step: Step[Ctx]
+
+    def __call__(self) -> Result:
+        return self.step(success, failure, failure)
 
 
-@dataclass(frozen=True, slots=True, init=False)
-class Or(BinaryOperator):
-    name: ClassVar[str] = "or"
-
-
-def join(
-    op: Callable[[QueryTerm, QueryTerm], QueryTerm],
-    goals: tuple[QueryTerm, ...],
-    empty_identity: QueryTerm,
-) -> QueryTerm:
-    """Build a right-associative chain of binary goals.
-
-    - goals: a tuple of Term objects
-    - op: a binary operator constructor (And or Or)
-    - empty_identity: what to return if goals is empty (Fail for And, Unit for Or)
-    """
-    if not goals:
-        return empty_identity
-    return reduce(flip(op), reversed(goals))  # pyright: ignore
-
-
-def dcg_expand(head: MatchTerm, body: QueryTerm | Cons) -> tuple[MatchTerm, QueryTerm]:
-    """
-    Expand a DCG clause head >> body into an ordinary clause head << body.
-    Thread two extra arguments S0, Sn (a so-called Difference List) through the clause.
-    """
-
-    def walk_body(term: Term, inp: Variable) -> tuple[QueryTerm, Variable]:
-        # Expand a DCG body term into a Term with threaded variables.
-        # Returns (expanded_term, output_var).
-        match term:
-            # foo --> foo(Si, So)
-            case Atom(name=name):  # pyright: ignore
-                out = Variable.fresh("S")  # pyright: ignore
-                return Functor(name, inp, out), out  # pyright: ignore
-
-            # inline(foo(*X)) --> foo(*X)
-            case Functor(name="inline", args=inlined):
-                out = Variable.fresh("S")
-                return cast(
-                    QueryTerm,
-                    join(
-                        And,
-                        cast(
-                            tuple[QueryTerm],
-                            tuple(Functor("call", each) for each in inlined),
-                        ),
-                        Atom("fail"),
-                    ),
-                ), inp
-
-            # foo(X,Y) --> foo(X,Y,Si,So)
-            case Functor(name=name, args=args):
-                out = Variable.fresh("S")
-                return Functor(name, *args, inp, out), out
-
-            # [] --> true
-            case Empty():
-                return Atom("true"), inp
-
-            # [a] --> Si = [a|So]
-            case Cons(head=head, tail=Empty()):
-                out = Variable.fresh("S")
-                return Functor("equal", inp, Cons(head, out)), out
-
-            # [a|Rest] --> Si = [a|Mid], expand(Rest, Mid, So)
-            case Cons(head=head, tail=tail):
-                mid = Variable.fresh("S")
-                eq = Functor("equal", inp, Cons(head, mid))
-                tail_exp, out = walk_body(tail, mid)
-                return And(eq, tail_exp), out
-
-            # (A , B) --> expand(A, Si, Mid), expand(B, Mid, So)
-            case And(left=left, right=right):
-                left_exp, mid = walk_body(left, inp)
-                right_exp, out = walk_body(right, mid)
-                return And(left_exp, right_exp), out
-
-            # (A ; B) --> expand(A, Si, So) ; expand(B, Si, So)
-            case Or(left=left, right=right):
-                left_exp, out_left = walk_body(left, inp)
-                right_exp, out_right = walk_body(right, inp)
-                out = Variable.fresh("S")
-                return Or(
-                    And(left_exp, Functor("equal", out_left, out)),
-                    And(right_exp, Functor("equal", out_right, out)),
-                ), out
-
-            case _:
-                raise TypeError(f"Expected query term in DCG body, got: {term!r}")
-
-    # Start walk with fresh input variable S0
-    S0 = Variable.fresh("S")
-    body_expanded, S_final = walk_body(body, S0)
-
-    # Expand the head
-    match head:
-        case Atom(name=name):
-            head_expanded = Functor(name, S0, S_final)
-        case Functor(name=name, args=args):
-            head_expanded = Functor(name, *args, S0, S_final)
-
-    return head_expanded, body_expanded
-
-
-def fact(head: MatchTerm) -> Clause:
-    """Create a Horn clause that represents a fact.
-
-    Facts are statements that are always true in the knowledge base. This
-    function returns a clause that can unify a query term with the fact's head.
-    """
-
-    def clause(query: MatchTerm) -> Goal:
-        fresh_head = deepcopy(head)
-        return unify(query, fresh_head)
-
-    return clause
-
-
-def rule(head: MatchTerm, body: QueryTerm) -> Clause:
-    """Create a Horn clause that represents a rule.
-
-    Rules relate a head to a body of conditions. This function returns a clause
-    that first unifies the head and then resolves the body.
-    """
-
-    def clause(query: MatchTerm) -> Goal:
-        # copy head and body at the same time to preserve common variables:
-        fresh_head, fresh_body = deepcopy((head, body))
-        return then(unify(query, fresh_head), resolve(fresh_body))
-
-    return clause
-
-
-def python_rule(head: MatchTerm, body: PythonBody) -> Clause:
-    def clause(query: MatchTerm) -> Goal:
-        fresh_head = deepcopy(head)
-        return then(unify(query, fresh_head), body(fresh_head))
-
-    return clause
-
-
-def resolve(query: Term) -> Goal:
-    """Convert a term into a monadic goal suitable for resolution.
-
-    This function interprets different types of terms (atoms, functors, conjunctions,
-    disjunctions) and returns a Goal that can be executed in the logic monad.
-    """
-
-    match query:
-        # Atomic or structured goals: find all clauses matching this term
-        # in the database. Each clause represents a possible path of execution.
-        case Atom() | Functor():
-            return lambda db, subst: amb_from_iterable(
-                clause(query) for clause in db[query.indicator]
-            )(db, subst)
-
-        # Conjunction goals: both left and right must succeed.
-        case And(left=left, right=right):
-            assert isinstance(left, QueryTermClass), (
-                f"Expected query term, got: {left!r}"
-            )
-            assert isinstance(right, QueryTermClass), (
-                f"Expected query term, got: {right!r}"
-            )
-            return then(resolve(left), resolve(right))
-
-        # Disjunction goals: either left or right can satisfy the query.
-        case Or(left=left, right=right):
-            assert isinstance(left, QueryTermClass), (
-                f"Expected query term, got: {left!r}"
-            )
-            assert isinstance(right, QueryTermClass), (
-                f"Expected query term, got: {right!r}"
-            )
-            return choice(resolve(left), resolve(right))
-
-        case Invert(operand=operand):
-            return neg(resolve(operand))
-
-        # case ParenthesizedTerm(operand=operand):
-        #     return resolve(operand)
-
-        # Everything else is invalid.
-        case _:
-            raise TypeError(f"Type error: `callable' expected, found {query!r}")
-
-
-class Database(ChainMap[Indicator, list[Clause]]):
-    """A container for storing Horn clauses, indexed by their indicator.
-
-    The database supports facts, rules, and DCG-expanded clauses. Queries
-    are resolved against the clauses in this database.
-    """
-
-    def tell(self, *clauses: HasTerm) -> None:
-        """Add clauses to the database.
-
-        Each expression is categorized as a fact, rule, or DCG construct.
-        The corresponding Clause is then added to the database.
-        """
-        for clause in clauses:
-            match clause.term:
-                case PythonClause(head=head, body=body):
-                    self.setdefault(head.indicator, []).append(python_rule(head, body))
-
-                case Atom() | Functor() as head:
-                    self.setdefault(head.indicator, []).append(fact(head))
-
-                case DCGRuleTerm(term=head, args=args):
-                    assert isinstance(head, MatchTermClass), (
-                        f"invalid term clause {head!r}"
-                    )
-                    assert all(isinstance(a, QueryTermClass | Cons) for a in args), (
-                        f"invalid body clause {args!r}"
-                    )
-                    # Expand to standard clauses before adding to the database.
-                    new_body = join(And, cast(tuple[QueryTerm], args), Atom("fail"))
-                    head, body = dcg_expand(head, cast(QueryTerm, new_body))
-                    self.setdefault(head.indicator, []).append(rule(head, body))
-
-                case RuleTerm(term=head, args=args):
-                    assert isinstance(head, MatchTermClass), (
-                        f"invalid term clause {head!r}"
-                    )
-                    assert all(isinstance(a, QueryTermClass | Cons) for a in args), (
-                        f"invalid body clause {args!r}"
-                    )
-                    new_body = join(And, cast(tuple[QueryTerm], args), Atom("fail"))
-                    self.setdefault(head.indicator, []).append(
-                        rule(head, cast(QueryTerm, new_body))
-                    )
-
-    def ask(self, *query: Expression, subst: Subst | None = None) -> Iterable[Mapping]:
-        """Query the database for solutions.
-
-        Returns an iterator of substitution mappings that satisfy the query.
-        Each mapping represents a consistent set of variable bindings.
-        """
-        query_term = join(And, tuple(q.term for q in query), Atom("fail"))
-        goal = resolve(query_term)
-        step = goal(self, Subst() if subst is None else subst)
-        for subst in trampoline(lambda: step(success, failure, failure)):
-            yield subst.proxy
-
-
-def success(db: Database, subst: Subst, no: Next) -> Result:
-    "Return the current solution and start searching for more."
+def success[Ctx](ctx: Ctx, subst: Subst, no: Next) -> Result:
     return subst, no
 
 
 def failure() -> Result:
-    "Fail."
+    pass
 
 
-def bind(step: Step, goal: Goal) -> Step:
-    "Return the frame of applying goal to step."
-
-    @tailcall
-    def mb(yes: Emit, no: Next, prune: Next) -> Result:
-        @tailcall
-        def on_success(db: Database, subst: Subst, no: Next) -> Result:
-            return goal(db, subst)(yes, no, prune)
-
-        return step(on_success, no, prune)
-
-    return mb
-
-
-def unit(db: Database, subst: Subst) -> Step:
-    """Take the single value subst into the monad. Represents success.
-    Together with 'then', this makes the monad also a monoid. Together
-    with 'fail' and 'choice', this makes the monad also a lattice."""
+@dataclass(frozen=True, slots=True)
+class on_success[Ctx]:
+    goal: Goal[Ctx]
+    yes: Emit[Ctx]
+    prune: Next
 
     @tailcall
-    def step(yes: Emit, no: Next, prune: Next) -> Result:
-        return yes(db, subst, no)
-
-    return step
+    def __call__(self, ctx: Ctx, subst: Subst, no: Next) -> Result:
+        return self.goal(ctx, subst)(self.yes, no, self.prune)
 
 
-def cut(db: Database, subst: Subst) -> Step:
-    "Succeed once, then prune the search tree at the previous choice point."
-
-    @tailcall
-    def step(yes: Emit, no: Next, prune: Next) -> Result:
-        # we commit to the current execution path by injecting
-        # the prune continuation as our new backtracking path:
-        return yes(db, subst, prune)
-
-    return step
-
-
-def fail(db: Database, subst: Subst) -> Step:
-    """Ignore the argument and start backtracking. Represents failure.
-    Together with 'choice', this makes the monad also a monoid. Together
-    with 'unit' and 'then', this makes the monad also a lattice.
-    It is also mzero."""
+@dataclass(frozen=True, slots=True)
+class bind[Ctx]:
+    step: Step[Ctx]
+    goal: Goal[Ctx]
 
     @tailcall
-    def step(yes: Emit, no: Next, prune: Next) -> Result:
-        return no()
-
-    return step
+    def __call__(self, yes: Emit[Ctx], no: Next, prune: Next) -> Result:
+        return self.step(on_success(self.goal, yes, prune), no, prune)
 
 
-def then(goal1: Goal, goal2: Goal) -> Goal:
-    """Apply two monadic functions goal1 and goal2 in sequence.
-    Together with 'unit', this makes the monad also a monoid. Together
-    with 'fail' and 'choice', this makes the monad also a lattice."""
+@dataclass(frozen=True, slots=True)
+class unit[Ctx]:
+    ctx: Ctx
+    subst: Subst
 
-    def goal(db: Database, subst: Subst) -> Step:
-        return bind(goal1(db, subst), goal2)
+    @tailcall
+    def __call__(self, yes: Emit[Ctx], no: Next, prune: Next) -> Result:
+        return yes(self.ctx, self.subst, no)
 
-    return goal
+
+@dataclass(frozen=True, slots=True)
+class cut[Ctx]:
+    ctx: Ctx
+    subst: Subst
+
+    @tailcall
+    def __call__(self, yes: Emit[Ctx], no: Next, prune: Next) -> Result:
+        return yes(self.ctx, self.subst, prune)
 
 
-def seq_from_iterable(goals: Iterable[Goal]) -> Goal:
-    "Find solutions for all goals in sequence."
+@tailcall
+def fail_step[Ctx](yes: Emit[Ctx], no: Next, prune: Next) -> Result:
+    return no()
+
+
+def fail[Ctx](ctx: Ctx, subst: Subst) -> Step[Ctx]:
+    return fail_step
+
+
+@dataclass(frozen=True, slots=True)
+class then[Ctx]:
+    goal1: Goal[Ctx]
+    goal2: Goal[Ctx]
+
+    def __call__(self, ctx: Ctx, subst: Subst) -> Step[Ctx]:
+        return bind(self.goal1(ctx, subst), self.goal2)
+
+
+def seq_from_iterable[Ctx](goals: Iterable[Goal[Ctx]]) -> Goal[Ctx]:
     return reduce(then, goals, unit)
 
 
-def seq(*goals: Goal) -> Goal:
-    "Find solutions for all goals in sequence."
+def seq[Ctx](*goals: Goal[Ctx]) -> Goal[Ctx]:
     return seq_from_iterable(goals)
 
 
-def choice(goal1: Goal, goal2: Goal) -> Goal:
-    """Succeeds if either of the goal functions succeeds.
-    Together with 'fail', this makes the monad also a monoid. Together
-    with 'unit' and 'then', this makes the monad also a lattice."""
+@dataclass(frozen=True, slots=True)
+class on_failure[Ctx]:
+    goal: Goal[Ctx]
+    ctx: Ctx
+    subst: Subst
+    yes: Emit[Ctx]
+    no: Next
+    prune: Next
 
-    def goal(db: Database, subst: Subst) -> Step:
-        @tailcall
-        def step(yes: Emit, no: Next, prune: Next) -> Result:
-            # we pass goal1 and goal2 the same success continuation, so we
-            # can invoke goal1 and goal2 at the same point in the computation:
-            @tailcall
-            def on_failure() -> Result:
-                return goal2(db, subst)(yes, no, prune)
-
-            return goal1(db, subst)(yes, on_failure, prune)
-
-        return step
-
-    return goal
+    @tailcall
+    def __call__(self) -> Result:
+        return self.goal(self.ctx, self.subst)(self.yes, self.no, self.prune)
 
 
-def amb_from_iterable(goals: Iterable[Goal]) -> Goal:
-    joined = reduce(choice, goals, fail)
+@dataclass(frozen=True, slots=True)
+class choice_step[Ctx]:
+    goal1: Goal[Ctx]
+    goal2: Goal[Ctx]
+    ctx: Ctx
+    subst: Subst
 
-    def goal(db: Database, subst: Subst) -> Step:
-        @tailcall
-        def step(yes: Emit, no: Next, prune: Next) -> Result:
-            # we serialize the goals and inject the
-            # fail continuation as the prune path:
-            return joined(db, subst)(yes, no, no)
-
-        return step
-
-    return goal
+    @tailcall
+    def __call__(self, yes: Emit[Ctx], no: Next, prune: Next) -> Result:
+        return self.goal1(self.ctx, self.subst)(
+            yes,
+            on_failure(self.goal2, self.ctx, self.subst, yes, no, prune),
+            prune,
+        )
 
 
-def amb(*goals: Goal) -> Goal:
-    "Find solutions for some goals. This creates a choice point."
+@dataclass(frozen=True, slots=True)
+class choice[Ctx]:
+    goal1: Goal[Ctx]
+    goal2: Goal[Ctx]
+
+    def __call__(self, ctx: Ctx, subst: Subst) -> Step[Ctx]:
+        return choice_step(self.goal1, self.goal2, ctx, subst)
+
+
+@dataclass(frozen=True, slots=True)
+class amb_step[Ctx]:
+    goal: Goal[Ctx]
+    ctx: Ctx
+    subst: Subst
+
+    @tailcall
+    def __call__(self, yes: Emit[Ctx], no: Next, prune: Next) -> Result:
+        return self.goal(self.ctx, self.subst)(yes, no, no)
+
+
+@dataclass(frozen=True, slots=True)
+class amb_goal[Ctx]:
+    goal: Goal[Ctx]
+
+    def __call__(self, ctx: Ctx, subst: Subst) -> Step[Ctx]:
+        return amb_step(self.goal, ctx, subst)
+
+
+def amb_from_iterable[Ctx](goals: Iterable[Goal[Ctx]]) -> Goal[Ctx]:
+    return amb_goal(reduce(choice, goals, fail))
+
+
+def amb[Ctx](*goals: Goal[Ctx]) -> Goal[Ctx]:
     return amb_from_iterable(goals)
 
 
-def neg(goal: Goal) -> Goal:
-    "Invert the frame of a monadic computation, AKA negation as failure."
+def neg[Ctx](goal: Goal[Ctx]) -> Goal[Ctx]:
     return amb(seq(goal, cut, fail), unit)
 
 
-def _unify_variable(variable: Variable, term: Term) -> Goal:
-    def unifier(db: Database, subst: Subst) -> Step:
-        if variable in subst:
-            # variable is already bound, so try to unify the bound thing:
-            return tailcall(_unify(subst[variable], term)(db, subst))
+@dataclass(frozen=True, slots=True)
+class _unify_variable[Ctx]:
+    variable: Variable
+    term: Term
+
+    def __call__(self, ctx: Ctx, subst: Subst) -> Step[Ctx]:
+        value = subst[self.variable]
+        if value is self.variable:
+            return unit(ctx, subst.clone_with(self.variable, self.term))
         else:
-            # otherwise just create a new binding:
-            return unit(db, subst.clone_with(variable, term))
-
-    return unifier
+            return tailcall(_unify(value, self.term)(ctx, subst))
 
 
-def _unify(this: Term, that: Term) -> Goal:
+def _unify[Ctx](this: Term, that: Term) -> Goal[Ctx]:
     match this, that:
-        # Anonymous variable "_" matches anything and never binds:
-        # This implements "don't-care" semantics.
-        case AnonVariable(), _:
-            return unit
-
-        # Same as above, but with swapped arguments:
-        case _, AnonVariable():
-            return unit
-
-        # Equal things are already unified:
         case _ if this == that:
             return unit
 
-        # Unify a Variable to another thing:
+        case Wildcard(), _:
+            return unit
+
+        case _, Wildcard():
+            return unit
+
         case Variable(), _:
             return _unify_variable(this, that)
 
-        # Same as above, but with swapped arguments:
         case _, Variable():
             return _unify_variable(that, this)
 
-        # Two Structures can be unified only if both have the same name and arity
-        # and their elements can be unified:
-        case Structure(), Structure() if this.indicator == that.indicator:
-            return unify_pairs(*zip(this.args, that.args))
+        case Structure(), Structure():
+            if this.indicator == that.indicator:
+                return unify_pairs(*zip(this.args, that.args))
+            else:
+                return fail
 
-        # Unification failed:
         case _:
             return fail
 
 
-# Public interface to _unify:
-def unify_pairs(*pairs: tuple[Term, Term]) -> Goal:
-    """Unify 'this' and 'that'.
-    If at least one is an unbound Variable, bind it to the other object.
-    If both are either lists or tuples, try to unify them recursively.
-    Otherwise, unify them if they are equal."""
-    return lambda db, subst: tailcall(
-        seq_from_iterable(
-            _unify(subst.deref(this), subst.deref(that)) for this, that in pairs
-        )(db, subst)
-    )
+@dataclass(frozen=True, slots=True, init=False)
+class unify_pairs[Ctx]:
+    pairs: tuple[tuple[Term, Term], ...]
 
+    def __init__(self, *pairs: tuple[Term, Term]) -> None:
+        object.__setattr__(self, "pairs", pairs)
 
-def unify(this: Term, that: Term) -> Goal:
-    """Unify 'this' and 'that'.
-    If at least one is an unbound Variable, bind it to the other object.
-    If both are either lists or tuples, try to unify them recursively.
-    Otherwise, unify them if they are equal."""
-    return lambda db, subst: tailcall(
-        _unify(subst.deref(this), subst.deref(that))(db, subst)
-    )
-
-
-def unify_any(variable: Variable, *values: Term) -> Goal:
-    """Tries to unify a variable with any one of objects.
-    Fails if no object is unifiable."""
-    return amb_from_iterable(unify(variable, value) for value in values)
+    def __call__(self, ctx: Ctx, subst: Subst) -> Step[Ctx]:
+        return tailcall(
+            seq_from_iterable(
+                _unify(subst[this], subst[that]) for this, that in self.pairs
+            )(ctx, subst)
+        )
 
 
 @dataclass(frozen=True, slots=True)
-class PythonClause(Term):
-    """A clause implemented in Python rather than the DSL.
+class unify[Ctx]:
+    this: Term
+    that: Term
 
-    Attributes:
-        head: The term used for pattern matching in the database.
-        body: A callable representing the body of the clause, following the Clause protocol.
-    """
-
-    head: MatchTerm
-    body: PythonBody
+    def __call__(self, ctx: Ctx, subst: Subst) -> Step[Ctx]:
+        return _unify(subst[self.this], subst[self.that])(ctx, subst)
 
 
-def predicate(head: Expression[Term]) -> Callable[..., Expression[PythonClause]]:
-    """Decorator to define a Python-backed clause.
-
-    The decorated function becomes the body of a PythonClause. The given head
-    expression is used for matching against queries in the database.
-
-    Usage:
-        @predicate(foo(V))
-        def _(term: Functor) -> Goal:
-            ...
-
-    Args:
-        head: An Expression[MatchTerm] representing the head of the clause.
-
-    Returns:
-        A decorator that converts a Python function into an Expression[PythonClause].
-    """
-
-    def decorator(body: Callable[[Term], Goal]) -> Expression[PythonClause]:
-        return lift(PythonClause)(head.term, body)
-
-    return decorator
-
-
-MatchTermClass = Atom | Functor
-QueryTermClass = Atom | Functor | And | Or | PythonClause | Invert
+def unify_any[Ctx](variable: Variable, *values: Term) -> Goal[Ctx]:
+    return amb_from_iterable(unify(variable, value) for value in values)

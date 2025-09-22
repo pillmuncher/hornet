@@ -2,7 +2,7 @@
 
 # from queens import *
 # from symdiff import *
-from fizzbuzz import *
+from examples.fizzbuzz import *
 
 if __name__ == "__main__":
     import cProfile

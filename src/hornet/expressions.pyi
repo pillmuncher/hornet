@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from functools import cache
-from typing import Any, Callable, ClassVar, Protocol, override
+from typing import Any, Callable, Protocol
 
-from .terms import Atom, Functor, Indicator, Term
+from .terms import Atom, DCGRule, Functor, Rule, Term
 
 
 def lift(func: Callable[..., Term]) -> Callable[..., Expression]: ...
@@ -13,35 +12,13 @@ def lift(func: Callable[..., Term]) -> Callable[..., Expression]: ...
 def promote(obj: Any) -> Term: ...
 
 
-class HasTerm[T: Term](Protocol):
+class HasTerm[T](Protocol):
     @property
     def term(self) -> T: ...
 
 
 @dataclass(frozen=True, slots=True)
-class BaseRuleTerm(Term):
-    name: ClassVar[str]
-    term: Term
-    args: tuple[Term, ...]
-
-    @property
-    @cache
-    @override
-    def indicator(self) -> Indicator: ...
-
-
-@dataclass(frozen=True, slots=True, init=False)
-class RuleTerm(BaseRuleTerm):
-    name: ClassVar[str] = "RuleTerm"
-
-
-@dataclass(frozen=True, slots=True, init=False)
-class DCGRuleTerm(BaseRuleTerm):
-    name: ClassVar[str] = "DCGRuleTerm"
-
-
-@dataclass(frozen=True, slots=True)
-class Rule[T: BaseRuleTerm]:
+class RuleExpression[T]:
     term: T
 
 
@@ -49,7 +26,7 @@ class Rule[T: BaseRuleTerm]:
 class DCG:
     expr: Expression[Atom | Functor]
 
-    def when(self, *args) -> Rule[DCGRuleTerm]: ...
+    def when(self, *args) -> RuleExpression[DCGRule]: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,7 +34,7 @@ class Expression[T: Term]:
     term: T
 
     def __init__(self, term: Term): ...
-    def when(self, *args: Any) -> Rule[RuleTerm]: ...
+    def when(self, *args: Any) -> RuleExpression[Rule]: ...
     def __neg__(self: Any): ...
     def __pos__(self: Any): ...
     def __invert__(self: Any): ...
@@ -67,8 +44,6 @@ class Expression[T: Term]:
     def __rsub__(self: Any, other: Any): ...
     def __mul__(self: Any, other: Any): ...
     def __rmul__(self: Any, other: Any): ...
-    def __matmul__(self: Any, other: Any): ...
-    def __rmatmul__(self: Any, other: Any): ...
     def __truediv__(self: Any, other: Any): ...
     def __rtruediv__(self: Any, other: Any): ...
     def __floordiv__(self: Any, other: Any): ...

@@ -4,11 +4,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from functools import cache, partial, reduce
-from typing import Any, Callable, ClassVar, Protocol, cast, override
+from functools import partial, reduce
+from itertools import count
+from typing import Any, Callable, Iterator, Protocol, cast
 
 from toolz.functoolz import compose, flip
 
+from .states import StateGenerator, const, get_state, identity, set_state, with_state
 from .terms import (
     EMPTY,
     Add,
@@ -16,75 +18,146 @@ from .terms import (
     BitAnd,
     BitOr,
     BitXor,
-    Bool,
-    Bytes,
-    Complex,
+    Conjunction,
     Cons,
+    Disjunction,
     Div,
-    Float,
+    Empty,
     FloorDiv,
     Functor,
-    Indicator,
-    Integer,
+    HornetRule,
     Invert,
     LShift,
+    MatchTerm,
     Mod,
-    Mult,
+    Mul,
     Pow,
+    QueryTerm,
     RShift,
-    String,
+    Structure,
     Sub,
     Term,
     UAdd,
     USub,
+    Variable,
+    Wildcard,
 )
 
 
-class HasTerm[T: Term](Protocol):
+class HasTerm[T](Protocol):
     @property
     def term(self) -> T: ...
 
 
+type VarCount = tuple[int, Iterator[int]]
+_v_count: Iterator[int] = count()
+
+
+@with_state
+def _dcg_expand(head: Term, body: Term) -> StateGenerator[VarCount, tuple[Term, Term]]:
+    @with_state
+    def current_variable() -> StateGenerator[VarCount, Variable]:
+        i, _ = yield get_state(identity)
+        return Variable(f"S${i}")
+
+    @with_state
+    def advance_variables() -> StateGenerator[VarCount, tuple[Variable, Variable]]:
+        i, c = yield get_state(identity)
+        j = next(c)
+        yield set_state(const((j, c)))
+        return Variable(f"S${i}"), Variable(f"S${j}")
+
+    @with_state
+    def dcg_expand_cons(term: Term) -> StateGenerator[VarCount, tuple[Term, Variable]]:
+        result_terms = []
+
+        while True:
+            match term:
+                case Cons(head=head, tail=tail):
+                    Sout, Sin = yield advance_variables()
+                    result_terms.append(Functor("equal", Sout, Cons(head, Sin)))
+                    term = tail
+                case Empty():
+                    break
+
+        Sin = yield current_variable()
+        return Conjunction(*result_terms), Sin
+
+    @with_state
+    def walk_body(
+        term: Term,
+    ) -> StateGenerator[VarCount, Term]:
+        match term:
+            case Atom(name=name):
+                Sout, Sin = yield advance_variables()
+                return Functor(name, Sout, Sin), Sin
+
+            case Functor(name="inline", args=inlined):
+                Sin = yield current_variable()
+                return Conjunction(*tuple(inlined)), Sin
+
+            case Functor(name=name, args=args):
+                Sout, Sin = yield advance_variables()
+                return Functor(name, *args, Sout, Sin), Sin
+
+            case Cons():
+                return (yield dcg_expand_cons(term))
+
+            case Conjunction(body=goals):
+                new_goals = []
+                for goal in goals:
+                    new_goal, _ = yield walk_body(goal)
+                    new_goals.append(new_goal)
+                Sin = yield current_variable()
+                return Conjunction(*new_goals), Sin
+
+            case Disjunction(body=goals):
+                new_goals = []
+                for goal in goals:
+                    new_goal, _ = yield walk_body(goal)
+                    new_goals.append(new_goal)
+                Sin = yield current_variable()
+                return Disjunction(*new_goals), Sin
+
+        raise TypeError(f"Expected query term in DCG body, got: {term!r}")
+
+    Sout = yield current_variable()
+    body_expanded, Sin = yield walk_body(body)
+
+    match head:
+        case Atom(name=name):
+            head_expanded = Functor(name, Sout, Sin)
+        case Functor(name=name, args=args):
+            head_expanded = Functor(name, *args, Sout, Sin)
+        case _:
+            raise TypeError(f"Expected head term in DCG body, got: {head!r}")
+
+    assert isinstance(head_expanded, MatchTerm)
+    assert isinstance(body_expanded, QueryTerm)
+    return head_expanded, body_expanded
+
+
+def dcg_expand(head: Term, body: Term) -> tuple[Term, Term]:
+    (new_head, new_body), _ = _dcg_expand(head, body).run((next(_v_count), _v_count))
+    return new_head, new_body
+
+
 @dataclass(frozen=True, slots=True)
-class BaseRuleTerm(Term):
-    name: ClassVar[str]
+class RuleExpression:
     term: Term
-    args: tuple[Term, ...]
-
-    @property
-    @cache
-    @override
-    def indicator(self) -> Indicator:
-        return self.name, 1
-
-
-@dataclass(frozen=True, slots=True, init=False)
-class RuleTerm(BaseRuleTerm):
-    name: ClassVar[str] = "RuleTerm"
-
-
-@dataclass(frozen=True, slots=True, init=False)
-class DCGRuleTerm(BaseRuleTerm):
-    name: ClassVar[str] = "DCGRuleTerm"
-    pass
-
-
-@dataclass(frozen=True, slots=True)
-class Rule[T: BaseRuleTerm]:
-    term: T
 
 
 @dataclass(frozen=True, slots=True)
 class DCG:
     expr: Expression[Atom | Functor]
 
-    def when(self, *args) -> Rule[DCGRuleTerm]:
-        return Rule(
-            term=DCGRuleTerm(
-                term=self.expr.term,
-                args=tuple(promote(arg) for arg in args),
-            )
-        )
+    def when(self, *args) -> RuleExpression:
+        head = self.expr.term
+        body = Conjunction(*(promote(arg) for arg in args))
+        new_head, new_body = dcg_expand(head, body)
+        assert isinstance(new_head, MatchTerm)
+        assert isinstance(new_body, QueryTerm)
+        return RuleExpression(term=HornetRule(head=new_head, body=new_body))
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,26 +168,24 @@ class Expression[T: Term]:
 
     term: T
 
-    def when(self, *args) -> Rule[RuleTerm]:
-        assert isinstance(self.term, Atom | Functor)
-        return Rule(
-            term=RuleTerm(
-                term=self.term,
-                args=tuple(promote(arg) for arg in args),
-            )
-        )
+    def when(self, *args) -> RuleExpression:
+        head = self.term
+        body = Conjunction(*(promote(arg) for arg in args))
+        assert isinstance(head, MatchTerm)
+        assert isinstance(body, QueryTerm)
+        return RuleExpression(HornetRule(head=head, body=body))
+
+    def __repr__(self):
+        return f"Expression({repr(self.term)})"
+
+    def __str__(self):
+        return f"Expression({str(self.term)})"
 
     def __eq__(self, other):
         return isinstance(other, Expression) and self.term == other.term
 
     def __hash__(self) -> int:
         return hash((Expression, self.term))
-
-    def __repr__(self):
-        return repr(self.term)
-
-    def __str__(self):
-        return str(self.term)
 
     def __neg__(self):
         return expression(USub(promote(self)))
@@ -130,126 +201,120 @@ class Expression[T: Term]:
 
     @flip
     def __radd__(self, other):
-        return expression(Add(promote(self), promote(other)))
+        return expression(Add(promote(other), promote(self)))
 
     def __sub__(self, other):
         return expression(Sub(promote(self), promote(other)))
 
     @flip
     def __rsub__(self, other):
-        return expression(Sub(promote(self), promote(other)))
+        return expression(Sub(promote(other), promote(self)))
 
     def __mul__(self, other):
-        return expression(Mult(promote(self), promote(other)))
+        return expression(Mul(promote(self), promote(other)))
 
     @flip
     def __rmul__(self, other):
-        return expression(Mult(promote(self), promote(other)))
-
-    def __matmul__(self, other):
-        return expression(Mult(promote(self), promote(other)))
-
-    @flip
-    def __rmatmul__(self, other):
-        return expression(Mult(promote(self), promote(other)))
+        return expression(Sub(promote(other), promote(self)))
 
     def __truediv__(self, other):
         return expression(Div(promote(self), promote(other)))
 
     @flip
     def __rtruediv__(self, other):
-        return expression(Div(promote(self), promote(other)))
+        return expression(Sub(promote(other), promote(self)))
 
     def __floordiv__(self, other):
         return expression(FloorDiv(promote(self), promote(other)))
 
     @flip
     def __rfloordiv__(self, other):
-        return expression(FloorDiv(promote(self), promote(other)))
+        return expression(Sub(promote(other), promote(self)))
 
     def __mod__(self, other):
         return expression(Mod(promote(self), promote(other)))
 
     @flip
     def __rmod__(self, other):
-        return expression(Mod(promote(self), promote(other)))
+        return expression(Sub(promote(other), promote(self)))
 
     def __pow__(self, other):
         return expression(Pow(promote(self), promote(other)))
 
     @flip
     def __rpow__(self, other):
-        return expression(Pow(promote(self), promote(other)))
+        return expression(Sub(promote(other), promote(self)))
 
     def __lshift__(self, other):
         return expression(LShift(promote(self), promote(other)))
 
     @flip
     def __rlshift__(self, other):
-        return expression(LShift(promote(self), promote(other)))
+        return expression(Sub(promote(other), promote(self)))
 
     def __rshift__(self, other):
         return expression(RShift(promote(self), promote(other)))
 
     @flip
     def __rrshift__(self, other):
-        return expression(RShift(promote(self), promote(other)))
+        return expression(Sub(promote(other), promote(self)))
 
     def __and__(self, other):
         return expression(BitAnd(promote(self), promote(other)))
 
     @flip
     def __rand__(self, other):
-        return expression(BitAnd(promote(self), promote(other)))
+        return expression(Sub(promote(other), promote(self)))
 
     def __xor__(self, other):
         return expression(BitXor(promote(self), promote(other)))
 
     @flip
     def __rxor__(self, other):
-        return expression(BitXor(promote(self), promote(other)))
+        return expression(Sub(promote(other), promote(self)))
 
     def __or__(self, other):
         return expression(BitOr(promote(self), promote(other)))
 
     @flip
     def __ror__(self, other):
-        return expression(BitOr(promote(self), promote(other)))
+        return expression(Sub(promote(other), promote(self)))
 
     def __call__(self, *args):
         match promote(self):
             case Atom(name):
                 return expression((Functor(name, *(promote(arg) for arg in args))))
-            case wat:
-                print("!!!", type(wat), wat)
+
+            case _:
                 raise TypeError(f"Atom required, not {self}")
 
 
-def promote(obj: Any) -> Term:
+def promote(obj: Any) -> Term | tuple:
     """
     Convert a Python object to a Term.
     """
     match obj:
-        case Term() as term:
-            return term
+        case (
+            Wildcard()
+            | Variable()
+            | Atom()
+            | Structure()
+            | str()
+            | bytes()
+            | int()
+            | bool()
+            | float()
+            | complex()
+        ):
+            return obj
         case Expression(term):
             return term
-        case str():
-            return String(obj)
-        case bytes():
-            return Bytes(obj)
-        case int():
-            return Integer(obj)
-        case bool():
-            return Bool(obj)
-        case float():
-            return Float(obj)
-        case complex():
-            return Complex(obj)
-        case []:
+        case tuple():
+            return tuple(promote(each) for each in obj)
+        case list([]):
             return EMPTY
-        case [head, *tail]:
-            return Cons(promote(head), promote(tail))
+        case list([head, *tail]):
+            return Cons(promote(head), promote(list(tail)))
         case _:
             raise TypeError(f"{type(obj)}")
 

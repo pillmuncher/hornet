@@ -5,15 +5,96 @@ from __future__ import annotations
 
 from typing import Callable
 
-from hornet.terms import Atomic
+from hornet.terms import (
+    Add,
+    BitAnd,
+    BitOr,
+    BitXor,
+    Div,
+    FloorDiv,
+    Invert,
+    LShift,
+    Mod,
+    Mul,
+    Pow,
+    RShift,
+    Sub,
+    UAdd,
+    USub,
+)
 
-from .combinators import Database, Step, amb_from_iterable, seq_from_iterable, then
+from .goals import Database
 
-__all__ = ("_bootstrap_database",)
+__all__ = ["_bootstrap_database"]
 
-# TODO:
+# TODO: implement the following builtin predicates:
+#
 # assertz
 # is_list
+# arithmetic_equal,
+# listing,
+# transpose,
+#
+# from toolz import flip, reduce
+#
+#
+# def all_of_(left, right, *rights):
+#     if rights:
+#         return reduce(flip(and_), (right, *rights), left)  # pyright: ignore
+#     return and_(left, right)
+#
+#
+# def any_of_(left, right, *rights):
+#     if rights:
+#         return reduce(flip(or_), (right, *rights), left)  # pyright: ignore
+#     return or_(left, right)
+# @db.tell
+# @predicate(all_of())
+# def _1(env: Environment) -> Step:
+#     def goal(db: Database, subst: Subst) -> Step:
+#         return amb_from_iterable(
+#             map(resolve, (subst.actualize(term) for term in env))
+#         )(db, subst)
+#
+#     return goal
+#
+# @db.tell
+# @predicate(any_of())
+# def _2(env: Environment) -> Step:
+#     def goal(db: Database, subst: Subst) -> Step:
+#         return seq_from_iterable(
+#             map(resolve, (subst.actualize(term) for term in env))
+#         )(db, subst)
+#
+#     return goal
+# @db.tell
+# @predicate(univ(F, L))
+# def _3(env: Environment) -> Step:
+#     def goal(db: Database, subst: Subst) -> Step:
+#         match subst.actualize(env[F]):
+#             case Atom(name=name) as res:
+#                 left = term_to_resolvable([res])
+#             case Functor(args=args) as res:
+#                 actual_args = tuple(
+#                     resolvable_to_term(subst.actualize(a), subst) for a in args
+#                 )
+#                 left = term_to_resolvable([res, *actual_args])
+#             case v:
+#                 left = v
+#         match subst.actualize(env[L]):
+#             case Cons(head=Atom() as head, tail=Empty()):
+#                 right = head
+#             case Cons(head=Atom(name=name) as head, tail=tail):
+#                 args = to_python_list(cast(Cons | Empty, tail), subst)
+#                 new_args = tuple(term_to_resolvable(item) for item in args)
+#                 right = Functor(name=name, args=new_args)
+#             case v:
+#                 right = v
+#         if isinstance(left, Variable) and isinstance(right, Variable):
+#             raise TypeError(f"Cannot unify {F} with {L}")
+#         return _unify(left, right)(db, subst)
+#
+#     return goal
 
 
 # Bootstrap a default database with builtins
@@ -21,37 +102,26 @@ def _bootstrap_database() -> Callable[[], Database]:
     """Add default Hornet builtins to the given database."""
     from numbers import Number
 
-    from hornet.combinators import Atom, Cons, Goal, Subst
+    from toolz import flip, reduce
+
+    from hornet.combinators import Goal, Step, Subst
     from hornet.combinators import cut as _cut
     from hornet.combinators import fail as _fail
-    from hornet.combinators import predicate, resolve
+    from hornet.combinators import neg as _neg
+    from hornet.combinators import then
     from hornet.combinators import unify as _unify
     from hornet.combinators import unit as _unit
-    from hornet.expressions import Expression, promote
+    from hornet.expressions import Expression
+    from hornet.goals import Environment, PythonGoal, predicate, resolve, to_python_list
     from hornet.terms import (
-        Add,
-        BitAnd,
-        BitOr,
-        BitXor,
-        Bool,
-        Complex,
-        Constant,
-        Div,
+        EMPTY,
+        Atom,
+        Atomic,
+        Cons,
         Empty,
-        Float,
-        FloorDiv,
-        Functor,
-        Integer,
-        Invert,
-        LShift,
-        Mod,
-        Mult,
-        Pow,
-        RShift,
-        Sub,
+        Primitive,
+        QueryTerm,
         Term,
-        UAdd,
-        USub,
         Variable,
     )
 
@@ -62,6 +132,7 @@ def _bootstrap_database() -> Callable[[], Database]:
         B,
         C,
         D,
+        E,
         F,
         G,
         H,
@@ -77,7 +148,6 @@ def _bootstrap_database() -> Callable[[], Database]:
         X,
         Y,
         Z,
-        all_of,
         append,
         arithmetic_equal,
         call,
@@ -112,6 +182,7 @@ def _bootstrap_database() -> Callable[[], Database]:
         reverse,
         select,
         smaller,
+        throw,
         true,
         unequal,
         univ,
@@ -119,310 +190,231 @@ def _bootstrap_database() -> Callable[[], Database]:
         writeln,
     )
 
-    # TODO: implement the following builtin predicates:
-    #
-    # arithmetic_equal,
-    # listing,
-    # throw,
-    # transpose,
+    def goal(value: Goal) -> PythonGoal:
+        return lambda db, subst, _: value(db, subst)
+
     db = Database()
 
-    def eval_term(term: Term) -> int | float | complex | bool:
-        """Evaluate a Hornet arithmetic term into a Python number."""
+    def eval_term(val: Term, subst: Subst) -> int | float | complex | bool:
+        """Evaluate a Hornet arithmetic term directly from Terms."""
 
-        match term:
-            # Base constants
-            case Integer(value=v):
-                return v
-            case Bool(value=v):
-                return v
-            case Float(value=v):
-                return v
-            case Complex(value=v):
-                return v
+        # Dereference variables
+        val = subst.actualize(val)
+
+        match val:
+            case int() | bool() | float() | complex():
+                return val
 
             # Unary operators
-            case Invert(operand=a):
-                r = eval_term(a)
-                assert not isinstance(r, bool | float | complex)
-                return ~r
-            case UAdd(operand=a):
-                return +eval_term(a)
-            case USub(operand=a):
-                return -eval_term(a)
+            case Invert(a):
+                v = eval_term(a, subst)
+                assert not isinstance(v, bool | float | complex)
+                return ~v
+            case UAdd(a):
+                return +eval_term(a, subst)
+            case USub(a):
+                return -eval_term(a, subst)
 
             # Binary operators
-            case LShift(left=l, right=r):
-                rl = eval_term(l)
-                assert not isinstance(rl, float | complex)
-                rr = eval_term(r)
-                assert not isinstance(rr, float | complex)
-                return rl << rr
-            case RShift(left=l, right=r):
-                rl = eval_term(l)
-                assert not isinstance(rl, float | complex)
-                rr = eval_term(r)
-                assert not isinstance(rr, float | complex)
-                return rl >> rr
-            case BitOr(left=l, right=r):
-                rl = eval_term(l)
-                assert not isinstance(rl, float | complex)
-                rr = eval_term(r)
-                assert not isinstance(rr, float | complex)
-                return rl | rr
-            case BitXor(left=l, right=r):
-                rl = eval_term(l)
-                assert not isinstance(rl, float | complex)
-                rr = eval_term(r)
-                assert not isinstance(rr, float | complex)
-                return rl ^ rr
-            case BitAnd(left=l, right=r):
-                rl = eval_term(l)
-                assert not isinstance(rl, float | complex)
-                rr = eval_term(r)
-                assert not isinstance(rr, float | complex)
-                return rl & rr
-            case Add(left=l, right=r):
-                return eval_term(l) + eval_term(r)
-            case Sub(left=l, right=r):
-                return eval_term(l) - eval_term(r)
-            case Mult(left=l, right=r):
-                return eval_term(l) * eval_term(r)
-            case Div(left=l, right=r):
-                return eval_term(l) / eval_term(r)
-            case FloorDiv(left=l, right=r):
-                rl = eval_term(l)
-                assert not isinstance(rl, complex)
-                rr = eval_term(r)
-                assert not isinstance(rr, complex)
-                return rl // rr
-            case Mod(left=l, right=r):
-                rl = eval_term(l)
-                assert not isinstance(rl, complex)
-                rr = eval_term(r)
-                assert not isinstance(rr, complex)
-                return rl % rr
-            case Pow(left=l, right=r):
-                return eval_term(l) ** eval_term(r)
+            case Add((l, r)):
+                return eval_term(l, subst) + eval_term(r, subst)
+            case Sub((l, r)):
+                return eval_term(l, subst) - eval_term(r, subst)
+            case Mul((l, r)):
+                return eval_term(l, subst) * eval_term(r, subst)
+            case Div((l, r)):
+                return eval_term(l, subst) / eval_term(r, subst)
+            case FloorDiv((l, r)):
+                vl = eval_term(l, subst)
+                assert not isinstance(vl, complex)
+                vr = eval_term(r, subst)
+                assert not isinstance(vr, complex)
+                return vl // vr
+            case Mod((l, r)):
+                vl = eval_term(l, subst)
+                assert not isinstance(vl, complex)
+                vr = eval_term(r, subst)
+                assert not isinstance(vr, complex)
+                return vl % vr
+            case Pow((l, r)):
+                return eval_term(l, subst) ** eval_term(r, subst)
+            case BitAnd((l, r)):
+                vl = eval_term(l, subst)
+                assert not isinstance(vl, float | complex)
+                vr = eval_term(r, subst)
+                assert not isinstance(vr, float | complex)
+                return vl & vr
+            case BitOr((l, r)):
+                vl = eval_term(l, subst)
+                assert not isinstance(vl, float | complex)
+                vr = eval_term(r, subst)
+                assert not isinstance(vr, float | complex)
+                return vl | vr
+            case BitXor((l, r)):
+                vl = eval_term(l, subst)
+                assert not isinstance(vl, float | complex)
+                vr = eval_term(r, subst)
+                assert not isinstance(vr, float | complex)
+                return vl ^ vr
+            case LShift((l, r)):
+                vl = eval_term(l, subst)
+                assert not isinstance(vl, float | complex)
+                vr = eval_term(r, subst)
+                assert not isinstance(vr, float | complex)
+                return vl << vr
+            case RShift((l, r)):
+                vl = eval_term(l, subst)
+                assert not isinstance(vl, float | complex)
+                vr = eval_term(r, subst)
+                assert not isinstance(vr, float | complex)
+                return vl >> vr
 
-            # Fallback
+            # Unbound variable
+            case Variable():
+                raise ValueError(f"Cannot evaluate unbound variable: {val!r}")
+
             case _:
-                raise TypeError(f"Cannot evaluate non-arithmetic term: {repr(term)}")
+                raise TypeError(f"Cannot evaluate non-arithmetic Term: {val!r}")
 
-    def const(value):
-        return lambda *_: value
-
-    @db.tell
-    @predicate(smaller(A, B))
-    def _(term: Functor) -> Goal:
-        def goal(db: Database, subst: Subst) -> Step:
-            a = subst.actualize(term.args[0])
-            b = subst.actualize(term.args[1])
-            match eval_term(a), eval_term(b):
-                case int() | float() as m, int() | float() as n:
-                    if m < n:
-                        return _unit(db, subst)
-            return _fail(db, subst)
-
-        return goal
+    db.tell(
+        predicate(cut)(goal(_cut)),
+        predicate(fail)(goal(_fail)),
+        predicate(true)(goal(_unit)),
+    )
 
     @db.tell
-    @predicate(greater(A, B))
-    def _(term: Functor) -> Goal:
-        def goal(db: Database, subst: Subst) -> Step:
-            a = eval_term(subst.actualize(term.args[0]))
-            b = eval_term(subst.actualize(term.args[1]))
-            match a, b:
-                case int() | float(), int() | float():
-                    if a > b:
-                        return _unit(db, subst)
-            return _fail(db, subst)
-
-        return goal
+    @predicate(~X)
+    def _5(db: Database, subst: Subst, env: Environment) -> Step:
+        return _neg(resolve(subst.actualize(env[X])))(db, subst)
 
     @db.tell
     @predicate(let(R, F))
-    def _(term: Functor) -> Goal:
-        def goal(db: Database, subst: Subst) -> Step:
-            r = subst.actualize(term.args[0])
-            assert isinstance(r, Variable)
-            f = eval_term(subst.actualize(term.args[1]))
-            return then(_unify(r, promote(f)), _cut)(db, subst)
-
-        return goal
-
-    @db.tell
-    @predicate(nonvar(G))
-    def _(term: Functor) -> Goal:
-        def goal(db: Database, subst: Subst) -> Step:
-            if isinstance(subst.actualize(term.args[0]), Variable):
-                return _fail(db, subst)
-            else:
-                return _unit(db, subst)
-
-        return goal
+    def _6(db: Database, subst: Subst, env: Environment) -> Step:
+        r = subst.actualize(env[R])
+        assert isinstance(r, Variable)
+        f = subst.actualize(env[F])
+        f1 = eval_term(f, subst=subst)
+        return then(_unify(r, f1), _cut)(db, subst)
 
     @db.tell
     @predicate(call(G))
-    def _(term: Functor) -> Goal:
-        def goal(db: Database, subst: Subst) -> Step:
-            return resolve(subst.actualize(term.args[0]))(db, subst)
-
-        return goal
+    def _7(db: Database, subst: Subst, env: Environment) -> Step:
+        return resolve(subst.actualize(env[G]))(db, subst)
 
     @db.tell
-    @predicate(all_of())
-    def _(term: Functor) -> Goal:
-        def goal(db: Database, subst: Subst) -> Step:
-            return amb_from_iterable(
-                map(resolve, (subst.actualize(term) for term in term.args))
-            )(db, subst)
-
-        return goal
+    @predicate(throw(E))
+    def _8(db: Database, subst: Subst, env: Environment) -> Step:
+        raise Exception(subst.actualize(env[E]))
 
     @db.tell
-    @predicate(all_of())
-    def _(term: Functor) -> Goal:
-        def goal(db: Database, subst: Subst) -> Step:
-            return seq_from_iterable(
-                map(resolve, (subst.actualize(term) for term in term.args))
-            )(db, subst)
+    @predicate(ifelse(T, Y, N))
+    def _9(db: Database, subst: Subst, env: Environment) -> Step:
+        for new_subst in db.resolve(subst.actualize(env[T]), subst):
+            return resolve(new_subst.actualize(env[Y]))(db, new_subst)
+        else:
+            return resolve(subst.actualize(env[N]))(db, subst)
 
-        return goal
+    @db.tell
+    @predicate(smaller(A, B))
+    def _10(db: Database, subst: Subst, env: Environment) -> Step:
+        match subst.actualize(env[A]), subst.actualize(env[B]):
+            case int() | float() as a, int() | float() as b:
+                if a < b:
+                    return _unit(db, subst)
+        return _fail(db, subst)
+
+    @db.tell
+    @predicate(greater(A, B))
+    def _11(db: Database, subst: Subst, env: Environment) -> Step:
+        match subst.actualize(env[A]), subst.actualize(env[B]):
+            case int() | float() as a, int() | float() as b:
+                if a > b:
+                    return _unit(db, subst)
+        return _fail(db, subst)
 
     @db.tell
     @predicate(length(L, N))
-    def _(term: Functor) -> Goal:
-        def goal(db: Database, subst: Subst) -> Step:
-            count = 0
-            tail = subst.actualize(term.args[0])
-            length = subst.actualize(term.args[1])
-            while True:
-                match tail:
-                    case Empty():
-                        return _unify(Constant(count), length)(db, subst)
-                    case Cons(tail=tail):
-                        count += 1
-                    case _:
-                        raise TypeError(f"list must end with [], not {tail}")
-
-        return goal
+    def _12(db: Database, subst: Subst, env: Environment) -> Step:
+        count = 0
+        tail = subst.actualize(env[L])
+        length = subst.actualize(env[N])
+        while True:
+            match tail:
+                case Empty():
+                    return _unify(count, length)(db, subst)
+                case Cons(tail=tail):
+                    count += 1
+                case _:
+                    raise TypeError(f"list must end with [], not {tail}")
 
     @db.tell
-    @predicate(univ(F, L))
-    def _(term: Functor) -> Goal:
-        def goal(db: Database, subst: Subst) -> Step:
-            match subst.actualize(term.args[0]), subst.actualize(term.args[1]):
-                case Atom(name=name), L:
-                    return _unify(L, Cons(Atom(name), Empty()))(db, subst)
-                case Functor(name=name, args=args), L:
+    @predicate(join(L, S))
+    def _13(db: Database, subst: Subst, env: Environment) -> Step:
+        items = subst.actualize(env[L])
+        assert isinstance(items, Cons | Empty)
 
-                    def build_cons(item, *items: Term) -> Term:
-                        if not items:
-                            return Cons(item, Empty())
-                        return Cons(item, build_cons(*items))
+        result = to_python_list(items, subst)
+        assert all(isinstance(each, str) for each in result)
 
-                    return _unify(L, build_cons(Atom(name), *args))(db, subst)
-                case _ as F, Cons(head=Atom(name), tail=Empty()):
-                    return _unify(F, Atom(name))(db, subst)
-                case _ as F, Cons(head=Atom(name), tail=tail):
-                    items = []
-                    cur = tail
-                    while isinstance(cur, Cons):
-                        items.append(cur.head)
-                        cur = cur.tail
-                    assert isinstance(cur, Empty)
-                    return _unify(F, Functor(name, *items))(db, subst)
-                case F, L:
-                    raise TypeError(f"Cannot unify {F} with {L}")
+        return _unify(env[S], "".join(map(str, result)))(db, subst)
 
-        return goal
+    def list_to_cons(items: list[Term]) -> Cons | Empty:
+        return reduce(flip(Cons), reversed(items), EMPTY)  # pyright: ignore
+
+    @db.tell
+    @predicate(findall(O, G, L))
+    def _14(db: Database, subst: Subst, env: Environment) -> Step:
+        obj = subst.actualize(dict(env)[O])
+        assert isinstance(obj, Variable)
+
+        goal = subst.actualize(env[G])
+        assert isinstance(goal, QueryTerm)
+
+        items = [s.actualize(obj) for s in db.resolve(goal, subst=subst)]
+
+        return _unify(env[L], list_to_cons(items))(db, subst)
 
     # Printing predicates
     @db.tell
     @predicate(write(V))
-    def _(term: Functor) -> Goal:
-        def goal(db: Database, subst: Subst) -> Step:
-            print(subst.actualize(term.args[0]), end="")
-            return _unit(db, subst)
-
-        return goal
+    def _15(db: Database, subst: Subst, env: Environment) -> Step:
+        print(subst.actualize(env[V]), end="")
+        return _unit(db, subst)
 
     @db.tell
     @predicate(writeln(V))
-    def _(term: Functor) -> Goal:
-        def goal(db: Database, subst: Subst) -> Step:
-            print(subst.actualize(term.args[0]))
-            return _unit(db, subst)
-
-        return goal
+    def _16(db: Database, subst: Subst, env: Environment) -> Step:
+        print(subst.actualize(env[V]))
+        return _unit(db, subst)
 
     # Type checking predicates
-    def check(expr: Expression, match: Callable[[Term], bool]) -> Expression:
+    def check(
+        db: Database,
+        expr: Expression,
+        var: Expression[Variable],
+        match: Callable[[Term], bool],
+    ) -> None:
+        @db.tell
         @predicate(expr)
-        def clause(term: Functor) -> Goal:
-            def goal(db: Database, subst: Subst) -> Step:
-                return (
-                    _unit(db, subst)
-                    if match(subst.actualize(term.args[0]))
-                    else _fail(db, subst)
-                )
+        def _17(db: Database, subst: Subst, env: Environment) -> Step:
+            if match(subst.actualize(env[var])):
+                return _unit(db, subst)
+            else:
+                return _fail(db, subst)
 
-            return goal
+    check(db, is_var(V), V, lambda term: isinstance(term, Variable))
+    check(db, nonvar(V), V, lambda term: not isinstance(term, Variable))
+    check(db, is_atom(V), V, lambda term: isinstance(term, Atom))
+    check(db, is_atomic(V), V, lambda term: isinstance(term, Atomic))
+    check(db, is_constant(V), V, lambda term: isinstance(term, Primitive))
+    check(db, is_bool(V), V, lambda term: isinstance(term, bool))
+    check(db, is_bytes(V), V, lambda term: isinstance(term, bytes))
+    check(db, is_complex(V), V, lambda term: isinstance(term, complex))
+    check(db, is_float(V), V, lambda term: isinstance(term, float))
+    check(db, is_int(V), V, lambda term: isinstance(term, int))
+    check(db, is_numeric(V), V, lambda term: isinstance(term, Number))
+    check(db, is_str(V), V, lambda term: isinstance(term, str))
 
-        return clause
-
-    db.tell(
-        check(is_var(V), lambda term: isinstance(term, Variable)),
-        check(is_atom(V), lambda term: isinstance(term, Atom)),
-        check(is_atomic(V), lambda term: isinstance(term, Atomic)),
-        check(is_constant(V), lambda term: isinstance(term, Constant)),
-        check(
-            is_bool(V),
-            lambda term: isinstance(term, Constant) and isinstance(term.value, bool),
-        ),
-        check(
-            is_bytes(V),
-            lambda term: isinstance(term, Constant) and isinstance(term.value, bytes),
-        ),
-        check(
-            is_complex(V),
-            lambda term: isinstance(term, Constant) and isinstance(term.value, complex),
-        ),
-        check(
-            is_float(V),
-            lambda term: isinstance(term, Constant) and isinstance(term.value, float),
-        ),
-        check(
-            is_int(V),
-            lambda term: isinstance(term, Constant) and isinstance(term.value, int),
-        ),
-        check(
-            is_numeric(V),
-            lambda term: isinstance(term, Constant) and isinstance(term.value, Number),
-        ),
-        check(
-            is_str(V),
-            lambda term: isinstance(term, Constant) and isinstance(term.value, str),
-        ),
-    )
-    db.tell(
-        predicate(cut)(const(_cut)),
-        predicate(fail)(const(_fail)),
-        predicate(true)(const(_unit)),
-    )
-    # )
-
-    db.tell(
-        #
-        # append two lists:
-        append([A | B], C, [A | D]).when(
-            append(B, C, D),
-        ),
-    )
-    db.tell(
-        append([], A, A),
-    )
     db.tell(
         #
         # test if two terms can be unified:
@@ -431,52 +423,8 @@ def _bootstrap_database() -> Callable[[], Database]:
     db.tell(
         #
         # test if two terms cannot be unified:
-        unequal(X, X).when(~equal(X)),
-    )
-    db.tell(
-        #
-        # call goal G but ignore if it succeeds:
-        ignore(G).when(
-            call(G),
-            cut,
-        ),
-        ignore(symbols._),
-    )
-    db.tell(
-        #
-        # write out a list, end with newline:
-        lwriteln([H | T]).when(
-            writeln(H),
-            lwriteln(T),
-        ),
-        lwriteln([]).when(
-            nl,
-        ),
-    )
-    db.tell(
-        #
-        # call goal G on every element of a list and collect the results:
-        maplist(G, [H | T]).when(
-            cut,
-            univ(G1, [G, H]),
-            call(G1),
-            maplist(G, T),
-        ),
-        maplist(symbols._, []),
-    )
-    db.tell(
-        #
-        # test if an item occurs in a list:
-        member(H, [H | T]),
-        member(G, [H | T]).when(
-            member(G, T),
-        ),
-    )
-    db.tell(
-        #
-        # write out a newline:
-        nl.when(
-            writeln(""),
+        unequal(X, Y).when(
+            ~equal(X, Y),
         ),
     )
     db.tell(
@@ -497,14 +445,30 @@ def _bootstrap_database() -> Callable[[], Database]:
     )
     db.tell(
         #
-        # reverse a list:
-        reverse([X | P], Q, Y).when(
-            reverse(P, [X | Q], Y),
+        # call goal G but ignore if it succeeds:
+        ignore(G).when(
+            call(G),
+            cut,
         ),
-        reverse(X, Y).when(
-            reverse(X, [], Y),
+        ignore(symbols._),
+    )
+    db.tell(
+        #
+        # append two lists:
+        append([A | B], C, [A | D]).when(
+            append(B, C, D),
         ),
-        reverse([], Y, Y),
+    )
+    db.tell(
+        append([], A, A),
+    )
+    db.tell(
+        #
+        # test if an item occurs in a list:
+        member(H, [H | T]),
+        member(G, [H | T]).when(
+            member(G, T),
+        ),
     )
     db.tell(
         #
@@ -515,79 +479,51 @@ def _bootstrap_database() -> Callable[[], Database]:
         ),
     )
     db.tell(
+        #
+        # call goal G on every element of a list and collect the results:
+        maplist(G, [H | T]).when(
+            cut,
+            univ(G1, [G, H]),
+            call(G1),
+            maplist(G, T),
+        ),
+        maplist(symbols._, []),
+    )
+    db.tell(
+        #
+        # write out a list, end with newline:
+        lwriteln([H | T]).when(
+            writeln(H),
+            lwriteln(T),
+        ),
+        lwriteln([]).when(
+            nl,
+        ),
+    )
+    db.tell(
+        #
+        # write out a newline:
+        nl.when(
+            writeln(""),
+        ),
+    )
+    db.tell(
+        #
+        # reverse a list:
+        reverse([X | P], Q, Y).when(
+            reverse(P, [X | Q], Y),
+        ),
+        reverse(X, Y).when(
+            reverse(X, [], Y),
+        ),
+        reverse([], Y, Y),
+    )
+    db.tell(
         arithmetic_equal(X, Y).when(
             let(Z, X),
             let(Z, Y),
         )
     )
-
-    def to_python_list(cons_list: Term, subst: Subst) -> list:
-        """Convert a Hornet Cons list into a Python list, actualizing each element."""
-        result = []
-
-        while True:
-            match subst.actualize(cons_list):
-                case Cons(head=head, tail=tail):
-                    result.append(head)
-                    cons_list = tail
-                case Empty():
-                    return result
-                case other:
-                    raise TypeError(f"Expected Cons list, got {other!r}")
-
-    @db.tell
-    @predicate(join(L, S))
-    def _(term: Functor) -> Goal:
-        def goal(db: Database, subst: Subst) -> Step:
-            items = subst.actualize(term.args[0])
-            result = to_python_list(items, subst)
-            return _unify(
-                term.args[1],
-                promote("".join([str(each.value) for each in result])),
-            )(db, subst)
-
-        return goal
-
-    # def _findall_4(term, env, db, trail):
-    #     results = [copy.deepcopy(env.Object) for _ in env.Goal.resolve(db)]
-    #     unify(env.List, make_list(env, results, env.R), trail)
-
-    # def _findall_3(term, env, db, trail):
-    #     results = [copy.deepcopy(env.Object.ref) for _ in env.Goal.resolve(db)]
-    #     unify(env.List, make_list(env, results), trail)
-
-    @db.tell
-    @predicate(findall(O, G, L))
-    def _(term: Functor) -> Goal:
-        def goal(db: Database, subst: Subst) -> Step:
-            obj = Expression(subst.actualize(term.args[0]))
-            goal = Expression(subst.actualize(term.args[1]))
-            items = subst.actualize(term.args[2])
-            return _unify(
-                items,
-                promote([s[obj] for s in db.ask(goal, subst=subst)]),
-            )(db, subst)
-
-        return goal
-
-    @db.tell
-    @predicate(call(G))
-    def _(term: Functor) -> Goal:
-        def goal(db: Database, subst: Subst) -> Step:
-            return resolve(subst.actualize(term.args[0]))(db, subst)
-
-        return goal
-
-    @db.tell
-    @predicate(ifelse(T, Y, N))
-    def _(term: Functor) -> Goal:
-        def goal(db: Database, subst: Subst) -> Step:
-            for s in db.ask(Expression(subst.actualize(term.args[0]))):
-                return resolve(subst.actualize(term.args[1]))(db, subst)
-            else:
-                return resolve(subst.actualize(term.args[2]))(db, subst)
-
-        return goal
 
     def database() -> Database:
         """Return a new child of the default database."""

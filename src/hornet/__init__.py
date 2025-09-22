@@ -5,18 +5,9 @@ from __future__ import annotations
 
 from . import combinators, expressions, symbols, terms
 from ._builtins import _bootstrap_database
-from .combinators import (
-    Clause,
-    Database,
-    Emit,
-    Goal,
-    Next,
-    Result,
-    Step,
-    Subst,
-    predicate,
-)
+from .combinators import Emit, Goal, Next, Result, Step, Subst
 from .expressions import DCG
+from .goals import Database, predicate
 from .symbols import (
     append,
     arithmetic_equal,
@@ -75,7 +66,6 @@ __all__ = (
     "symbols",
     "terms",
     "Database",
-    "Clause",
     "Emit",
     "Goal",
     "Next",
