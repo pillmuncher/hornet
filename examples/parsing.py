@@ -2,13 +2,17 @@
 
 from hornet import DCG, database
 from hornet.symbols import (
+    A,
+    B,
     C,
     Case,
     D,
+    E,
     F,
     Gender,
     Number,
     S,
+    Tense,
     Trans,
     W,
     _,
@@ -19,12 +23,14 @@ from hornet.symbols import (
     feminine,
     genitive,
     intransitive,
+    join,
     masculine,
     neuter,
     nominative,
     noun,
     np,
     plural,
+    present,
     s,
     singular,
     transitive,
@@ -198,21 +204,24 @@ def grammar(db):
     # for subst in db.ask(s(A) & member('jagen', A)):
 
     # words = [B, "hunde", "jagen", C, "katzen"]
-    # words = ['manche', 'maeuse', 'jagen' | B]
+    # words = ["manche", "maeuse", "jagen" | B]
     # words = [D, 'kater', 'jagen' | B]
-    # words = 'manche maeuse jagen viele katze'.split()
+    # words = "manche maeuse jagen viele katze".split()
     # words = 'eine maus jagt viele katzen'.split()
     # words = [B, C, 'jagen']
     # words = ['manche', B, C]
     words = ["der", C, D, "die", F]
     # words = [B, "hund", D, E, F]
-    # words = [B, C, 'jagt', D, E]
+    # words = [B, C, "jagt", D, E]
     # words = [A, 'jagen' | E]
 
-    # for i, subst in enumerate(db.ask(s(W) & join(W, S, ' '))):
+    print(f"finding senstences that match {list(str(w) for w in words)}:")
+    print()
     for subst in db.ask(equal(words, W), s(W)):
-        print(subst[W])
-        # print('Yes.')
+        print(str(subst[W]))
+    else:
+        print("No.")
+
     # else:
     # print('No.')
 
@@ -222,4 +231,3 @@ def grammar(db):
 
 db = database()
 grammar(db)
-# mudlang2(db)

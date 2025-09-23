@@ -23,8 +23,6 @@ def __getattr__(name: str) -> __Expression__:
     match tuple(name):
         case "_", "_", *_, "_", "_":
             raise AttributeError(f"Invalid identifier: {name}")
-        case ("_",):
-            return __Expression__(promote(terms.AnonVariable()))
         case "_", *_:
             return __Expression__(promote(terms.Variable(name=name)))
         case h, *_ if h.isupper():

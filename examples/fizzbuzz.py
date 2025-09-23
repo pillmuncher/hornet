@@ -23,14 +23,23 @@ from hornet.symbols import (
     word,
 )
 
+db = database()
+
 
 def main():
-    db = database()
-
     db.tell(
-        word("fizz", N).when(let(M, N % 3), equal(M, 0)),
-        word("buzz", N).when(let(M, N % 5), equal(M, 0)),
-        word("blub", N).when(let(M, N % 7), equal(M, 0)),
+        word("fizz", N).when(
+            let(M, N % 3),
+            equal(M, 0),
+        ),
+        word("buzz", N).when(
+            let(M, N % 5),
+            equal(M, 0),
+        ),
+        word("blub", N).when(
+            let(M, N % 7),
+            equal(M, 0),
+        ),
         fb(N, Result).when(
             findall(W, word(W, N), Ws),
             join(Ws, S),
@@ -50,15 +59,15 @@ def main():
     )
 
     try:
-        for s in take(1000, db.ask(fizzbuzz(R))):
-            # print(s[R])
+        for s in take(1111, db.ask(fizzbuzz(R))):
+            print(s[R])
             pass
     except RuntimeError:
         print("oops!")
 
 
 if __name__ == "__main__":
-    from examples.utils import timer
-
-    with timer("FizzBuzz run"):
-        main()
+    # from examples.utils import timer
+    #
+    # with timer():
+    main()
