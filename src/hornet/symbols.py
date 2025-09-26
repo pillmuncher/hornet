@@ -4,7 +4,7 @@
 import re as __re__
 from functools import cache as __cache__
 
-from .expressions import lift as __lift__
+from .expressions import unital as __unital__
 from .terms import Atom as __Atom__
 from .terms import Variable as __Variable__
 from .terms import Wildcard as __Wildcard__
@@ -23,7 +23,7 @@ __scan__ = __re__.compile(
 
 
 @__cache__
-@__lift__
+@__unital__
 def __getattr__(name: str) -> __Atom__ | __Variable__ | __Wildcard__:
     """
     Convert a string into a Term according to Prolog conventions:

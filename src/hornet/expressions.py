@@ -331,9 +331,9 @@ def bind(expr: Expression, mfunc: MFunc) -> Expression:
     return mfunc(expr.term)
 
 
-def lift(func: Callable[..., Term]) -> Callable[..., Expression]:
+def unital(func: Callable[..., Term]) -> Callable[..., Expression]:
     """
-    The function lift(... --> Term) --> (... --> Expression) "lifts" a normal
+    The function unital(... --> Term) --> (... --> Expression) lifts a normal
     function that returns an Term into a function that returns an Expression.
     It is typically used as a function decorator.
     """

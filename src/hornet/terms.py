@@ -49,6 +49,7 @@ class Variable(BaseTerm):
 @dataclass(frozen=True, slots=True)
 class Atom(BaseTerm):
     name: str
+    args: tuple[Term, ...] = ()
     indicator = atomic_indicator
 
     def __str__(self):
