@@ -1,299 +1,351 @@
-# Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
+# Copyright (c) 2014-2025 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
+# SPDX-License-Identifier: MIT
 
-import ast
-import functools
-import numbers
-from typing import Callable
+from __future__ import annotations
 
-from astor import code_gen as codegen
-from toolz.functoolz import flip, identity
+from dataclasses import dataclass
+from functools import partial, reduce
+from itertools import count
+from typing import Any, Callable, Iterator, cast
 
-from .util import compose, foldl, rpartial
+from toolz.functoolz import compose
 
-__all__ = [
-    # monad class:
-    "Expression",
-    # monadic functions:
-    "unit",
-    "bind",
-    "mlift",
-    "mcompose",
-    # helper functions:
-    "promote",
-    "astify",
-    # Expression factory functions:
-    "Name",
-    "Tuple",
-    "List",
-    "Set",
-    "Wrapper",
-    # Expression factory operators:
-    "Subscript",
-    "Call",
-    "USub",
-    "UAdd",
-    "Invert",
-    "Add",
-    "Sub",
-    "Mult",
-    "Div",
-    "FloorDiv",
-    "Mod",
-    "Pow",
-    "LShift",
-    "RShift",
-    "BitAnd",
-    "BitXor",
-    "BitOr",
-    # AST node instance test functions:
-    "is_binop",
-    "is_lshift",
-    "is_rshift",
-    "is_bitand",
-    "is_bitor",
-    "is_name",
-    "is_str",
-    "is_call",
-    "is_list",
-    "is_set",
-    "is_tuple",
-    "is_astwrapper",
-    "is_operator",
-]
+from .states import StateGenerator, const, get_state, set_state, with_state
+from .terms import (
+    EMPTY,
+    Add,
+    Atom,
+    BitAnd,
+    BitOr,
+    BitXor,
+    Conjunction,
+    Cons,
+    Disjunction,
+    Div,
+    Empty,
+    FloorDiv,
+    Functor,
+    HornetRule,
+    Invert,
+    LShift,
+    MatchTerm,
+    Mod,
+    Mul,
+    Pow,
+    QueryTerm,
+    RShift,
+    Structure,
+    Sub,
+    Term,
+    UAdd,
+    USub,
+    Variable,
+    Wildcard,
+)
 
 
-class Expression:
+@dataclass(frozen=True, slots=True)
+class RuleExpression:
+    term: Term
+
+
+@dataclass(frozen=True, slots=True)
+class DCG:
+    expr: Expression[Atom | Functor]
+
+    def when(self, *args) -> RuleExpression:
+        head = self.expr.term
+        body = Conjunction(*(promote(arg) for arg in args))
+        new_head, new_body = dcg_expand(head, body)
+        assert isinstance(new_head, MatchTerm)
+        assert isinstance(new_body, QueryTerm)
+        return RuleExpression(term=HornetRule(head=new_head, body=new_body))
+
+
+@dataclass(frozen=True, slots=True)
+class Expression[T: Term]:
     """
-    An Expression object wraps around an AST node.
+    An Expression object is a monadic wrapper around a Term.
     """
 
-    # See also .test.test_expresion.test_monad_laws()
-    __slots__ = "node"
+    term: T
 
-    def __init__(self, node):
-        "Initialize an Expression object with an AST node."
-        self.node = node
+    def __init__(self, term: T):
+        object.__setattr__(self, "term", promote(term))
+
+    def when(self, *args) -> RuleExpression:
+        head = self.term
+        body = Conjunction(*(promote(arg) for arg in args))
+        assert isinstance(head, MatchTerm)
+        assert isinstance(body, QueryTerm)
+        return RuleExpression(HornetRule(head=head, body=body))
 
     def __repr__(self):
-        return ast.dump(self.node)
+        return f"Expression({repr(self.term)})"
 
     def __str__(self):
-        return codegen.to_source(self.node)
+        return repr(self.term)
 
-    def __getitem__(self, subscript):
-        return Expression(
-            ast.Subscript(
-                value=astify(self),
-                slice=ast.Slice(lower=astify(subscript)),
-            )
-        )
+    def __eq__(self, other):
+        return isinstance(other, Expression) and self.term == other.term
 
-    def __call__(self, *args):
-        return Expression(
-            ast.Call(
-                func=astify(self),
-                args=[astify(each) for each in args],
-                keywords=[],
-            )
-        )
+    def __hash__(self) -> int:
+        return hash((Expression, self.term))
 
     def __neg__(self):
-        return Expression(ast.UnaryOp(ast.USub(), astify(self)))
+        return expression(USub(promote(self)))
 
     def __pos__(self):
-        return Expression(ast.UnaryOp(ast.UAdd(), astify(self)))
+        return expression(UAdd(promote(self)))
 
     def __invert__(self):
-        return Expression(ast.UnaryOp(ast.Invert(), astify(self)))
+        return expression(Invert(promote(self)))
 
     def __add__(self, other):
-        return Expression(ast.BinOp(astify(self), ast.Add(), astify(other)))
+        return expression(Add(promote(self), promote(other)))
 
-    __radd__ = flip(__add__)
+    def __radd__(self, other):
+        return expression(Add(promote(other), promote(self)))
 
     def __sub__(self, other):
-        return Expression(ast.BinOp(astify(self), ast.Sub(), astify(other)))
+        return expression(Sub(promote(self), promote(other)))
 
-    __rsub__ = flip(__sub__)
+    def __rsub__(self, other):
+        return expression(Sub(promote(other), promote(self)))
 
     def __mul__(self, other):
-        return Expression(ast.BinOp(astify(self), ast.Mult(), astify(other)))
+        return expression(Mul(promote(self), promote(other)))
 
-    __rmul__ = flip(__mul__)
+    def __rmul__(self, other):
+        return expression(Sub(promote(other), promote(self)))
 
     def __truediv__(self, other):
-        return Expression(ast.BinOp(astify(self), ast.Div(), astify(other)))
+        return expression(Div(promote(self), promote(other)))
 
-    __rtruediv__ = flip(__truediv__)
+    def __rtruediv__(self, other):
+        return expression(Sub(promote(other), promote(self)))
 
     def __floordiv__(self, other):
-        return Expression(ast.BinOp(astify(self), ast.FloorDiv(), astify(other)))
+        return expression(FloorDiv(promote(self), promote(other)))
 
-    __rfloordiv__ = flip(__floordiv__)
+    def __rfloordiv__(self, other):
+        return expression(Sub(promote(other), promote(self)))
 
     def __mod__(self, other):
-        return Expression(ast.BinOp(astify(self), ast.Mod(), astify(other)))
+        return expression(Mod(promote(self), promote(other)))
 
-    __rmod__ = flip(__mod__)
+    def __rmod__(self, other):
+        return expression(Sub(promote(other), promote(self)))
 
     def __pow__(self, other):
-        return Expression(ast.BinOp(astify(self), ast.Pow(), astify(other)))
+        return expression(Pow(promote(self), promote(other)))
 
-    __rpow__ = flip(__pow__)
+    def __rpow__(self, other):
+        return expression(Sub(promote(other), promote(self)))
 
     def __lshift__(self, other):
-        return Expression(ast.BinOp(astify(self), ast.LShift(), astify(other)))
+        return expression(LShift(promote(self), promote(other)))
 
-    __rlshift__ = flip(__lshift__)
+    def __rlshift__(self, other):
+        return expression(Sub(promote(other), promote(self)))
 
     def __rshift__(self, other):
-        return Expression(ast.BinOp(astify(self), ast.RShift(), astify(other)))
+        return expression(RShift(promote(self), promote(other)))
 
-    __rrshift__ = flip(__rshift__)
+    def __rrshift__(self, other):
+        return expression(Sub(promote(other), promote(self)))
 
     def __and__(self, other):
-        return Expression(ast.BinOp(astify(self), ast.BitAnd(), astify(other)))
+        return expression(BitAnd(promote(self), promote(other)))
 
-    __rand__ = flip(__and__)
+    def __rand__(self, other):
+        return expression(Sub(promote(other), promote(self)))
 
     def __xor__(self, other):
-        return Expression(ast.BinOp(astify(self), ast.BitXor(), astify(other)))
+        return expression(BitXor(promote(self), promote(other)))
 
-    __rxor__ = flip(__xor__)
+    def __rxor__(self, other):
+        return expression(Sub(promote(other), promote(self)))
 
     def __or__(self, other):
-        return Expression(ast.BinOp(astify(self), ast.BitOr(), astify(other)))
+        return expression(BitOr(promote(self), promote(other)))
 
-    __ror__ = flip(__or__)
+    def __ror__(self, other):
+        return expression(Sub(promote(other), promote(self)))
+
+    def __call__(self, *args):
+        match promote(self):
+            case Atom(name):
+                return expression((Functor(name, *(promote(arg) for arg in args))))
+
+            case _:
+                raise TypeError(f"Atom required, not {self}")
+
+
+def promote(obj: Any) -> Term | tuple:
+    """
+    Convert a Python object to a Term.
+    """
+    match obj:
+        case (
+            Wildcard()
+            | Variable()
+            | Atom()
+            | Empty()
+            | str()
+            | bytes()
+            | int()
+            | bool()
+            | float()
+            | complex()
+        ):
+            return obj
+        case Functor(name=name, args=args):
+            return Functor(name, *(promote(arg) for arg in args))
+        case Structure(args):
+            return type(obj)(*(promote(arg) for arg in args))
+        case Expression(term):
+            return promote(term)
+        case tuple():
+            return tuple(promote(each) for each in obj)
+        case Cons(head=BitOr(left=left, right=right)):
+            return Cons(promote(left), promote(right))
+        case []:
+            return EMPTY
+        case [Expression(BitOr(left=left, right=right)), *tail]:
+            assert not tail
+            return Cons(promote(left), promote(right))
+        case [head, *tail]:
+            return Cons(promote(head), promote(list(tail)))
+        case _:
+            raise TypeError(f"{type(obj)}")
+
+
+type VarCount = tuple[int, Iterator[int]]
+_v_count: Iterator[int] = count()
+
+
+def dcg_expand(head: Term, body: Term) -> tuple[Term, Term]:
+    (new_head, new_body), _ = _dcg_expand(head, body).run((next(_v_count), _v_count))
+    return new_head, new_body
+
+
+@with_state
+def _dcg_expand(head: Term, body: Term) -> StateGenerator[VarCount, tuple[Term, Term]]:
+    @with_state
+    def current_variable() -> StateGenerator[VarCount, Variable]:
+        i, _ = yield get_state()
+        return Variable(f"S${i}")
+
+    @with_state
+    def advance_variables() -> StateGenerator[VarCount, tuple[Variable, Variable]]:
+        i, counter = yield get_state()
+        j = next(counter)
+        yield set_state(const((j, counter)))
+        return Variable(f"S${i}"), Variable(f"S${j}")
+
+    @with_state
+    def dcg_expand_cons(term: Term) -> StateGenerator[VarCount, tuple[Term, Variable]]:
+        result_terms = []
+
+        while True:
+            match term:
+                case Cons(head=head, tail=tail):
+                    Sout, Sin = yield advance_variables()
+                    result_terms.append(Functor("equal", Sout, Cons(head, Sin)))
+                    term = tail
+                case Empty():
+                    break
+
+        Sin = yield current_variable()
+        return Conjunction(*result_terms), Sin
+
+    @with_state
+    def walk_body(
+        term: Term,
+    ) -> StateGenerator[VarCount, Term]:
+        match term:
+            case Atom(name=name):
+                Sout, Sin = yield advance_variables()
+                return Functor(name, Sout, Sin), Sin
+
+            case Functor(name="inline", args=inlined):
+                Sin = yield current_variable()
+                return Conjunction(*tuple(inlined)), Sin
+
+            case Functor(name=name, args=args):
+                Sout, Sin = yield advance_variables()
+                return Functor(name, *args, Sout, Sin), Sin
+
+            case Cons():
+                return (yield dcg_expand_cons(term))
+
+            case Conjunction(body=goals):
+                new_goals = []
+                for goal in goals:
+                    new_goal, _ = yield walk_body(goal)
+                    new_goals.append(new_goal)
+                Sin = yield current_variable()
+                return Conjunction(*new_goals), Sin
+
+            case Disjunction(body=goals):
+                new_goals = []
+                for goal in goals:
+                    new_goal, _ = yield walk_body(goal)
+                    new_goals.append(new_goal)
+                Sin = yield current_variable()
+                return Disjunction(*new_goals), Sin
+
+        raise TypeError(f"Expected query term in DCG body, got: {term!r}")
+
+    Sout = yield current_variable()
+    body_expanded, Sin = yield walk_body(body)
+
+    match head:
+        case Atom(name=name):
+            head_expanded = Functor(name, Sout, Sin)
+        case Functor(name=name, args=args):
+            head_expanded = Functor(name, *args, Sout, Sin)
+        case _:
+            raise TypeError(f"Expected head term in DCG body, got: {head!r}")
+
+    assert isinstance(head_expanded, MatchTerm)
+    assert isinstance(body_expanded, QueryTerm)
+    return head_expanded, body_expanded
 
 
 # In the Monad, unit is the same as Expression:
 unit = Expression
 
 
-def bind(expr: Expression, mfunc: Callable[[ast.AST], Expression]) -> Expression:
+type MFunc = Callable[[Term], Expression]
+
+
+def bind(expr: Expression, mfunc: MFunc) -> Expression:
     """
-    The function bind(expr, AST --> Expression) --> Expression is the monadic
+    The function bind(expr, Term --> Expression) --> Expression is the monadic
     bind operator.  It takes an Expression object expr and a monadic function
-    mfunc, passes the AST associated with expr to mfunc and returns whatever
+    mfunc, passes the Term associated with expr to mfunc and returns whatever
     mfunc returns.
     """
-    return mfunc(expr.node)
+    return mfunc(expr.term)
 
 
-def mlift(func: Callable[..., ast.AST]) -> Callable[..., Expression]:
+def lift(func: Callable[..., Term]) -> Callable[..., Expression]:
     """
-    The function mlift(... --> AST) --> (... --> unit) "lifts" a normal
-    function that returns an AST into a function that returns an Expression.
-    It is mostly used as a function decorator.
+    The function lift(... --> Term) --> (... --> Expression) "lifts" a normal
+    function that returns an Term into a function that returns an Expression.
+    It is typically used as a function decorator.
     """
     return compose(Expression, func)
 
 
-def mcompose(*mfuncs):
+def chain(*mfuncs: MFunc) -> MFunc:
     """
-    Make monadic functions AST --> Expression composable.
+    Chain monadic functions of type Term --> Expression.
     """
-    return functools.partial(foldl, bind, tuple(reversed(mfuncs)))
+    return cast(MFunc, partial(reduce, bind, tuple(reversed(mfuncs))))
 
 
-# Here come the Expression factory functions.
-#
-# The arguments they take are converted to AST objects if necessary. They
-# return an AST node that gets wrapped in an Expression object by the mlift
-# decorator.
-# Their names don't conform to PEP-8 because they reflect the AST node types
-# they represent.
-
-
-def Name(name, **kwargs):
-    return Expression(ast.Name(id=name, **kwargs))
-
-
-def Constant(value):
-    return Expression(ast.Constant(value=value))
-
-
-def Tuple(tuple_):
-    return Expression(ast.Tuple(elts=[astify(each) for each in tuple_]))
-
-
-def List(list_):
-    return Expression(ast.List(elts=[astify(each) for each in list_]))
-
-
-def Set(set_):
-    return Expression(ast.Set(elts=[astify(each) for each in set_]))
-
-
-# Although the following functions do not represent AST node types, they are
-# used in the same way and should follow the same conventions as the ones
-# above.
-
-
-class AstWrapper[T](ast.AST):
-    def __init__(self, wrapped: T):
-        self.wrapped: T = wrapped
-
-
-def Wrapper(wrapped):
-    return Expression(AstWrapper(wrapped=wrapped))
-
-
-Add = Expression.__add__
-BitAnd = Expression.__and__
-BitOr = Expression.__or__
-BitXor = Expression.__xor__
-Call = Expression.__call__
-Div = Expression.__truediv__
-FloorDiv = Expression.__floordiv__
-Invert = Expression.__invert__
-LShift = Expression.__lshift__
-Mod = Expression.__mod__
-Mult = Expression.__mul__
-Pow = Expression.__pow__
-RShift = Expression.__rshift__
-Sub = Expression.__sub__
-Subscript = Expression.__getitem__
-UAdd = Expression.__pos__
-USub = Expression.__neg__
-
-
-# Any Python object 'obj' will be turned into an Expression object with its
-# AST created if necessary:
-@functools.singledispatch
-def promote(obj) -> Expression:
-    return Wrapper(obj)
-
-
-promote.register(Expression)(identity)
-promote.register(numbers.Number)(Constant)
-promote.register(str)(Constant)
-promote.register(tuple)(Tuple)
-promote.register(list)(List)
-promote.register(set)(Set)
-
-
-# Given any Python object 'obj', return its AST (and create it if necessary):
-def astify(obj):
-    return promote(obj).node
-
-
-def is_binop(node, op):
-    return isinstance(node, ast.BinOp) and isinstance(node.op, op)
-
-
-is_lshift = rpartial(is_binop, ast.LShift)
-is_rshift = rpartial(is_binop, ast.RShift)
-is_bitand = rpartial(is_binop, ast.BitAnd)
-is_bitor = rpartial(is_binop, ast.BitOr)
-
-is_name = rpartial(isinstance, ast.Name)
-is_str = rpartial(isinstance, ast.Constant)
-is_call = rpartial(isinstance, ast.Call)
-is_list = rpartial(isinstance, ast.List)
-is_set = rpartial(isinstance, ast.Set)
-is_tuple = rpartial(isinstance, ast.Tuple)
-is_astwrapper = rpartial(isinstance, AstWrapper)
-is_operator = rpartial(isinstance, (ast.BinOp, ast.UnaryOp))
-is_terminal = rpartial(isinstance, (ast.Name, ast.Constant))
+def expression[T: Term](term: T) -> Expression[T]:
+    return Expression(term)

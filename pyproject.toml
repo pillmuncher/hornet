@@ -1,11 +1,11 @@
 [project]
-version = "0.2.10b2"
+version = "0.2.12a2"
 license = { file = "LICENSE.md" }
 authors = [{ name = "Mick Krippendorf", email = "m.krippendorf@freenet.de" }]
 description = "Hornet: An embedded DSL for Logic Programming in Python."
-dependencies = ["toolz", "astor"]
+dependencies = ["toolz", "immutables"]
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",

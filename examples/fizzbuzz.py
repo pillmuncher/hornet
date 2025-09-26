@@ -1,39 +1,59 @@
-# Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
+# Copyright (c) 2014 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
+# SPDX-License-Identifier: MIT
 
-from hornet import (
-    Database,
-    arithmetic_equal,
+from toolz import take
+
+from hornet import DCG, database
+from hornet.symbols import (
+    M,
+    N,
+    R,
+    S,
+    Ws,
+    _,
+    cut,
     equal,
-    findall,
-    greater,
+    fb,
+    fizzbuzz,
+    ifelse,
+    inline,
     join,
     let,
-    writeln,
+    phrase,
+    word,
+    words,
 )
-from hornet.symbols import N1, D, Max, N, R, S, W, Ws, divisible, fizzbuzz, show, word
+
+db = database()
 
 
 def main():
-    db = Database()
-
     db.tell(
-        fizzbuzz(N, Max) << ~greater(N, Max)
-        & findall(W, word(W, N), Ws)
-        & show(N, Ws)
-        & let(N1, N + 1)
-        & fizzbuzz(N1, Max),
-        word("fizz", N) << divisible(N, 3),
-        word("buzz", N) << divisible(N, 5),
-        word("blub", N) << divisible(N, 7),
-        divisible(N, D) << arithmetic_equal(0, N % D),
-        show(N, Ws) << equal(Ws, []) >> writeln(N) | join(Ws, S) & writeln(S),
+        DCG(words(N)).when(word(3, N), word(5, N), word(7, N), inline(cut)),
+        DCG(word(3, N)).when(inline(let(M, N % 3), equal(M, 0)), ["fizz"]),
+        DCG(word(5, N)).when(inline(let(M, N % 5), equal(M, 0)), ["buzz"]),
+        DCG(word(7, N)).when(inline(let(M, N % 7), equal(M, 0)), ["quux"]),
+        DCG(word(_, _)).when(),
+        fb(N, R).when(
+            phrase(words(N), Ws),
+            join(Ws, S),
+            ifelse(
+                equal(S, ""),
+                equal(N, R),
+                equal(S, R),
+            ),
+        ),
+        fb(N, R).when(
+            let(M, N + 1),
+            fb(M, R),
+        ),
+        fizzbuzz(R).when(
+            fb(1, R),
+        ),
     )
 
-    try:
-        for subst in db.ask(fizzbuzz(1, 1111)):
-            print(subst[R])
-    except RuntimeError:
-        print("oops!")
+    for s in take(111, db.ask(fizzbuzz(R))):
+        print(s[R])
 
 
 if __name__ == "__main__":

@@ -1,36 +1,22 @@
-# Copyright (c) 2014 Mick Krippendorf <m.krippendorf@freenet.de>
+# Copyright (c) 2014-2025 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
+# SPDX-License-Identifier: MIT
 
-import pprint
-
-from hornet import Database, equal, join
-
-# from hornet.symbols import A
-from hornet.symbols import vp  # C, ; type: ignore
+from hornet import DCG, database
 from hornet.symbols import (
-    NP,
-    VP,
-    Adj,
-    B,
+    C,
     Case,
     D,
-    Det,
-    E,
     F,
     Gender,
-    Noun,
     Number,
     S,
-    T,
     Trans,
-    Verb,
     W,
-    X,
-    Y,
     _,
     accusative,
-    adj,
     dative,
     det,
+    equal,
     feminine,
     genitive,
     intransitive,
@@ -44,180 +30,188 @@ from hornet.symbols import (
     singular,
     transitive,
     verb,
+    vp,
 )
 
 
 def grammar(db):
     db.tell(
-        s(S) << s(S, []),
-        s >> np(Number, nominative) & vp(Number, nominative, intransitive),
-        s >> np(Number, Case) & vp(Number, Case, transitive),
-        np(plural, Case) >> noun(_, plural, Case),
-        np(Number, Case) >> det(Gender, Number, Case) & noun(Gender, Number, Case),
-        vp(Number, nominative, intransitive) >> verb(Number, nominative, intransitive),
-        vp(Number, accusative, intransitive) >> verb(Number, accusative, intransitive),
-        vp(_, dative, transitive) >> verb(Number, nominative, transitive)
-        & np(Number, nominative),
-        vp(Number, nominative, transitive) >> verb(Number, nominative, transitive)
-        & np(_, dative),
-        vp(Number, nominative, transitive) >> verb(Number, accusative, transitive)
-        & np(_, accusative),
-        det(masculine, singular, nominative) >> ["der"],
-        det(masculine, singular, genitive) >> ["des"],
-        det(masculine, singular, dative) >> ["dem"],
-        det(masculine, singular, accusative) >> ["den"],
-        det(masculine, plural, nominative) >> ["die"],
-        det(masculine, plural, genitive) >> ["der"],
-        det(masculine, plural, dative) >> ["den"],
-        det(masculine, plural, accusative) >> ["die"],
-        det(feminine, singular, nominative) >> ["die"],
-        det(feminine, singular, genitive) >> ["der"],
-        det(feminine, singular, dative) >> ["der"],
-        det(feminine, singular, accusative) >> ["die"],
-        det(feminine, plural, nominative) >> ["die"],
-        det(feminine, plural, genitive) >> ["der"],
-        det(feminine, plural, dative) >> ["den"],
-        det(feminine, plural, accusative) >> ["die"],
-        det(neuter, singular, nominative) >> ["das"],
-        det(neuter, singular, genitive) >> ["des"],
-        det(neuter, singular, dative) >> ["dem"],
-        det(neuter, singular, accusative) >> ["das"],
-        det(neuter, plural, nominative) >> ["die"],
-        det(neuter, plural, genitive) >> ["der"],
-        det(neuter, plural, dative) >> ["den"],
-        det(neuter, plural, accusative) >> ["die"],
-        det(masculine, singular, nominative) >> ["ein"],
-        det(masculine, singular, genitive) >> ["eines"],
-        det(masculine, singular, dative) >> ["einem"],
-        det(masculine, singular, accusative) >> ["einen"],
-        det(feminine, singular, nominative) >> ["eine"],
-        det(feminine, singular, genitive) >> ["einer"],
-        det(feminine, singular, dative) >> ["einer"],
-        det(feminine, singular, accusative) >> ["eine"],
-        det(_, plural, nominative) >> ["einige"],
-        det(_, plural, genitive) >> ["einiger"],
-        det(_, plural, dative) >> ["einigen"],
-        det(_, plural, accusative) >> ["einige"],
-        det(_, plural, nominative) >> ["viele"],
-        det(_, plural, genitive) >> ["vieler"],
-        det(_, plural, dative) >> ["vielen"],
-        det(_, plural, accusative) >> ["viele"],
-        det(_, plural, nominative) >> ["alle"],
-        det(_, plural, genitive) >> ["aller"],
-        det(_, plural, dative) >> ["allen"],
-        det(_, plural, accusative) >> ["alle"],
-        det(masculine, singular, nominative) >> ["kein"],
-        det(masculine, singular, genitive) >> ["keines"],
-        det(masculine, singular, dative) >> ["keinem"],
-        det(masculine, singular, accusative) >> ["keinen"],
-        det(masculine, plural, nominative) >> ["keine"],
-        det(masculine, plural, genitive) >> ["keiner"],
-        det(masculine, plural, dative) >> ["keinen"],
-        det(masculine, plural, accusative) >> ["keine"],
-        det(feminine, singular, nominative) >> ["keine"],
-        det(feminine, singular, genitive) >> ["keiner"],
-        det(feminine, singular, dative) >> ["keiner"],
-        det(feminine, singular, accusative) >> ["keine"],
-        det(feminine, plural, nominative) >> ["keine"],
-        det(feminine, plural, genitive) >> ["keiner"],
-        det(feminine, plural, dative) >> ["keinen"],
-        det(feminine, plural, accusative) >> ["keine"],
-        det(masculine, singular, nominative) >> ["mancher"],
-        det(masculine, singular, genitive) >> ["manches"],
-        det(masculine, singular, dative) >> ["manchem"],
-        det(masculine, singular, accusative) >> ["manchen"],
-        det(masculine, plural, nominative) >> ["manche"],
-        det(masculine, plural, genitive) >> ["mancher"],
-        det(masculine, plural, dative) >> ["manchen"],
-        det(masculine, plural, accusative) >> ["manchen"],
-        det(feminine, singular, nominative) >> ["manche"],
-        det(feminine, singular, genitive) >> ["mancher"],
-        det(feminine, singular, dative) >> ["mancher"],
-        det(feminine, singular, accusative) >> ["manche"],
-        det(feminine, plural, nominative) >> ["manche"],
-        det(feminine, plural, genitive) >> ["mancher"],
-        det(feminine, plural, dative) >> ["manchen"],
-        det(feminine, plural, accusative) >> ["manche"],
-        det(masculine, singular, nominative) >> ["jeder"],
-        det(masculine, singular, genitive) >> ["jedes"],
-        det(masculine, singular, dative) >> ["jedem"],
-        det(masculine, singular, accusative) >> ["jeden"],
-        det(feminine, singular, nominative) >> ["jede"],
-        det(feminine, singular, genitive) >> ["jeder"],
-        det(feminine, singular, dative) >> ["jeder"],
-        det(feminine, singular, accusative) >> ["jede"],
-        noun(masculine, singular, nominative) >> ["hund"],
-        noun(masculine, singular, genitive) >> ["hundes"],
-        noun(masculine, singular, dative) >> ["hund"],
-        noun(masculine, singular, accusative) >> ["hund"],
-        noun(masculine, plural, nominative) >> ["hunde"],
-        noun(masculine, plural, genitive) >> ["hunde"],
-        noun(masculine, plural, dative) >> ["hunden"],
-        noun(masculine, plural, accusative) >> ["hunde"],
-        noun(feminine, singular, nominative) >> ["katze"],
-        noun(feminine, singular, genitive) >> ["katze"],
-        noun(feminine, singular, dative) >> ["katze"],
-        noun(feminine, singular, accusative) >> ["katze"],
-        noun(feminine, plural, nominative) >> ["katzen"],
-        noun(feminine, plural, genitive) >> ["katzen"],
-        noun(feminine, plural, dative) >> ["katzen"],
-        noun(feminine, plural, accusative) >> ["katzen"],
-        noun(masculine, singular, nominative) >> ["kater"],
-        noun(masculine, singular, genitive) >> ["katers"],
-        noun(masculine, singular, dative) >> ["kater"],
-        noun(masculine, singular, accusative) >> ["kater"],
-        noun(masculine, plural, nominative) >> ["kater"],
-        noun(masculine, plural, genitive) >> ["kater"],
-        noun(masculine, plural, dative) >> ["katern"],
-        noun(masculine, plural, accusative) >> ["kater"],
-        noun(feminine, singular, nominative) >> ["maus"],
-        noun(feminine, singular, genitive) >> ["maus"],
-        noun(feminine, singular, dative) >> ["maus"],
-        noun(feminine, singular, accusative) >> ["maus"],
-        noun(feminine, plural, nominative) >> ["maeuse"],
-        noun(feminine, plural, genitive) >> ["maeuse"],
-        noun(feminine, plural, dative) >> ["maeusen"],
-        noun(feminine, plural, accusative) >> ["maeuse"],
-        noun(neuter, plural, nominative) >> ["leute"],
-        noun(neuter, plural, genitive) >> ["leute"],
-        noun(neuter, plural, dative) >> ["leuten"],
-        noun(neuter, plural, accusative) >> ["leute"],
-        verb(singular, nominative, Trans) >> ["fehlt"],
-        verb(plural, nominative, Trans) >> ["fehlen"],
-        verb(singular, dative, transitive) >> ["fehlt"],
-        verb(plural, dative, transitive) >> ["fehlen"],
-        verb(singular, _, intransitive) >> ["schlaeft"],
-        verb(plural, _, intransitive) >> ["schlafen"],
-        verb(singular, nominative, intransitive) >> ["frisst"],
-        verb(plural, nominative, intransitive) >> ["fressen"],
-        verb(singular, accusative, transitive) >> ["frisst"],
-        verb(plural, accusative, transitive) >> ["fressen"],
-        verb(singular, nominative, intransitive) >> ["jagt"],
-        verb(plural, nominative, intransitive) >> ["jagen"],
-        verb(singular, accusative, transitive) >> ["jagt"],
-        verb(plural, accusative, transitive) >> ["jagen"],
-        verb(singular, _, intransitive) >> ["spielt"],
-        verb(plural, _, intransitive) >> ["spielen"],
+        s(S).when(s(S, [])),
+        DCG(s).when(np(Number, nominative), vp(Number, nominative, intransitive)),
+        DCG(s).when(np(Number, Case), vp(Number, Case, transitive)),
+        DCG(np(plural, Case)).when(noun(_, plural, Case)),
+        DCG(np(Number, Case)).when(
+            det(Gender, Number, Case), noun(Gender, Number, Case)
+        ),
+        DCG(vp(Number, nominative, intransitive)).when(
+            verb(Number, nominative, intransitive)
+        ),
+        DCG(vp(Number, accusative, intransitive)).when(
+            verb(Number, accusative, intransitive)
+        ),
+        DCG(vp(_, dative, transitive)).when(
+            verb(Number, nominative, transitive), np(Number, nominative)
+        ),
+        DCG(vp(Number, nominative, transitive)).when(
+            verb(Number, nominative, transitive), np(_, dative)
+        ),
+        DCG(vp(Number, nominative, transitive)).when(
+            verb(Number, accusative, transitive), np(_, accusative)
+        ),
+        DCG(det(masculine, singular, nominative)).when(["der"]),
+        DCG(det(masculine, singular, genitive)).when(["des"]),
+        DCG(det(masculine, singular, dative)).when(["dem"]),
+        DCG(det(masculine, singular, accusative)).when(["den"]),
+        DCG(det(masculine, plural, nominative)).when(["die"]),
+        DCG(det(masculine, plural, genitive)).when(["der"]),
+        DCG(det(masculine, plural, dative)).when(["den"]),
+        DCG(det(masculine, plural, accusative)).when(["die"]),
+        DCG(det(feminine, singular, nominative)).when(["die"]),
+        DCG(det(feminine, singular, genitive)).when(["der"]),
+        DCG(det(feminine, singular, dative)).when(["der"]),
+        DCG(det(feminine, singular, accusative)).when(["die"]),
+        DCG(det(feminine, plural, nominative)).when(["die"]),
+        DCG(det(feminine, plural, genitive)).when(["der"]),
+        DCG(det(feminine, plural, dative)).when(["den"]),
+        DCG(det(feminine, plural, accusative)).when(["die"]),
+        DCG(det(neuter, singular, nominative)).when(["das"]),
+        DCG(det(neuter, singular, genitive)).when(["des"]),
+        DCG(det(neuter, singular, dative)).when(["dem"]),
+        DCG(det(neuter, singular, accusative)).when(["das"]),
+        DCG(det(neuter, plural, nominative)).when(["die"]),
+        DCG(det(neuter, plural, genitive)).when(["der"]),
+        DCG(det(neuter, plural, dative)).when(["den"]),
+        DCG(det(neuter, plural, accusative)).when(["die"]),
+        DCG(det(masculine, singular, nominative)).when(["ein"]),
+        DCG(det(masculine, singular, genitive)).when(["eines"]),
+        DCG(det(masculine, singular, dative)).when(["einem"]),
+        DCG(det(masculine, singular, accusative)).when(["einen"]),
+        DCG(det(feminine, singular, nominative)).when(["eine"]),
+        DCG(det(feminine, singular, genitive)).when(["einer"]),
+        DCG(det(feminine, singular, dative)).when(["einer"]),
+        DCG(det(feminine, singular, accusative)).when(["eine"]),
+        DCG(det(_, plural, nominative)).when(["einige"]),
+        DCG(det(_, plural, genitive)).when(["einiger"]),
+        DCG(det(_, plural, dative)).when(["einigen"]),
+        DCG(det(_, plural, accusative)).when(["einige"]),
+        DCG(det(_, plural, nominative)).when(["viele"]),
+        DCG(det(_, plural, genitive)).when(["vieler"]),
+        DCG(det(_, plural, dative)).when(["vielen"]),
+        DCG(det(_, plural, accusative)).when(["viele"]),
+        DCG(det(_, plural, nominative)).when(["alle"]),
+        DCG(det(_, plural, genitive)).when(["aller"]),
+        DCG(det(_, plural, dative)).when(["allen"]),
+        DCG(det(_, plural, accusative)).when(["alle"]),
+        DCG(det(masculine, singular, nominative)).when(["kein"]),
+        DCG(det(masculine, singular, genitive)).when(["keines"]),
+        DCG(det(masculine, singular, dative)).when(["keinem"]),
+        DCG(det(masculine, singular, accusative)).when(["keinen"]),
+        DCG(det(masculine, plural, nominative)).when(["keine"]),
+        DCG(det(masculine, plural, genitive)).when(["keiner"]),
+        DCG(det(masculine, plural, dative)).when(["keinen"]),
+        DCG(det(masculine, plural, accusative)).when(["keine"]),
+        DCG(det(feminine, singular, nominative)).when(["keine"]),
+        DCG(det(feminine, singular, genitive)).when(["keiner"]),
+        DCG(det(feminine, singular, dative)).when(["keiner"]),
+        DCG(det(feminine, singular, accusative)).when(["keine"]),
+        DCG(det(feminine, plural, nominative)).when(["keine"]),
+        DCG(det(feminine, plural, genitive)).when(["keiner"]),
+        DCG(det(feminine, plural, dative)).when(["keinen"]),
+        DCG(det(feminine, plural, accusative)).when(["keine"]),
+        DCG(det(masculine, singular, nominative)).when(["mancher"]),
+        DCG(det(masculine, singular, genitive)).when(["manches"]),
+        DCG(det(masculine, singular, dative)).when(["manchem"]),
+        DCG(det(masculine, singular, accusative)).when(["manchen"]),
+        DCG(det(masculine, plural, nominative)).when(["manche"]),
+        DCG(det(masculine, plural, genitive)).when(["mancher"]),
+        DCG(det(masculine, plural, dative)).when(["manchen"]),
+        DCG(det(masculine, plural, accusative)).when(["manchen"]),
+        DCG(det(feminine, singular, nominative)).when(["manche"]),
+        DCG(det(feminine, singular, genitive)).when(["mancher"]),
+        DCG(det(feminine, singular, dative)).when(["mancher"]),
+        DCG(det(feminine, singular, accusative)).when(["manche"]),
+        DCG(det(feminine, plural, nominative)).when(["manche"]),
+        DCG(det(feminine, plural, genitive)).when(["mancher"]),
+        DCG(det(feminine, plural, dative)).when(["manchen"]),
+        DCG(det(feminine, plural, accusative)).when(["manche"]),
+        DCG(det(masculine, singular, nominative)).when(["jeder"]),
+        DCG(det(masculine, singular, genitive)).when(["jedes"]),
+        DCG(det(masculine, singular, dative)).when(["jedem"]),
+        DCG(det(masculine, singular, accusative)).when(["jeden"]),
+        DCG(det(feminine, singular, nominative)).when(["jede"]),
+        DCG(det(feminine, singular, genitive)).when(["jeder"]),
+        DCG(det(feminine, singular, dative)).when(["jeder"]),
+        DCG(det(feminine, singular, accusative)).when(["jede"]),
+        DCG(noun(masculine, singular, nominative)).when(["hund"]),
+        DCG(noun(masculine, singular, genitive)).when(["hundes"]),
+        DCG(noun(masculine, singular, dative)).when(["hund"]),
+        DCG(noun(masculine, singular, accusative)).when(["hund"]),
+        DCG(noun(masculine, plural, nominative)).when(["hunde"]),
+        DCG(noun(masculine, plural, genitive)).when(["hunde"]),
+        DCG(noun(masculine, plural, dative)).when(["hunden"]),
+        DCG(noun(masculine, plural, accusative)).when(["hunde"]),
+        DCG(noun(feminine, singular, nominative)).when(["katze"]),
+        DCG(noun(feminine, singular, genitive)).when(["katze"]),
+        DCG(noun(feminine, singular, dative)).when(["katze"]),
+        DCG(noun(feminine, singular, accusative)).when(["katze"]),
+        DCG(noun(feminine, plural, nominative)).when(["katzen"]),
+        DCG(noun(feminine, plural, genitive)).when(["katzen"]),
+        DCG(noun(feminine, plural, dative)).when(["katzen"]),
+        DCG(noun(feminine, plural, accusative)).when(["katzen"]),
+        DCG(noun(masculine, singular, nominative)).when(["kater"]),
+        DCG(noun(masculine, singular, genitive)).when(["katers"]),
+        DCG(noun(masculine, singular, dative)).when(["kater"]),
+        DCG(noun(masculine, singular, accusative)).when(["kater"]),
+        DCG(noun(masculine, plural, nominative)).when(["kater"]),
+        DCG(noun(masculine, plural, genitive)).when(["kater"]),
+        DCG(noun(masculine, plural, dative)).when(["katern"]),
+        DCG(noun(masculine, plural, accusative)).when(["kater"]),
+        DCG(noun(feminine, singular, nominative)).when(["maus"]),
+        DCG(noun(feminine, singular, genitive)).when(["maus"]),
+        DCG(noun(feminine, singular, dative)).when(["maus"]),
+        DCG(noun(feminine, singular, accusative)).when(["maus"]),
+        DCG(noun(feminine, plural, nominative)).when(["maeuse"]),
+        DCG(noun(feminine, plural, genitive)).when(["maeuse"]),
+        DCG(noun(feminine, plural, dative)).when(["maeusen"]),
+        DCG(noun(feminine, plural, accusative)).when(["maeuse"]),
+        DCG(noun(neuter, plural, nominative)).when(["leute"]),
+        DCG(noun(neuter, plural, genitive)).when(["leute"]),
+        DCG(noun(neuter, plural, dative)).when(["leuten"]),
+        DCG(noun(neuter, plural, accusative)).when(["leute"]),
+        DCG(verb(singular, nominative, Trans)).when(["fehlt"]),
+        DCG(verb(plural, nominative, Trans)).when(["fehlen"]),
+        DCG(verb(singular, dative, transitive)).when(["fehlt"]),
+        DCG(verb(plural, dative, transitive)).when(["fehlen"]),
+        DCG(verb(singular, _, intransitive)).when(["schlaeft"]),
+        DCG(verb(plural, _, intransitive)).when(["schlafen"]),
+        DCG(verb(singular, nominative, intransitive)).when(["frisst"]),
+        DCG(verb(plural, nominative, intransitive)).when(["fressen"]),
+        DCG(verb(singular, accusative, transitive)).when(["frisst"]),
+        DCG(verb(plural, accusative, transitive)).when(["fressen"]),
+        DCG(verb(singular, nominative, intransitive)).when(["jagt"]),
+        DCG(verb(plural, nominative, intransitive)).when(["jagen"]),
+        DCG(verb(singular, accusative, transitive)).when(["jagt"]),
+        DCG(verb(plural, accusative, transitive)).when(["jagen"]),
+        DCG(verb(singular, _, intransitive)).when(["spielt"]),
+        DCG(verb(plural, _, intransitive)).when(["spielen"]),
     )
 
-    # for subst in db.ask(s(A) & member('jagen', A)):
+    # words = "eine maus jagt viele katzen".split()
+    # words = "manche maeuse jagen viele katze".split()
+    words = ["der", C, D, "die", F]
+    # words = ["manche", B, C]
+    # words = [B, "hund", D, E, F]
+    # words = [B, "hunde", "jagen", C, "katzen"]
+    # words = [B, C, "jagen"]
+    # words = [B, C, "jagt", D, E]
 
-    # words = [B, 'hunde', 'jagen', C, 'katzen']
-    # words = ['manche', 'maeuse', 'jagen' | B]
-    # words = [D, 'kater', 'jagen' | B]
-    # words = 'manche maeuse jagen viele katze'.split()
-    # words = 'eine maus jagt viele katzen'.split()
-    # words = [B, C, 'jagen']
-    # words = ['manche', B, C]
-    # words = ['der', C, D, 'die', F]
-    words = [B, "hund", D, E, F]
-    # words = [B, C, 'jagt', D, E]
-    # words = [A, 'jagen' | E]
+    print(f"finding senstences that match {list(str(w) for w in words)}:")
+    print()
+    for subst in db.ask(equal(words, W), s(W)):
+        print(str(subst[W]))
+    else:
+        print("No.")
 
-    # for i, subst in enumerate(db.ask(s(W) & join(W, S, ' '))):
-    for subst in db.ask(equal(words, W) & s(W) & join(W, S, " ")):
-        print(subst[S]())
-        # print('Yes.')
     # else:
     # print('No.')
 
@@ -225,73 +219,5 @@ def grammar(db):
     # print(i)
 
 
-def grammar2(db):
-    db.tell(
-        s(S, T) << s(T, S, []),
-        s(s(NP, VP)) >> np(NP, Number, nominative)
-        & vp(VP, Number, nominative, intransitive),
-        np(np(Det, Noun, [Gender, Number]), Number, Case)
-        >> det(Det, Gender, Number, Case)
-        & noun(Noun, Gender, Number, Case),
-        np(np(Det, Adj, Noun, [Gender, Number]), Number, Case)
-        >> det(Det, Gender, Number, Case)
-        & adj(Adj, Gender, Number, Case)
-        & noun(Noun, Gender, Number, Case),
-        vp(vp(Verb, NP), Number, nominative, intransitive)
-        >> verb(Verb, Number, nominative, intransitive)
-        & np(NP, Number, nominative),
-        det(det("der"), masculine, singular, nominative) >> ["der"],
-        det(det("die"), feminine, singular, nominative) >> ["die"],
-        det(det("das"), neuter, singular, nominative) >> ["das"],
-        det(det("ein"), masculine, singular, nominative) >> ["ein"],
-        det(det("eine"), feminine, singular, nominative) >> ["eine"],
-        det(det("kein"), masculine, singular, nominative) >> ["kein"],
-        det(det("keine"), feminine, singular, nominative) >> ["keine"],
-        det(det("jeder"), masculine, singular, nominative) >> ["jeder"],
-        det(det("jede"), feminine, singular, nominative) >> ["jede"],
-        adj(adj("betretbarer"), masculine, singular, nominative) >> ["betretbarer"],
-        # noun(noun('raum'), masculine, singular, nominative) >>
-        # ['raum'] & {cut},
-        verb(verb("ist"), singular, nominative, intransitive) >> ["ist"] & {cut},
-    )
-
-
-"""
-    Die Kabine ist ein Raum. "Kabinen an Bord eines Raumschiffs..."
-    Das Bad ist östlich von der Kabine. Die Beschreibung ist "Wie eine Kabine, ist auch das Bad..."
-    Die Broschüre ist in der Kabine. "Sie beschreibt die Herrlichkeit..."
-    Das Bett ist in der Kabine.
-    Das Bett ist ein betretbarer Raum.
-    Setze "Möbel" mit Bett gleich.
-    Der Spiegel ist Kulisse im Bad.
-    Die Dusche ist hier. Sie ist unbeweglich.
-"""
-
-
-def mudlang2(db):
-    nouns = {}
-
-    def test(term, env, db, trail):
-        nouns[env.X.name] = dict(
-            gender=str(env.Gender),
-            number=str(env.Number),
-            case=str(env.Case),
-        )
-
-    grammar2(db)
-
-    db.tell(
-        # noun(noun(X), Gender, Number, Case, [X|Y], Y)
-        noun(noun(X), Gender, Number, Case, [X | Y], Y)[test],
-    )
-
-    L = "die kabine ist ein betretbarer raum".split()
-    for subst in db.ask(equal(L, S) & s(S, T)):
-        print(subst[S])
-        print(subst[T])
-    pprint.pprint(nouns)
-
-
-db = Database()
+db = database()
 grammar(db)
-# mudlang2(db)
