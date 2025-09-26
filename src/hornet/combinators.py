@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
+# SPDX-License-Identifier: MIT
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -6,17 +9,16 @@ from functools import cache, reduce
 from typing import Callable, Iterable, Self
 
 from immutables import Map
+from toolz import flip
 
 from .tailcalls import Frame, tailcall
-from .terms import Atom, Functor, Structure, Term, Variable, Wildcard
+from .terms import Functor, Structure, Term, Variable, Wildcard
 
 type Result = Frame[Subst]
 type Next = Callable[[], Result]
 type Emit[Ctx] = Callable[[Ctx, Subst, Next], Result]
 type Step[Ctx] = Callable[[Emit[Ctx], Next, Next], Result]
 type Goal[Ctx] = Callable[[Ctx, Subst], Step[Ctx]]
-type Executable = Callable[[Head], Goal]
-type Head = Atom | Functor
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,6 +82,20 @@ class on_success[Ctx]:
 
 
 @dataclass(frozen=True, slots=True)
+class on_failure[Ctx]:
+    goal: Goal[Ctx]
+    ctx: Ctx
+    subst: Subst
+    yes: Emit[Ctx]
+    no: Next
+    prune: Next
+
+    @tailcall
+    def __call__(self) -> Result:
+        return self.goal(self.ctx, self.subst)(self.yes, self.no, self.prune)
+
+
+@dataclass(frozen=True, slots=True)
 class bind[Ctx]:
     step: Step[Ctx]
     goal: Goal[Ctx]
@@ -128,25 +144,11 @@ class then[Ctx]:
 
 
 def seq_from_iterable[Ctx](goals: Iterable[Goal[Ctx]]) -> Goal[Ctx]:
-    return reduce(then, goals, unit)
+    return reduce(flip(then), reversed(tuple(goals)), unit)  # pyright: ignore
 
 
 def seq[Ctx](*goals: Goal[Ctx]) -> Goal[Ctx]:
     return seq_from_iterable(goals)
-
-
-@dataclass(frozen=True, slots=True)
-class on_failure[Ctx]:
-    goal: Goal[Ctx]
-    ctx: Ctx
-    subst: Subst
-    yes: Emit[Ctx]
-    no: Next
-    prune: Next
-
-    @tailcall
-    def __call__(self) -> Result:
-        return self.goal(self.ctx, self.subst)(self.yes, self.no, self.prune)
 
 
 @dataclass(frozen=True, slots=True)
@@ -182,7 +184,7 @@ class amb_step[Ctx]:
 
     @tailcall
     def __call__(self, yes: Emit[Ctx], no: Next, prune: Next) -> Result:
-        return self.goal(self.ctx, self.subst)(yes, no, no)
+        return self.goal(self.ctx, self.subst)(yes, no, prune)
 
 
 @dataclass(frozen=True, slots=True)
@@ -194,15 +196,34 @@ class amb_goal[Ctx]:
 
 
 def amb_from_iterable[Ctx](goals: Iterable[Goal[Ctx]]) -> Goal[Ctx]:
-    return amb_goal(reduce(choice, goals, fail))
+    return amb_goal(reduce(flip(choice), reversed(tuple(goals)), fail))  # pyright: ignore
 
 
 def amb[Ctx](*goals: Goal[Ctx]) -> Goal[Ctx]:
     return amb_from_iterable(goals)
 
 
+@dataclass(frozen=True, slots=True)
+class predicate_step[Ctx]:
+    goals: list[Goal[Ctx]]
+    ctx: Ctx
+    subst: Subst
+
+    @tailcall
+    def __call__(self, yes: Emit[Ctx], no: Next, prune: Next) -> Result:
+        return amb_from_iterable(self.goals)(self.ctx, self.subst)(yes, no, no)
+
+
+@dataclass(frozen=True, slots=True)
+class predicate_goal[Ctx]:
+    goals: list[Goal[Ctx]]
+
+    def __call__(self, ctx: Ctx, subst: Subst) -> Step[Ctx]:
+        return predicate_step(self.goals, ctx, subst)
+
+
 def neg[Ctx](goal: Goal[Ctx]) -> Goal[Ctx]:
-    return amb(seq(goal, cut, fail), unit)
+    return predicate_goal([amb(seq(goal, cut, fail), unit)])
 
 
 @dataclass(frozen=True, slots=True)

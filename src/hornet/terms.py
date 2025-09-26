@@ -14,7 +14,7 @@ type Indicator = tuple[str, int | None]
 
 @property
 def atomic_indicator(self) -> Indicator:
-    return self.name, None
+    return self.name, 0
 
 
 @property
@@ -35,6 +35,9 @@ class Wildcard(BaseTerm):
         return "_"
 
 
+WILDCARD = Wildcard()
+
+
 @dataclass(frozen=True, slots=True)
 class Variable(BaseTerm):
     name: str
@@ -50,6 +53,12 @@ class Atom(BaseTerm):
 
     def __str__(self):
         return self.name
+
+    def __deepcopy__(self, memo):
+        if id(self) in memo:
+            return memo[id(self)]
+        memo[id(self)] = self  # record first
+        return self
 
 
 @dataclass(frozen=True, slots=True)

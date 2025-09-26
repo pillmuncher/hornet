@@ -1,18 +1,15 @@
-# Copyright (c) 2014 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
+# Copyright (c) 2014-2025 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
+# SPDX-License-Identifier: MIT
 
 from hornet import DCG, database
 from hornet.symbols import (
-    A,
-    B,
     C,
     Case,
     D,
-    E,
     F,
     Gender,
     Number,
     S,
-    Tense,
     Trans,
     W,
     _,
@@ -23,14 +20,12 @@ from hornet.symbols import (
     feminine,
     genitive,
     intransitive,
-    join,
     masculine,
     neuter,
     nominative,
     noun,
     np,
     plural,
-    present,
     s,
     singular,
     transitive,
@@ -201,19 +196,14 @@ def grammar(db):
         DCG(verb(plural, _, intransitive)).when(["spielen"]),
     )
 
-    # for subst in db.ask(s(A) & member('jagen', A)):
-
-    # words = [B, "hunde", "jagen", C, "katzen"]
-    # words = ["manche", "maeuse", "jagen" | B]
-    # words = [D, 'kater', 'jagen' | B]
+    # words = "eine maus jagt viele katzen".split()
     # words = "manche maeuse jagen viele katze".split()
-    # words = 'eine maus jagt viele katzen'.split()
-    # words = [B, C, 'jagen']
-    # words = ['manche', B, C]
     words = ["der", C, D, "die", F]
+    # words = ["manche", B, C]
     # words = [B, "hund", D, E, F]
+    # words = [B, "hunde", "jagen", C, "katzen"]
+    # words = [B, C, "jagen"]
     # words = [B, C, "jagt", D, E]
-    # words = [A, 'jagen' | E]
 
     print(f"finding senstences that match {list(str(w) for w in words)}:")
     print()

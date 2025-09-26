@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
+# SPDX-License-Identifier: MIT
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -48,11 +51,7 @@ def const[T](x: T) -> Callable[[T], Any]:
     return lambda *_, **__: x
 
 
-def get_env[S](fn: Callable[[S], S] = identity) -> State[S, S]:
-    return State(lambda state: (fn(state), state))
-
-
-def get_state[S, T](fn: Callable[[S], T]) -> State[S, T]:
+def get_state[S](fn: Callable[[S], S] = identity) -> State[S, S]:
     return State(lambda state: (fn(state), state))
 
 

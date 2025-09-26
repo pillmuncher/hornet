@@ -24,7 +24,7 @@ class RuleExpression[T]:
 
 @dataclass(frozen=True, slots=True)
 class DCG:
-    expr: Expression[Atom | Functor]
+    term: Atom | Functor
 
     def when(self, *args) -> RuleExpression[DCGRule]: ...
 

@@ -1,4 +1,5 @@
 # Copyright (c) 2014-2025 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
+# SPDX-License-Identifier: MIT
 
 from hornet import database
 from hornet.symbols import (
@@ -353,9 +354,6 @@ def diff_test(db):
         print(subst[A])
         print(subst[B])
         print(subst[C])
-        # __import__("pprint").pprint(dict(subst.env))
-        # __import__("pprint").pprint(dict(subst.subst.map))
-        break
 
 
 def main():
@@ -366,8 +364,4 @@ def main():
 
 
 if __name__ == "__main__":
-    # from utils import timer
-    #
-    # with timer("Symdiff run"):
-    #     for i in range(100):
     main()
