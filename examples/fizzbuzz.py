@@ -29,15 +29,17 @@ db = database()
 
 def main():
     db.tell(
-        DCG(word(3, N)).when(inline(let(M, N % 3), equal(M, 0)), ["fizz"]),
-        DCG(word(5, N)).when(inline(let(M, N % 5), equal(M, 0)), ["buzz"]),
-        DCG(word(7, N)).when(inline(let(M, N % 7), equal(M, 0)), ["quux"]),
-        DCG(word(_, _)).when(),
-        DCG(words(N)).when(
-            word(3, N),
-            word(5, N),
-            word(7, N),
-            inline(cut),
+        DCG(word(3, N).when(inline(let(M, N % 3), equal(M, 0)), ["fizz"])),
+        DCG(word(5, N).when(inline(let(M, N % 5), equal(M, 0)), ["buzz"])),
+        DCG(word(7, N).when(inline(let(M, N % 7), equal(M, 0)), ["quux"])),
+        DCG(word(_, _)),
+        DCG(
+            words(N).when(
+                word(3, N),
+                word(5, N),
+                word(7, N),
+                inline(cut),
+            )
         ),
         fb(N, R).when(
             phrase(words(N), Ws),

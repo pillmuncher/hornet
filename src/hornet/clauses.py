@@ -9,7 +9,7 @@ from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import dataclass
 from functools import wraps
-from typing import Callable, Iterable, Protocol, Sequence, cast
+from typing import Callable, Iterable, Sequence, cast
 
 from hornet import terms
 
@@ -29,12 +29,11 @@ from .combinators import (
     unify,
     unit,
 )
-from .expressions import Expression, RuleExpression
 from .states import State, StateGenerator, get_state, set_state, with_state
 from .tailcalls import trampoline
 from .terms import (
-    EMPTY,
     Atom,
+    BaseTerm,
     BinaryOperator,
     Conjunction,
     Cons,
@@ -51,11 +50,10 @@ from .terms import (
     Term,
     UnaryOperator,
     Variable,
-    Wildcard,
     fresh_name,
 )
 
-type Environment = dict[Expression[Variable], Variable]
+type Environment = dict[BaseTerm, Variable]
 
 type PythonBody = Callable[[Environment], Goal[Database]]
 type PythonGoal = Callable[[Database, Subst, Environment], Step[Database]]
@@ -66,13 +64,10 @@ class PythonRule(Rule[PythonBody]):
     pass
 
 
-def predicate(
-    expr: Expression[Term],
-) -> Callable[[PythonGoal], RuleExpression[PythonRule]]:
-    head = expr.term
+def predicate(head: Term) -> Callable[[PythonGoal], PythonRule]:
     assert isinstance(head, MatchTerm)
 
-    def decorator(func: PythonGoal) -> RuleExpression[PythonRule]:
+    def decorator(func: PythonGoal) -> PythonRule:
         @wraps(func)
         def python_body(env: Environment) -> Goal[Database]:
             def python_goal(db: Database, subst: Subst) -> Step[Database]:
@@ -80,7 +75,7 @@ def predicate(
 
             return python_goal
 
-        return RuleExpression(PythonRule(head=head, body=python_body))
+        return PythonRule(head=head, body=python_body)
 
     return decorator
 
@@ -100,8 +95,8 @@ class SubstProxy(Mapping):
             except KeyError:
                 continue
 
-    def __getitem__(self, varexpr: Expression[Variable]):
-        return self.subst.actualize(self.env[varexpr])
+    def __getitem__(self, variable: BaseTerm):
+        return self.subst.actualize(self.env[variable])
 
 
 @dataclass(frozen=True, slots=True)
@@ -187,7 +182,7 @@ def resolve(query: Term) -> Goal[Database]:
                 [fresh_goal(clause, query) for clause in db[query.indicator]]
             )(db, subst)
 
-        case Conjunction(body=args):
+        case Conjunction(args=args):
             return seq_from_iterable(resolve(a) for a in args)
 
         case Disjunction(body=args):
@@ -199,24 +194,19 @@ def resolve(query: Term) -> Goal[Database]:
     raise TypeError(f"Type error: `callable' expected, found {query!r}")
 
 
-class HasTerm[T](Protocol):
-    @property
-    def term(self) -> T: ...
-
-
 class Database(ChainMap[Indicator, list[Clause]]):
-    def tell(self, *expressions: HasTerm[Atom | Functor | Rule]) -> None:
-        for expr in expressions:
-            (clause, indicator), _ = term_to_clause(expr.term).run({})
+    def tell(self, *terms: BaseTerm) -> None:
+        for term in terms:
+            (clause, indicator), _ = term_to_clause(term).run({})
             self.setdefault(indicator, []).append(clause)
 
     def ask(
-        self, conjunct: Expression, *conjuncts: Expression, subst: Subst | None = None
+        self, conjunct: Term, *conjuncts: Term, subst: Subst | None = None
     ) -> Iterable[Mapping]:
         if conjuncts:
-            query = Conjunction(conjunct.term, *(c.term for c in conjuncts))
+            query = Conjunction(conjunct, *conjuncts)
         else:
-            query = conjunct.term
+            query = conjunct
         fresh_query, env = fresh(term=query).run({})
         return (
             SubstProxy(new_subst, env) for new_subst in self.resolve(fresh_query, subst)
@@ -232,12 +222,12 @@ class Database(ChainMap[Indicator, list[Clause]]):
 
 
 def get_mapped_var(var: Variable) -> State[Environment, Variable | None]:
-    return get_state(lambda env: env.get(Expression(var)))
+    return get_state(lambda env: env.get(var))
 
 
 def map_var(canonical: Variable, renamed: Variable) -> State[Environment, Environment]:
     def setter(env) -> Environment:
-        env[Expression(canonical)] = renamed
+        env[canonical] = renamed
         return env
 
     return set_state(setter)
@@ -264,32 +254,12 @@ def fresh_list(items: Sequence[Term]) -> StateGenerator[Environment, tuple[Term,
 
 
 @with_state
-def functor(name: str, args: tuple[Term]) -> StateGenerator[Environment, Term]:
-    return (yield State.unit(Functor(name, *args)))
-
-
-@with_state
-def conjunction(args: tuple[Term]) -> StateGenerator[Environment, Term]:
-    return (yield State.unit(Conjunction(*args)))
-
-
-@with_state
-def list_to_cons(items: list[Term]) -> StateGenerator[Environment, Term]:
-    if not items:
-        return EMPTY
-    head, *tail = items
-    new_head = yield fresh(term=head)
-    new_tail = yield list_to_cons(tail)
-    return Cons(head=new_head, tail=new_tail)
-
-
-@with_state
 def fresh(term: Term | tuple[Term]) -> StateGenerator[Environment, Term]:
     match term:
         case str() | int() | float() | bool() | complex():
             return term
 
-        case Wildcard():
+        case Variable(name="_"):
             return term
 
         case Variable():
@@ -300,7 +270,7 @@ def fresh(term: Term | tuple[Term]) -> StateGenerator[Environment, Term]:
 
         case Functor(name=name, args=args):
             new_args = yield fresh_list(args)
-            return (yield functor(name, new_args))
+            return Functor(name, *new_args)
 
         case Empty():
             return term
@@ -319,13 +289,13 @@ def fresh(term: Term | tuple[Term]) -> StateGenerator[Environment, Term]:
             new_right = yield fresh(right)
             return type(term)(new_left, new_right)
 
-        case Conjunction(body=conjuncts):
+        case Conjunction(args=conjuncts):
             new_conjuncts = yield fresh_list(conjuncts)
-            return (yield conjunction(new_conjuncts))
+            return Conjunction(*new_conjuncts)
 
         case tuple() as conjuncts:
             new_conjuncts = yield fresh_list(conjuncts)
-            return (yield conjunction(new_conjuncts))
+            return Conjunction(*new_conjuncts)
 
     raise TypeError(f"Unsupported Term node: {term}")
 
@@ -351,7 +321,7 @@ def term_to_clause(
             env = yield get_state()
             return AtomicRule(env, new_body_goal), (name, None)
 
-        case HornetRule(head=Structure(name=name, args=args) as head, body=body):
+        case HornetRule(head=Functor(name=name, args=args) as head, body=body):
             new_head = yield fresh(head)
             head_functor = Functor(head.name, *new_head.args)
             env = yield get_state()
@@ -372,7 +342,7 @@ def term_to_clause(
             env = yield get_state()
             return AtomicPythonRule(env, body), (name, None)
 
-        case PythonRule(head=Structure(name=name, args=args) as head, body=body):
+        case PythonRule(head=Functor(name=name, args=args) as head, body=body):
             new_head = yield fresh(head)
             head_functor = Functor(head.name, *new_head.args)
             env = yield get_state()
