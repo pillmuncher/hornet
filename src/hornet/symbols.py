@@ -4,7 +4,8 @@
 import re as __re__
 from functools import cache as __cache__
 
-from .terms import BaseTerm as __BaseTerm__
+from .terms import Atom as __Atom__
+from .terms import Variable as __Variable__
 
 __all__ = []
 
@@ -18,8 +19,8 @@ __scan__ = __re__.compile(
 ).fullmatch
 
 
-# @__cache__
-def __getattr__(name: str) -> __BaseTerm__:
+@__cache__
+def __getattr__(name: str) -> __Atom__ | __Variable__:
     """
     Convert a string into a Term according to Prolog conventions:
       - "_" becomes the anonymous variable

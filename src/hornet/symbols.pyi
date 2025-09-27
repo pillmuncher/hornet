@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .terms import BaseTerm as __BaseTerm__
+from .terms import NonVariable as __BaseTerm__
 
 
 def __getattr__(name: str) -> __BaseTerm__: ...

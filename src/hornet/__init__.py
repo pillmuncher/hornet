@@ -5,7 +5,8 @@ from __future__ import annotations
 
 from typing import Callable
 
-from hornet.clauses import Database, predicate
+from hornet.clauses import Database, Environment, predicate
+from hornet.combinators import Step, Subst, unit
 from hornet.terms import DCG
 
 from . import combinators, symbols, terms
@@ -54,6 +55,7 @@ from .symbols import (
 )
 
 __all__ = (
+    "unit",
     "combinators",
     "symbols",
     "terms",
@@ -105,14 +107,11 @@ __all__ = (
 
 
 def _bootstrap_database() -> Callable[[], Database]:
-    """Add default Hornet builtins to the given database."""
-
     from numbers import Number
 
     from toolz import flip, reduce
 
-    from hornet.clauses import Environment, predicate, resolve
-    from hornet.combinators import Step, Subst
+    from hornet.clauses import predicate, resolve
     from hornet.combinators import cut as _cut
     from hornet.combinators import fail as _fail
     from hornet.combinators import then
@@ -123,7 +122,6 @@ def _bootstrap_database() -> Callable[[], Database]:
         Add,
         Atom,
         Atomic,
-        BaseTerm,
         BitAnd,
         BitOr,
         BitXor,
@@ -136,9 +134,9 @@ def _bootstrap_database() -> Callable[[], Database]:
         LShift,
         Mod,
         Mul,
+        NonVariable,
         Pow,
         Primitive,
-        QueryTerm,
         RShift,
         Sub,
         Term,
@@ -173,48 +171,7 @@ def _bootstrap_database() -> Callable[[], Database]:
         V,
         X,
         Y,
-        append,
-        arithmetic_equal,
-        call,
-        cut,
-        equal,
-        findall,
-        greater,
-        ifelse,
-        ignore,
-        is_atom,
-        is_atomic,
-        is_bool,
-        is_bytes,
-        is_complex,
-        is_constant,
-        is_float,
-        is_int,
-        is_numeric,
-        is_str,
-        is_var,
-        join,
-        length,
-        let,
-        lwriteln,
-        maplist,
-        member,
-        nl,
-        nonvar,
-        once,
-        phrase,
-        repeat,
-        reverse,
-        select,
-        smaller,
-        throw,
-        unequal,
-        univ,
-        write,
-        writeln,
     )
-
-    db = Database()
 
     def to_python_list(cons_list: Term, subst: Subst) -> list[Term]:
         assert isinstance(cons_list, Cons | Empty)
@@ -313,9 +270,11 @@ def _bootstrap_database() -> Callable[[], Database]:
             case _:
                 raise TypeError(f"Cannot evaluate non-arithmetic Term: {val!r}")
 
+    db = Database()
+
     @db.tell
     @predicate(let(R, F))
-    def _1(db: Database, subst: Subst, env: Environment) -> Step:
+    def _let(db: Database, subst: Subst, env: Environment) -> Step:
         r = subst.actualize(env[R])
         assert isinstance(r, Variable)
         f = subst.actualize(env[F])
@@ -326,12 +285,12 @@ def _bootstrap_database() -> Callable[[], Database]:
     def check(
         db: Database,
         term: Term,
-        var: BaseTerm,
+        var: NonVariable,
         match: Callable[[Term], bool],
     ) -> None:
         @db.tell
         @predicate(term)
-        def _2(db: Database, subst: Subst, env: Environment) -> Step:
+        def _check(db: Database, subst: Subst, env: Environment) -> Step:
             if match(subst.actualize(env[var])):
                 return _unit(db, subst)
             else:
@@ -350,25 +309,9 @@ def _bootstrap_database() -> Callable[[], Database]:
     check(db, is_numeric(V), V, lambda term: isinstance(term, Number))
     check(db, is_str(V), V, lambda term: isinstance(term, str))
 
-    # it's entirely unclear how to implement variadic prediactes:
-    #
-    # @db.tell
-    # @predicate(all_of())
-    # def _3(db: Database, subst: Subst, env: Environment) -> Step:
-    #     return seq_from_iterable(map(resolve, (subst.actualize(term) for term in env)))(
-    #         db, subst
-    #     )
-    #
-    # @db.tell
-    # @predicate(any_of())
-    # def _4(db: Database, subst: Subst, env: Environment) -> Step:
-    #     return amb_from_iterable(map(resolve, (subst.actualize(term) for term in env)))(
-    #         db, subst
-    #     )
-
     @db.tell
     @predicate(univ(P, L))
-    def _5(db: Database, subst: Subst, env: Environment) -> Step:
+    def _univ(db: Database, subst: Subst, env: Environment) -> Step:
         match subst.actualize(env[P]):
             case Atom(name=name) as res:
                 left = promote([res])
@@ -390,25 +333,25 @@ def _bootstrap_database() -> Callable[[], Database]:
 
     @db.tell
     @predicate(call(G))
-    def _6(db: Database, subst: Subst, env: Environment) -> Step:
+    def _call(db: Database, subst: Subst, env: Environment) -> Step:
         return resolve(subst.actualize(env[G]))(db, subst)
 
     @db.tell
     @predicate(throw(E))
-    def _7(db: Database, subst: Subst, env: Environment) -> Step:
+    def _throw(db: Database, subst: Subst, env: Environment) -> Step:
         raise Exception(subst.actualize(env[E]))
 
     @db.tell
     @predicate(ifelse(T, Y, N))
-    def _8(db: Database, subst: Subst, env: Environment) -> Step:
-        for new_subst in db.resolve(subst.actualize(env[T]), subst):
+    def _ifelse(db: Database, subst: Subst, env: Environment) -> Step:
+        for new_subst in db.run_query(subst.actualize(env[T]), subst):
             return resolve(new_subst.actualize(env[Y]))(db, new_subst)
         else:
             return resolve(subst.actualize(env[N]))(db, subst)
 
     @db.tell
     @predicate(smaller(A, B))
-    def _9(db: Database, subst: Subst, env: Environment) -> Step:
+    def _smaller(db: Database, subst: Subst, env: Environment) -> Step:
         match subst.actualize(env[A]), subst.actualize(env[B]):
             case int() | float() as a, int() | float() as b:
                 if a < b:
@@ -417,7 +360,7 @@ def _bootstrap_database() -> Callable[[], Database]:
 
     @db.tell
     @predicate(greater(A, B))
-    def _10(db: Database, subst: Subst, env: Environment) -> Step:
+    def _greater(db: Database, subst: Subst, env: Environment) -> Step:
         match subst.actualize(env[A]), subst.actualize(env[B]):
             case int() | float() as a, int() | float() as b:
                 if a > b:
@@ -426,7 +369,7 @@ def _bootstrap_database() -> Callable[[], Database]:
 
     @db.tell
     @predicate(length(L, N))
-    def _11(db: Database, subst: Subst, env: Environment) -> Step:
+    def _length(db: Database, subst: Subst, env: Environment) -> Step:
         count = 0
         tail = subst.actualize(env[L])
         length = subst.actualize(env[N])
@@ -441,7 +384,7 @@ def _bootstrap_database() -> Callable[[], Database]:
 
     @db.tell
     @predicate(join(L, S))
-    def _12(db: Database, subst: Subst, env: Environment) -> Step:
+    def _join(db: Database, subst: Subst, env: Environment) -> Step:
         items = subst.actualize(env[L])
         assert isinstance(items, Cons | Empty)
 
@@ -455,27 +398,27 @@ def _bootstrap_database() -> Callable[[], Database]:
 
     @db.tell
     @predicate(findall(O, G, L))
-    def _13(db: Database, subst: Subst, env: Environment) -> Step:
+    def _findall(db: Database, subst: Subst, env: Environment) -> Step:
         obj = subst.actualize(dict(env)[O])
         assert isinstance(obj, Variable)
 
         goal = subst.actualize(env[G])
-        assert isinstance(goal, QueryTerm)
+        assert isinstance(goal, NonVariable)
 
-        items = [s.actualize(obj) for s in db.resolve(goal, subst=subst)]
+        items = [s.actualize(obj) for s in db.run_query(goal, subst=subst)]
 
         return _unify(env[L], list_to_cons(items))(db, subst)
 
     # Printing predicates
     @db.tell
     @predicate(write(V))
-    def _14(db: Database, subst: Subst, env: Environment) -> Step:
+    def _write(db: Database, subst: Subst, env: Environment) -> Step:
         print(subst.actualize(env[V]), end="")
         return _unit(db, subst)
 
     @db.tell
     @predicate(writeln(V))
-    def _15(db: Database, subst: Subst, env: Environment) -> Step:
+    def _writeln(db: Database, subst: Subst, env: Environment) -> Step:
         print(subst.actualize(env[V]))
         return _unit(db, subst)
 
@@ -509,10 +452,10 @@ def _bootstrap_database() -> Callable[[], Database]:
         repeat.when(
             repeat,
         ),
-        append([], A, A),
         append([A | B], C, [A | D]).when(
             append(B, C, D),
         ),
+        append([], A, A),
         #
         # reverse a list:
         reverse([X | P], Q, Y).when(
@@ -537,7 +480,6 @@ def _bootstrap_database() -> Callable[[], Database]:
         #
         # call goal G on every element of a list and collect the results:
         maplist(G, [H | T]).when(
-            cut,
             univ(G1, [G, H]),
             call(G1),
             maplist(G, T),
@@ -557,6 +499,8 @@ def _bootstrap_database() -> Callable[[], Database]:
         nl.when(
             writeln(""),
         ),
+        #
+        # test to see if two arithemtic expressions yield the same result:
         arithmetic_equal(X, Y).when(
             let(A, X),
             let(B, Y),
@@ -565,7 +509,6 @@ def _bootstrap_database() -> Callable[[], Database]:
         #
         # convenience predicate for DCG queries:
         phrase(G0, R).when(
-            is_var(R),
             univ(G0, L0),
             append(L0, [R, []], L1),
             univ(G1, L1),

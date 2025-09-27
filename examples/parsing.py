@@ -25,6 +25,7 @@ from hornet.symbols import (
     nominative,
     noun,
     np,
+    phrase,
     plural,
     s,
     singular,
@@ -37,21 +38,10 @@ from hornet.symbols import (
 def grammar(db):
     db.tell(
         s(S).when(s(S, [])),
+        DCG(s.when(np(Number, nominative), vp(Number, nominative, intransitive))),
         DCG(
             s.when(
-                np(
-                    Number,
-                    nominative,
-                ),
-                vp(Number, nominative, intransitive),
-            )
-        ),
-        DCG(
-            s.when(
-                np(
-                    Number,
-                    Case,
-                ),
+                np(Number, Case),
                 vp(Number, Case, transitive),
             )
         ),
@@ -62,11 +52,7 @@ def grammar(db):
         ),
         DCG(
             np(Number, Case).when(
-                det(
-                    Gender,
-                    Number,
-                    Case,
-                ),
+                det(Gender, Number, Case),
                 noun(Gender, Number, Case),
             )
         ),
@@ -82,31 +68,19 @@ def grammar(db):
         ),
         DCG(
             vp(_, dative, transitive).when(
-                verb(
-                    Number,
-                    nominative,
-                    transitive,
-                ),
+                verb(Number, nominative, transitive),
                 np(Number, nominative),
             )
         ),
         DCG(
             vp(Number, nominative, transitive).when(
-                verb(
-                    Number,
-                    nominative,
-                    transitive,
-                ),
+                verb(Number, nominative, transitive),
                 np(_, dative),
             )
         ),
         DCG(
             vp(Number, nominative, transitive).when(
-                verb(
-                    Number,
-                    accusative,
-                    transitive,
-                ),
+                verb(Number, accusative, transitive),
                 np(_, accusative),
             )
         ),
@@ -257,18 +231,12 @@ def grammar(db):
     # words = [B, C, "jagen"]
     # words = [B, C, "jagt", D, E]
 
-    print(f"finding senstences that match {list(str(w) for w in words)}:")
+    print(f"senstences that match {str(words)}:")
     print()
-    for subst in db.ask(equal(words, W), s(W)):
+    for subst in db.ask(equal(words, W), phrase(s, W)):
         print(str(subst[W]))
     else:
         print("No.")
-
-    # else:
-    # print('No.')
-
-    # print(repr(subst[S]))
-    # print(i)
 
 
 db = database()

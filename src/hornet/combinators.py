@@ -12,7 +12,7 @@ from immutables import Map
 from toolz import flip
 
 from .tailcalls import Frame, tailcall
-from .terms import Functor, Structure, Term, Variable
+from .terms import Compound, Functor, Term, Variable
 
 type Result = Frame[Subst]
 type Next = Callable[[], Result]
@@ -33,7 +33,7 @@ class Subst(Mapping[Variable, Term]):
         match self[obj]:
             case Functor(name=name, args=args):
                 return Functor(name, *(self.actualize(a) for a in args))
-            case Structure(args=args) as struct:
+            case Compound(args=args) as struct:
                 return type(struct)(*(self.actualize(a) for a in args))
             case obj:
                 return obj
@@ -67,7 +67,7 @@ def success[Ctx](ctx: Ctx, subst: Subst, no: Next) -> Result:
 
 
 def failure() -> Result:
-    pass
+    return None
 
 
 @dataclass(frozen=True, slots=True)
@@ -256,7 +256,7 @@ def _unify[Ctx](this: Term, that: Term) -> Goal[Ctx]:
         case _, Variable():
             return _unify_variable(that, this)
 
-        case Structure(), Structure():
+        case Compound(), Compound():
             if this.indicator == that.indicator:
                 return unify_pairs(*zip(this.args, that.args))
             else:

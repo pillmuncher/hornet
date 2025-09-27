@@ -1,4 +1,21 @@
 from turtle import Turtle, clear, goto, ht, listen, mainloop, onkey, penup, write
+from typing import SupportsIndex, cast
+
+from hornet import Database, Environment, Step, Subst, database, predicate, unit
+from hornet.symbols import (
+    From,
+    M,
+    N,
+    To,
+    With,
+    _,
+    cut,
+    greater,
+    let,
+    move,
+    play_hanoi,
+    show,
+)
 
 """turtle-example-suite:
 
@@ -24,7 +41,7 @@ Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010,
 
 """
 I replaced the original algorithm by one written in hornet to demonstrate
-how to interface hornet code with python code.  -- pillmuncher@web.de
+how to interface hornet code with python code.  -- m.krippendorf+hornet@posteo.de
 """
 
 
@@ -37,7 +54,7 @@ class Disc(Turtle):
         self.st()
 
 
-class Tower(list):
+class Tower(list[int]):
     "Hanoi tower, a subclass of built-in type list"
 
     def __init__(self, x):
@@ -49,40 +66,44 @@ class Tower(list):
         d.sety(-150 + 34 * len(self))
         self.append(d)
 
-    def pop(self):
+    def pop(self, _: SupportsIndex = -1) -> int:
         d = list.pop(self)
         d.sety(150)
         return d
 
 
 def hanoi():
-    from hornet import Database, _, cut, greater, let, pyfunc
-    from hornet.symbols import From, M, N, To, With, move, play_hanoi
-
-    @pyfunc
-    def show_move(N, From, To, With):
-        towers[To()].push(towers[From()].pop())
-
-    db = Database()
+    db = database()
 
     db.tell(
-        play_hanoi(N, From, To, With) << greater(N, 0) & move(N, From, To, With),
-        move(1, From, To, _)[show_move] << cut,
-        move(N, From, To, With) << let(M, N - 1)
-        & move(M, From, With, To)
-        & move(1, From, To, _)
-        & move(M, With, To, From),
+        play_hanoi(N, From, To, With).when(
+            greater(N, 0),
+            move(N, From, To, With),
+        ),
+        move(1, From, To, _).when(show(From, To), cut),
+        move(N, From, To, With).when(
+            let(M, N - 1),
+            move(M, From, With, To),
+            move(1, From, To, _),
+            move(M, With, To, From),
+        ),
     )
 
-    for subst in db.ask(play_hanoi(6, 0, 1, 2)):
-        print("Yes.")
-        break
-    else:
-        print("No.")
+    @db.tell
+    @predicate(show(From, To))
+    def _show(db: Database, subst: Subst, env: Environment) -> Step:
+        to = cast(int, subst.actualize(env[To]))
+        fro = cast(int, subst.actualize(env[From]))
+        towers[to].push(towers[fro].pop())
+        return unit(db, subst)
+
+    for s in db.ask(play_hanoi(6, 0, 1, 2)):
+        # break
+        pass
 
 
 def play():
-    onkey(None, "space")
+    onkey(lambda: None, "space")
     clear()
     hanoi()
     write("press STOP button to exit", align="center", font=("Courier", 16, "bold"))
