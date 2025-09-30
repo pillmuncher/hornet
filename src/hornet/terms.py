@@ -10,7 +10,7 @@ from typing import Any, ClassVar, Iterator
 
 from .states import StateGenerator, const, get_state, set_state, with_state
 
-type Term = Variable | NonVariable | Primitive
+type Term = Variable | NonVariable | Primitive | Exception
 type Indicator = tuple[str, int | None]
 
 
@@ -547,6 +547,7 @@ def promote(obj: Any) -> Term | tuple:
             | bool()
             | float()
             | complex()
+            | Exception()
         ):
             return obj
         case Functor(name=name, args=args):

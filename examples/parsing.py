@@ -38,7 +38,12 @@ from hornet.symbols import (
 def grammar(db):
     db.tell(
         s(S).when(s(S, [])),
-        DCG(s.when(np(Number, nominative), vp(Number, nominative, intransitive))),
+        DCG(
+            s.when(
+                np(Number, nominative),
+                vp(Number, nominative, intransitive),
+            )
+        ),
         DCG(
             s.when(
                 np(Number, Case),

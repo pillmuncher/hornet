@@ -286,7 +286,7 @@ def new_term(
     term: Term | tuple[Term],
 ) -> StateGenerator[FreshState, tuple[Term, bool]]:
     match term:
-        case str() | int() | float() | bool() | complex():
+        case str() | int() | float() | bool() | complex() | Exception():
             yield set_ground(term)
             return term, True
 

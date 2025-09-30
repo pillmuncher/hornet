@@ -25,6 +25,7 @@ from hornet.symbols import (
     diff,
     equal,
     exp,
+    ifelse,
     is_atomic,
     is_numeric,
     let,
@@ -139,14 +140,38 @@ def diff_rules(db):
 
 def simp_rules(db):
     db.tell(
-        simp(X, Y).when(cut, s(X, Y)),
+        simp(X, Y).when(s(X, Y)),
         s(A, A).when(
             is_atomic(A),
             cut,
         ),
+        # Addition
+        s(0 + A, B).when(
+            cut,
+            s(A, B),
+        ),
+        s(A + 0, B).when(
+            cut,
+            s(A, B),
+        ),
+        s(A + B, C).when(
+            is_numeric(A),
+            is_numeric(B),
+            cut,
+            let(C, A + B),
+        ),
         s(A + (B + C), D).when(
             cut,
             s(A + B + C, D),
+        ),
+        s(-A + -B, C).when(
+            cut,
+            s(A + B, C0),
+            ifelse(
+                equal(A + B, C0),
+                equal(C0, C),
+                s(-C0, C),
+            ),
         ),
         s(-A + B, C).when(
             cut,
@@ -157,38 +182,24 @@ def simp_rules(db):
             s(A - B, C),
         ),
         s(A + B, C).when(
-            is_numeric(A),
-            is_numeric(B),
-            cut,
-            let(C, A + B),
-        ),
-        s(A + B, C).when(
             s(A, A1),
             s(B, B1),
             ~equal([A, B], [A1, B1]),
             cut,
             s(A1 + B1, C),
         ),
+        # Subtraction
         s(--A, B).when(
             cut,
             s(A, B),
         ),
-        s(-A, -B).when(
+        s(A - 0, B).when(
             cut,
             s(A, B),
         ),
-        s(-A - -B, C).when(
+        s(0 - A, B).when(
             cut,
-            s(B - A, C),
-        ),
-        s(-A - B, C).when(
-            cut,
-            s(A + B, C0),
-            s(-C0, C),
-        ),
-        s(A - -B, C).when(
-            cut,
-            s(A + B, C),
+            s(-A, B),
         ),
         s(A - A, 0).when(
             cut,
@@ -199,17 +210,49 @@ def simp_rules(db):
             cut,
             let(C, A - B),
         ),
+        s(-A, -B).when(
+            cut,
+            s(A, B),
+        ),
+        s(-A - -B, C).when(
+            cut,
+            s(B - A, C),
+        ),
+        s(-A - B, D).when(
+            cut,
+            s(A + B, C),
+            ifelse(
+                equal(A + B, C0),
+                equal(C0, D),
+                s(-C0, D),
+            ),
+        ),
+        s(A - -B, C).when(
+            cut,
+            s(A + B, C),
+        ),
         s(A - B, C).when(
             s(A, A1),
+            ~equal(A, A1),
             s(B, B1),
-            ~equal([A, B], [A1, B1]),
+            ~equal(B, B1),
             cut,
             s(A1 - B1, C),
         ),
-        s((A + B) * (A - B), C**2 - D**2).when(
+        # Multiplication
+        s(0 * _, 0).when(
             cut,
-            s(A, C),
-            s(B, D),
+        ),
+        s(_ * 0, 0).when(
+            cut,
+        ),
+        s(1 * A, B).when(
+            cut,
+            s(A, B),
+        ),
+        s(A * 1, B).when(
+            cut,
+            s(A, B),
         ),
         s(A * (B * C), D).when(
             cut,
@@ -229,34 +272,6 @@ def simp_rules(db):
             cut,
             s((A + B) * D, C),
         ),
-        s(-A * -B, C).when(
-            cut,
-            s(A * B, C),
-        ),
-        s(-A * B, C).when(
-            cut,
-            s(A * B, C0),
-            s(-C0, C),
-        ),
-        s(A * -B, C).when(
-            cut,
-            s(A * B, C0),
-            s(-C0, C),
-        ),
-        s(0 * _, 0).when(
-            cut,
-        ),
-        s(_ * 0, 0).when(
-            cut,
-        ),
-        s(1 * A, B).when(
-            cut,
-            s(A, B),
-        ),
-        s(A * 1, B).when(
-            cut,
-            s(A, B),
-        ),
         s(A * A, C).when(
             cut,
             s(A, B),
@@ -265,6 +280,22 @@ def simp_rules(db):
         s(A * A**B, C).when(
             cut,
             s(A ** (B + 1), C),
+        ),
+        s(-A * -B, C).when(
+            cut,
+            s(A * B, C),
+        ),
+        s(-A * B, C).when(
+            cut,
+            s(A * B, C0),
+            ~equal(C0, A * B),
+            s(-C0, C),
+        ),
+        s(A * -B, C).when(
+            cut,
+            s(A * B, C0),
+            ~equal(C0, A * B),
+            s(-C0, C),
         ),
         s(A * B, C).when(
             is_numeric(A),
@@ -279,18 +310,24 @@ def simp_rules(db):
             cut,
             s(D * E, C),
         ),
+        s((A + B) * (A - B), C**2 - D**2).when(
+            cut,
+            s(A, C),
+            s(B, D),
+        ),
+        # Division
+        s(A / 0, 0).when(
+            throw(ZeroDivisionError(f"Division by zero: {A / 0}")),
+        ),
         s(0 / _, 0).when(
             cut,
         ),
-        s(_ / 0, 0).when(
-            throw("Division by zero!"),
+        s(A / A, 1).when(
+            cut,
         ),
         s(A / 1, B).when(
             cut,
             s(A, B),
-        ),
-        s(A / A, 1).when(
-            cut,
         ),
         s(A / B, C).when(
             is_numeric(A),
@@ -305,6 +342,7 @@ def simp_rules(db):
             cut,
             s(A1 / B1, C),
         ),
+        # Exponentiation
         s(_**0, 1).when(
             cut,
         ),
@@ -342,6 +380,7 @@ def simp_rules(db):
             cut,
             s(A**D, C),
         ),
+        # Fixpoint
         s(A, A).when(
             cut,
         ),
