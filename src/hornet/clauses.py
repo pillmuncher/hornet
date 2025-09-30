@@ -9,7 +9,7 @@ from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import dataclass
 from functools import wraps
-from typing import Callable, Iterable, Sequence, cast
+from typing import Any, Callable, Iterable, Iterator, Sequence
 
 from hornet import terms
 
@@ -49,6 +49,7 @@ from .terms import (
     UnaryOperator,
     Variable,
     fresh_name,
+    fresh_variable,
 )
 
 type Environment = dict[NonVariable, Variable]
@@ -96,25 +97,22 @@ class SubstProxy(Mapping):
 @dataclass(frozen=True, slots=True)
 class Clause(ABC):
     env: Environment
+    ground: dict[int, Any]
 
     @abstractmethod
-    def goal(self, query) -> Goal[Database]: ...
+    def __call__(self, query) -> Goal[Database]: ...
 
 
-def fresh_goal(clause, query: NonVariable) -> Goal[Database]:
-    fresh_env = {var_expr: terms.fresh_variable() for var_expr in clause.env.keys()}
-    memo = {
-        id(clause_var): fresh_env[var_expr]
-        for var_expr, clause_var in clause.env.items()
-    }
+def fresh(clause: Clause, query: NonVariable) -> Goal[Database]:
+    memo = {id(var): fresh_variable() for var in clause.env.values()}
+    memo.update(clause.ground)
     fresh_clause = deepcopy(clause, memo=memo)
-    assert fresh_clause.env == fresh_env
-    return fresh_clause.goal(query)
+    return fresh_clause(query)
 
 
 @dataclass(frozen=True, slots=True)
 class AtomicFact(Clause):
-    def goal(self, query: NonVariable) -> Goal[Database]:
+    def __call__(self, query: NonVariable) -> Goal[Database]:
         return unit
 
 
@@ -122,7 +120,7 @@ class AtomicFact(Clause):
 class CompoundFact(Clause):
     head: Compound
 
-    def goal(self, query: NonVariable) -> Goal[Database]:
+    def __call__(self, query: NonVariable) -> Goal[Database]:
         return unify(query, self.head)
 
 
@@ -130,7 +128,7 @@ class CompoundFact(Clause):
 class AtomicRule(Clause):
     body: Term
 
-    def goal(self, query: NonVariable) -> Goal[Database]:
+    def __call__(self, query: NonVariable) -> Goal[Database]:
         return resolve(self.body)
 
 
@@ -139,7 +137,7 @@ class CompoundRule(Clause):
     head: Functor
     body: Term
 
-    def goal(self, query: NonVariable) -> Goal[Database]:
+    def __call__(self, query: NonVariable) -> Goal[Database]:
         return then(unify(query, self.head), resolve(self.body))
 
 
@@ -147,7 +145,7 @@ class CompoundRule(Clause):
 class AtomicPythonRule(Clause):
     body: PythonBody
 
-    def goal(self, query: NonVariable) -> Goal[Database]:
+    def __call__(self, query: NonVariable) -> Goal[Database]:
         return self.body(self.env)
 
 
@@ -156,7 +154,7 @@ class CompoundPythonRule(Clause):
     head: Compound
     body: PythonBody
 
-    def goal(self, query: NonVariable) -> Goal[Database]:
+    def __call__(self, query: NonVariable) -> Goal[Database]:
         return then(unify(query, self.head), self.body(self.env))
 
 
@@ -173,7 +171,7 @@ def resolve(query: Term) -> Goal[Database]:
 
         case Atom() | Functor():
             return lambda db, subst: predicate_goal(
-                [fresh_goal(clause, query) for clause in db[query.indicator]]
+                [fresh(clause, query) for clause in db[query.indicator]]
             )(db, subst)
 
         case Conjunction(args=args):
@@ -193,7 +191,7 @@ class Database(ChainMap[Indicator, list[Clause]]):
         results = []
         for term in terms:
             assert isinstance(term, NonVariable)
-            result, _ = term_to_clause(term).run({})
+            result, _ = term_to_clause(term).run(({}, {}))
             results.append(result)
         for clause, indicator in results:
             self.setdefault(indicator, []).append(clause)
@@ -203,7 +201,7 @@ class Database(ChainMap[Indicator, list[Clause]]):
     ) -> Iterable[Mapping]:
         assert all(isinstance(c, NonVariable) for c in conjuncts)
         query = Conjunction(*conjuncts)
-        fresh_query, env = fresh(term=query).run({})
+        (fresh_query, _), (env, _) = new_term(term=query).run(({}, {}))
         return (
             SubstProxy(new_subst, env)
             for new_subst in self.run_query(fresh_query, subst)
@@ -218,81 +216,141 @@ class Database(ChainMap[Indicator, list[Clause]]):
             yield new_subst
 
 
-def get_mapped_var(var: Variable) -> State[Environment, Variable | None]:
-    return get_state(lambda env: env.get(var))
+def ground_children(term: Term) -> Iterator[Term]:
+    if isinstance(term, Compound):
+        yield from term.args
+    if isinstance(term, AtomicRule | CompoundRule) and term.body is not None:
+        yield term.body
 
 
-def map_var(canonical: Variable, renamed: Variable) -> State[Environment, Environment]:
-    def setter(env) -> Environment:
+def prune_ground_memo(memo: dict[int, Term]) -> dict[int, Term]:
+    roots = set(memo.values())
+    for term in list(roots):
+        for child in ground_children(term):
+            if child in roots:
+                roots.remove(child)
+    return {id(term): term for term in roots}
+
+
+type FreshState = tuple[Environment, dict[int, Term]]
+
+
+def get_mapped_var(var: Variable) -> State[FreshState, Variable | None]:
+    return get_state(lambda state: state[0].get(var))
+
+
+def set_mapped_var(
+    canonical: Variable, renamed: Variable
+) -> State[FreshState, FreshState]:
+    def setter(state) -> FreshState:
+        env, memo = state
         env[canonical] = renamed
-        return env
+        return env, memo
 
     return set_state(setter)
 
 
 @with_state
-def fresh_variable(
-    old_var: Variable,
-) -> StateGenerator[Environment, Term]:
+def new_variable(old_var: Variable) -> StateGenerator[FreshState, Term]:
     new_var = yield get_mapped_var(old_var)
     if new_var is None:
         new_var = Variable(fresh_name(old_var.name))
-        yield map_var(old_var, new_var)
+        yield set_mapped_var(old_var, new_var)
     return new_var
 
 
+def set_ground(term: Term) -> State[FreshState, FreshState]:
+    def setter(state) -> FreshState:
+        env, memo = state
+        memo[id(term)] = term
+        return env, memo
+
+    return set_state(setter)
+
+
 @with_state
-def fresh_list(items: Sequence[Term]) -> StateGenerator[Environment, tuple[Term, ...]]:
+def new_args_list(
+    items: Sequence[Term],
+) -> StateGenerator[FreshState, tuple[tuple[Term, ...], bool]]:
     new_items = []
+    all_ground = True
     for item in items:
-        new_item = yield fresh(item)
+        new_item, ground = yield new_term(item)
+        all_ground = all_ground and ground
         new_items.append(new_item)
-    return tuple(new_items)
+    return tuple(new_items), all_ground
 
 
 @with_state
-def fresh(term: Term | tuple[Term]) -> StateGenerator[Environment, Term]:
+def new_term(
+    term: Term | tuple[Term],
+) -> StateGenerator[FreshState, tuple[Term, bool]]:
     match term:
         case str() | int() | float() | bool() | complex():
-            return term
+            yield set_ground(term)
+            return term, True
 
         case Variable(name="_"):
-            return term
+            yield set_ground(term)
+            return term, True
 
         case Variable():
-            return (yield cast(State[Environment, Term], fresh_variable(term)))
+            variable = yield new_variable(term)
+            return variable, False
 
         case Atom():
-            return term
+            yield set_ground(term)
+            return term, True
 
         case Functor(name=name, args=args):
-            new_args = yield fresh_list(args)
-            return Functor(name, *new_args)
+            new_args, ground = yield new_args_list(args)
+            result = Functor(name, *new_args)
+            if ground:
+                yield set_ground(result)
+            return result, ground
 
         case Empty():
-            return term
+            yield set_ground(term)
+            return term, True
 
         case Cons(head=head, tail=tail):
-            new_head = yield fresh(head)
-            new_tail = yield fresh(tail)
-            return Cons(new_head, new_tail)
+            new_head, head_ground = yield new_term(head)
+            new_tail, tail_ground = yield new_term(tail)
+            ground = head_ground and tail_ground
+            result = Cons(new_head, new_tail)
+            if ground:
+                yield set_ground(result)
+            return result, ground
 
         case UnaryOperator(operand=operand):
-            new_operand = yield fresh(operand)
-            return type(term)(operand=new_operand)
+            new_operand, ground = yield new_term(operand)
+            result = type(term)(new_operand)
+            if ground:
+                yield set_ground(result)
+            return result, ground
 
         case BinaryOperator(left=left, right=right):
-            new_left = yield fresh(left)
-            new_right = yield fresh(right)
-            return type(term)(new_left, new_right)
+            new_left, left_ground = yield new_term(left)
+            new_right, right_ground = yield new_term(right)
+            ground = left_ground and right_ground
+            result = type(term)(new_left, new_right)
+            if ground:
+                yield set_ground(result)
+            return result, ground
 
         case Conjunction(args=conjuncts):
-            new_conjuncts = yield fresh_list(conjuncts)
-            return Conjunction(*new_conjuncts)
+            new_conjuncts, ground = yield new_args_list(conjuncts)
+            result = Conjunction(*new_conjuncts)
+            if ground:
+                yield set_ground(result)
+            return result, ground
 
         case tuple() as conjuncts:
-            new_conjuncts = yield fresh_list(conjuncts)
-            return Conjunction(*new_conjuncts)
+            new_conjuncts, ground = yield new_args_list(conjuncts)
+            result = Conjunction(*new_conjuncts)
+            if ground:
+                yield set_ground(result)
+            return result, ground
 
     raise TypeError(f"Unsupported Term node: {term}")
 
@@ -300,47 +358,51 @@ def fresh(term: Term | tuple[Term]) -> StateGenerator[Environment, Term]:
 @with_state
 def term_to_clause(
     term: Term | PythonRule,
-) -> StateGenerator[Environment, tuple[Clause, Indicator]]:
+) -> StateGenerator[FreshState, tuple[Clause, Indicator]]:
     match term:
         case Atom(name=name) as head:
-            fresh_head = yield fresh(head)
-            env = yield get_state()
-            return AtomicFact(env), (name, None)
+            new_head, _ = yield new_term(head)
+            env, memo = yield get_state()
+            memo = prune_ground_memo(memo)
+            return AtomicFact(env, memo), (name, None)
 
         case Compound(name=name, args=args) as head:
-            fresh_args = yield fresh_list(args)
-            fresh_head = Functor(name, *fresh_args)
-            env = yield get_state()
-            return CompoundFact(env, fresh_head), (fresh_head.name, len(fresh_args))
+            new_head, _ = yield new_term(head)
+            env, memo = yield get_state()
+            memo = prune_ground_memo(memo)
+            return CompoundFact(env, memo, new_head), (new_head.name, len(head.args))
 
         case HornetRule(head=Atom(name=name) as head, body=body):
-            fresh_body_goal = yield fresh(body)
-            env = yield get_state()
-            return AtomicRule(env, fresh_body_goal), (name, None)
+            new_body, _ = yield new_term(body)
+            env, memo = yield get_state()
+            memo = prune_ground_memo(memo)
+            return AtomicRule(env, memo, new_body), (name, None)
 
         case HornetRule(head=Functor(name=name, args=args) as head, body=body):
-            fresh_head = yield fresh(head)
-            env = yield get_state()
+            new_head, _ = yield new_term(head)
             if body:
-                fresh_body_goal = yield fresh(body)
-                return CompoundRule(env, fresh_head, fresh_body_goal), (
+                new_body, _ = yield new_term(body)
+                env, memo = yield get_state()
+                memo = prune_ground_memo(memo)
+                return CompoundRule(env, memo, new_head, new_body), (
                     name,
-                    len(fresh_head.args),
+                    len(new_head.args),
                 )
             else:
-                return CompoundFact(env, fresh_head), (
-                    name,
-                    len(fresh_head.args),
-                )
+                env, memo = yield get_state()
+                memo = prune_ground_memo(memo)
+                return CompoundFact(env, memo, new_head), (name, len(new_head.args))
 
         case PythonRule(head=Atom(name=name) as head, body=body):
-            fresh_head = yield fresh(head)
-            env = yield get_state()
-            return AtomicPythonRule(env, body), (name, None)
+            new_head, _ = yield new_term(head)
+            env, memo = yield get_state()
+            memo = prune_ground_memo(memo)
+            return AtomicPythonRule(env, memo, body), (name, None)
 
         case PythonRule(head=Functor(name=name, args=args) as head, body=body):
-            fresh_head = yield fresh(head)
-            env = yield get_state()
-            return CompoundPythonRule(env, fresh_head, body), (name, len(args))
+            new_head, _ = yield new_term(head)
+            env, memo = yield get_state()
+            memo = prune_ground_memo(memo)
+            return CompoundPythonRule(env, memo, new_head, body), (name, len(args))
 
     raise TypeError(f"Unsupported Term node: {term}")

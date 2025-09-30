@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import count
 from typing import Any, ClassVar, Iterator
 
@@ -101,9 +101,23 @@ class Symbolic(ABC):
         raise TypeError(f"Atom required, not {self}")
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(init=False, repr=False, eq=False, frozen=True, slots=True)
 class Variable(Symbolic):
-    name: str
+    name: str = field(init=False, repr=False, hash=False)
+    _hash: int = field(init=False, repr=False, hash=False, compare=False)
+
+    def __init__(self, name: str):
+        object.__setattr__(self, "name", name)
+        object.__setattr__(self, "_hash", hash(name))
+
+    def __eq__(self, other):
+        return isinstance(other, Variable) and self.name == other.name
+
+    def __hash__(self):
+        return self._hash
+
+    def __deepcopy__(self, memo):
+        return self
 
     def __repr__(self):
         return self.name
@@ -130,6 +144,9 @@ class Atom(NonVariable):
     @property
     def indicator(self) -> Indicator:
         return self.name, 0
+
+    def __deepcopy__(self, memo):
+        return self
 
     def __str__(self):
         return self.name
@@ -334,6 +351,9 @@ class Empty(NonVariable):
     @property
     def indicator(self) -> Indicator:
         return self.name, 0
+
+    def __deepcopy__(self, memo):
+        return self
 
     def __repr__(self):
         return "[]"

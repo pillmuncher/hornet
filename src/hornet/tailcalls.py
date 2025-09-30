@@ -3,7 +3,8 @@
 
 from __future__ import annotations
 
-from typing import Callable, Iterable
+from dataclasses import dataclass
+from typing import Any, Callable, Iterable
 
 __all__ = (
     "Cont",
@@ -18,6 +19,16 @@ type Thunk[R] = Callable[[], Frame[R]]
 type Frame[R] = tuple[R | None, Thunk[R]] | None
 
 
+@dataclass(frozen=True, slots=True)
+class thunk[R]:
+    cont: Cont[R]
+    args: tuple[Any]
+    kwargs: dict[str, Any]
+
+    def __call__(self):
+        return self.cont(*self.args, **self.kwargs)
+
+
 def tailcall[R](cont: Cont[R]) -> Cont[R]:
     """
     Mark a continuation for tail-call elimination.
@@ -26,7 +37,7 @@ def tailcall[R](cont: Cont[R]) -> Cont[R]:
     """
 
     def decorated(*args, **kwargs) -> Frame[R]:
-        return None, lambda: cont(*args, **kwargs)
+        return None, thunk(cont, args, kwargs)
 
     return decorated
 
