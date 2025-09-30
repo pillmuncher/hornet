@@ -11,8 +11,6 @@ from dataclasses import dataclass
 from functools import wraps
 from typing import Any, Callable, Iterable, Iterator, Sequence
 
-from hornet import terms
-
 from .combinators import (
     Goal,
     Step,
@@ -200,11 +198,9 @@ class Database(ChainMap[Indicator, list[Clause]]):
         self, *conjuncts: NonVariable, subst: Subst | None = None
     ) -> Iterable[Mapping]:
         assert all(isinstance(c, NonVariable) for c in conjuncts)
-        query = Conjunction(*conjuncts)
-        (fresh_query, _), (env, _) = new_term(term=query).run(({}, {}))
+        (query, _), (env, _) = new_term(term=conjuncts).run(({}, {}))
         return (
-            SubstProxy(new_subst, env)
-            for new_subst in self.run_query(fresh_query, subst)
+            SubstProxy(new_subst, env) for new_subst in self.run_query(query, subst)
         )
 
     def run_query(self, query: Term, subst: Subst | None = None) -> Iterable[Subst]:
