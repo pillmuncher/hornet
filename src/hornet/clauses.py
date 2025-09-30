@@ -272,6 +272,8 @@ def new_args_list(
     all_ground = True
     for item in items:
         new_item, ground = yield new_term(item)
+        if ground:
+            yield set_ground(new_item)
         all_ground = all_ground and ground
         new_items.append(new_item)
     return tuple(new_items), all_ground
