@@ -1,7 +1,9 @@
+# Copyright (c) 2014-2025 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
+# SPDX-License-Identifier: MIT
 from turtle import Turtle, clear, goto, ht, listen, mainloop, onkey, penup, write
 from typing import SupportsIndex, cast
 
-from hornet import Database, Environment, Step, Subst, database, predicate, unit
+from hornet import Database, Step, Subst, database, predicate, unit
 from hornet.symbols import (
     From,
     M,
@@ -91,15 +93,14 @@ def hanoi():
 
     @db.tell
     @predicate(show(From, To))
-    def _show(db: Database, subst: Subst, env: Environment) -> Step:
-        to = cast(int, subst.actualize(env[To]))
-        fro = cast(int, subst.actualize(env[From]))
+    def _show(db: Database, subst: Subst) -> Step:
+        to = cast(int, subst[To])
+        fro = cast(int, subst[From])
         towers[to].push(towers[fro].pop())
-        return unit(db, subst)
+        return unit(db, subst.map)
 
     for s in db.ask(play_hanoi(6, 0, 1, 2)):
-        # break
-        pass
+        break
 
 
 def play():

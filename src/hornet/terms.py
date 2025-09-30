@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2025 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
+# Copyright (c) 2025 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
 # SPDX-License-Identifier: MIT
 
 from __future__ import annotations
@@ -129,7 +129,7 @@ class Variable(Symbolic):
 @dataclass(frozen=True, slots=True, init=False)
 class NonVariable(Symbolic, ABC):
     def when(self, *args: NonVariable | list[str]) -> Rule:
-        body = Conjunction(*(promote(arg) for arg in args))  # pyright: ignore
+        body = Conjunction(*(promote(arg) for arg in args))  # type: ignore
         return HornetRule(head=self, body=body)
 
     @property
@@ -170,7 +170,7 @@ class Compound(NonVariable, ABC):
 
 @dataclass(frozen=True, slots=True, init=False)
 class Functor(Compound):
-    name: str  # pyright: ignore
+    name: str  # type: ignore
 
     def __init__(self, name: str, *args: Term):
         object.__setattr__(self, "name", name)
@@ -443,7 +443,7 @@ def walk_body(term: Term) -> StateGenerator[VarCount, Term]:
 
         case Functor(name="inline", args=inlined):
             Sin = yield current_variable()
-            return Conjunction(*inlined)  # pyright: ignore
+            return Conjunction(*inlined)  # type: ignore
 
         case Functor(name=name, args=args):
             Sout, Sin = yield advance_variables()

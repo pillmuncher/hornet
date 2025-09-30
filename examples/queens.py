@@ -1,4 +1,5 @@
-# Copyright (c) 2014 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
+# Copyright (c) 2014-2025 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
+# SPDX-License-Identifier: MIT
 
 from hornet import database
 from hornet.symbols import (

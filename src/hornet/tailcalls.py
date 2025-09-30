@@ -14,14 +14,14 @@ __all__ = (
     "trampoline",
 )
 
-type Cont[R] = Callable[..., Frame[R]]
-type Thunk[R] = Callable[[], Frame[R]]
-type Frame[R] = tuple[R | None, Thunk[R]] | None
+type Cont[Result] = Callable[..., Frame[Result]]
+type Thunk[Result] = Callable[[], Frame[Result]]
+type Frame[Result] = tuple[Result | None, Thunk[Result]] | None
 
 
 @dataclass(frozen=True, slots=True)
-class thunk[R]:
-    cont: Cont[R]
+class thunk[Result]:
+    cont: Cont[Result]
     args: tuple[Any]
     kwargs: dict[str, Any]
 
@@ -29,20 +29,20 @@ class thunk[R]:
         return self.cont(*self.args, **self.kwargs)
 
 
-def tailcall[R](cont: Cont[R]) -> Cont[R]:
+def tailcall[Result](cont: Cont[Result]) -> Cont[Result]:
     """
     Mark a continuation for tail-call elimination.
     Instead of calling `cont` directly, wrap it in a thunk
     so the trampoline driver can evaluate it without recursion.
     """
 
-    def decorated(*args, **kwargs) -> Frame[R]:
+    def decorated(*args, **kwargs) -> Frame[Result]:
         return None, thunk(cont, args, kwargs)
 
     return decorated
 
 
-def trampoline[R](thunk: Thunk[R]) -> Iterable[R]:
+def trampoline[Result](thunk: Thunk[Result]) -> Iterable[Result]:
     """
     Drive a thunk() that returns Frame[R].
     Yield only non-None R payloads.

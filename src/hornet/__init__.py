@@ -5,8 +5,8 @@ from __future__ import annotations
 
 from typing import Callable
 
-from hornet.clauses import Database, Environment, predicate
-from hornet.combinators import Step, Subst, unit
+from hornet.clauses import Database, Subst, predicate
+from hornet.combinators import Step, unit
 from hornet.terms import DCG
 
 from . import combinators, symbols, terms
@@ -177,7 +177,7 @@ def _bootstrap_database() -> Callable[[], Database]:
         assert isinstance(cons_list, Cons | Empty)
         result = []
         while True:
-            match subst.actualize(cons_list):
+            match subst[cons_list]:
                 case Cons(head=head, tail=tail):
                     result.append(head)
                     cons_list = tail
@@ -189,7 +189,7 @@ def _bootstrap_database() -> Callable[[], Database]:
     def eval_term(val: Term, subst: Subst) -> int | float | complex | bool:
         """Evaluate a Hornet arithmetic term directly from Terms."""
 
-        val = subst.actualize(val)
+        val = subst[val]
 
         match val:
             case int() | bool() | float() | complex():
@@ -274,12 +274,12 @@ def _bootstrap_database() -> Callable[[], Database]:
 
     @db.tell
     @predicate(let(R, F))
-    def _let(db: Database, subst: Subst, env: Environment) -> Step:
-        r = subst.actualize(env[R])
+    def _let(db: Database, subst: Subst) -> Step:
+        r = subst[R]
         assert isinstance(r, Variable)
-        f = subst.actualize(env[F])
+        f = subst[F]
         f1 = eval_term(f, subst=subst)
-        return then(_unify(r, f1), _cut)(db, subst)
+        return then(_unify(r, f1), _cut)(db, subst.map)
 
     # Type checking predicates
     def check(
@@ -290,11 +290,11 @@ def _bootstrap_database() -> Callable[[], Database]:
     ) -> None:
         @db.tell
         @predicate(term)
-        def _check(db: Database, subst: Subst, env: Environment) -> Step:
-            if match(subst.actualize(env[var])):
-                return _unit(db, subst)
+        def _check(db: Database, subst: Subst) -> Step:
+            if match(subst[var]):
+                return _unit(db, subst.map)
             else:
-                return _fail(db, subst)
+                return _fail(db, subst.map)
 
     check(db, is_var(V), V, lambda term: isinstance(term, Variable))
     check(db, nonvar(V), V, lambda term: not isinstance(term, Variable))
@@ -311,16 +311,16 @@ def _bootstrap_database() -> Callable[[], Database]:
 
     @db.tell
     @predicate(univ(P, L))
-    def _univ(db: Database, subst: Subst, env: Environment) -> Step:
-        match subst.actualize(env[P]):
+    def _univ(db: Database, subst: Subst) -> Step:
+        match subst[P]:
             case Atom(name=name) as res:
                 left = promote([res])
             case Functor(name=name, args=args):
-                actual_args = tuple(subst.actualize(a) for a in args)
+                actual_args = tuple(subst[a] for a in args)
                 left = promote([Atom(name), *actual_args])
             case v:
                 left = v
-        match subst.actualize(env[L]):
+        match subst[L]:
             case Cons(head=Atom() as head, tail=Empty()):
                 right = head
             case Cons(head=Atom(name=name) as head, tail=tail):
@@ -329,54 +329,54 @@ def _bootstrap_database() -> Callable[[], Database]:
             case v:
                 right = v
         assert not (isinstance(left, Variable) and isinstance(right, Variable))
-        return _unify(left, right)(db, subst)
+        return _unify(left, right)(db, subst.map)
 
     @db.tell
     @predicate(call(G))
-    def _call(db: Database, subst: Subst, env: Environment) -> Step:
-        return resolve(subst.actualize(env[G]))(db, subst)
+    def _call(db: Database, subst: Subst) -> Step:
+        return resolve(subst[G])(db, subst.map)
 
     @db.tell
     @predicate(throw(E))
-    def _throw(db: Database, subst: Subst, env: Environment) -> Step:
-        raise Exception(subst.actualize(env[E]))
+    def _throw(db: Database, subst: Subst) -> Step:
+        raise Exception(subst[E])
 
     @db.tell
     @predicate(ifelse(T, Y, N))
-    def _ifelse(db: Database, subst: Subst, env: Environment) -> Step:
-        for new_subst in db.run_query(subst.actualize(env[T]), subst):
-            return resolve(new_subst.actualize(env[Y]))(db, new_subst)
+    def _ifelse(db: Database, subst: Subst) -> Step:
+        for new_proxy in db.ask(subst[T], subst=subst.map):
+            return resolve(subst[Y])(db, new_proxy.map)
         else:
-            return resolve(subst.actualize(env[N]))(db, subst)
+            return resolve(subst[N])(db, subst.map)
 
     @db.tell
     @predicate(smaller(A, B))
-    def _smaller(db: Database, subst: Subst, env: Environment) -> Step:
-        match subst.actualize(env[A]), subst.actualize(env[B]):
+    def _smaller(db: Database, subst: Subst) -> Step:
+        match subst[A], subst[B]:
             case int() | float() as a, int() | float() as b:
                 if a < b:
-                    return _unit(db, subst)
-        return _fail(db, subst)
+                    return _unit(db, subst.map)
+        return _fail(db, subst.map)
 
     @db.tell
     @predicate(greater(A, B))
-    def _greater(db: Database, subst: Subst, env: Environment) -> Step:
-        match subst.actualize(env[A]), subst.actualize(env[B]):
+    def _greater(db: Database, subst: Subst) -> Step:
+        match subst[A], subst[B]:
             case int() | float() as a, int() | float() as b:
                 if a > b:
-                    return _unit(db, subst)
-        return _fail(db, subst)
+                    return _unit(db, subst.map)
+        return _fail(db, subst.map)
 
     @db.tell
     @predicate(length(L, N))
-    def _length(db: Database, subst: Subst, env: Environment) -> Step:
+    def _length(db: Database, subst: Subst) -> Step:
         count = 0
-        tail = subst.actualize(env[L])
-        length = subst.actualize(env[N])
+        tail = subst[L]
+        length = subst[N]
         while True:
             match tail:
                 case Empty():
-                    return _unify(count, length)(db, subst)
+                    return _unify(count, length)(db, subst.map)
                 case Cons(tail=tail):
                     count += 1
                 case _:
@@ -384,43 +384,38 @@ def _bootstrap_database() -> Callable[[], Database]:
 
     @db.tell
     @predicate(join(L, S))
-    def _join(db: Database, subst: Subst, env: Environment) -> Step:
-        items = subst.actualize(env[L])
+    def _join(db: Database, subst: Subst) -> Step:
+        items = subst[L]
         assert isinstance(items, Cons | Empty)
-
         result = to_python_list(items, subst)
         assert all(isinstance(each, str) for each in result)
-
-        return _unify(env[S], "".join(map(str, result)))(db, subst)
+        return _unify(subst[S], "".join(map(str, result)))(db, subst.map)
 
     def list_to_cons(items: list[Term]) -> Cons | Empty:
-        return reduce(flip(Cons), reversed(items), EMPTY)  # pyright: ignore
+        return reduce(flip(Cons), reversed(items), EMPTY)  # type: ignore
 
     @db.tell
     @predicate(findall(O, G, L))
-    def _findall(db: Database, subst: Subst, env: Environment) -> Step:
-        obj = subst.actualize(dict(env)[O])
+    def _findall(db: Database, subst: Subst) -> Step:
+        obj = subst[O]
         assert isinstance(obj, Variable)
-
-        goal = subst.actualize(env[G])
+        goal = subst[G]
         assert isinstance(goal, NonVariable)
-
-        items = [s.actualize(obj) for s in db.run_query(goal, subst=subst)]
-
-        return _unify(env[L], list_to_cons(items))(db, subst)
+        items = [s[obj] for s in db.ask(goal, subst=subst.map)]
+        return _unify(subst[L], list_to_cons(items))(db, subst.map)
 
     # Printing predicates
     @db.tell
     @predicate(write(V))
-    def _write(db: Database, subst: Subst, env: Environment) -> Step:
-        print(subst.actualize(env[V]), end="")
-        return _unit(db, subst)
+    def _write(db: Database, subst: Subst) -> Step:
+        print(subst[V], end="")
+        return _unit(db, subst.map)
 
     @db.tell
     @predicate(writeln(V))
-    def _writeln(db: Database, subst: Subst, env: Environment) -> Step:
-        print(subst.actualize(env[V]))
-        return _unit(db, subst)
+    def _writeln(db: Database, subst: Subst) -> Step:
+        print(subst[V])
+        return _unit(db, subst.map)
 
     db.tell(
         #

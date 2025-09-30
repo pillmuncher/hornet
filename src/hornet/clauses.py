@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2025 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
+# Copyright (c) 2025 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
 # SPDX-License-Identifier: MIT
 
 from __future__ import annotations
@@ -13,8 +13,8 @@ from typing import Any, Callable, Iterable, Iterator, Sequence
 
 from .combinators import (
     Goal,
+    Map,
     Step,
-    Subst,
     amb_from_iterable,
     cut,
     fail,
@@ -53,7 +53,7 @@ from .terms import (
 type Environment = dict[NonVariable, Variable]
 
 type PythonBody = Callable[[Environment], Goal[Database]]
-type PythonGoal = Callable[[Database, Subst, Environment], Step[Database]]
+type PythonGoal = Callable[[Database, Subst], Step[Database]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,8 +67,8 @@ def predicate(head: Term) -> Callable[[PythonGoal], PythonRule]:
     def decorator(func: PythonGoal) -> PythonRule:
         @wraps(func)
         def python_body(env: Environment) -> Goal[Database]:
-            def python_goal(db: Database, subst: Subst) -> Step[Database]:
-                return func(db, subst, env)
+            def python_goal(db: Database, subst: Map) -> Step[Database]:
+                return func(db, Subst(subst, env))
 
             return python_goal
 
@@ -78,18 +78,36 @@ def predicate(head: Term) -> Callable[[PythonGoal], PythonRule]:
 
 
 @dataclass(frozen=True, slots=True)
-class SubstProxy(Mapping):
-    subst: Subst
+class Subst(Mapping):
+    map: Map
     env: Environment
 
     def __len__(self):
-        return len(self.env)
+        return len(self.map)
 
     def __iter__(self):
-        yield from self.env.keys()
+        yield from self.map.keys()
 
-    def __getitem__(self, variable: NonVariable):
-        return self.subst.actualize(self.env[variable])
+    def __getitem__(self, variable):
+        return self.actualize(self.env.get(variable, variable))
+
+    def actualize(self, obj) -> Term:
+        match self.deref(obj):
+            case Functor(name=name, args=args):
+                return Functor(name, *(self.actualize(a) for a in args))
+            case Compound(args=args) as struct:
+                return type(struct)(*(self.actualize(a) for a in args))
+            case obj:
+                return obj
+
+    def deref(self, obj) -> Term:
+        visited = set()
+        while isinstance(obj, Variable) and obj in self.map:
+            if obj in visited:
+                raise RuntimeError(f"Cyclic variable binding detected: {obj}")
+            visited.add(obj)
+            obj = self.map.get(obj, obj)
+        return obj
 
 
 @dataclass(frozen=True, slots=True)
@@ -194,22 +212,15 @@ class Database(ChainMap[Indicator, list[Clause]]):
         for clause, indicator in results:
             self.setdefault(indicator, []).append(clause)
 
-    def ask(
-        self, *conjuncts: NonVariable, subst: Subst | None = None
-    ) -> Iterable[Mapping]:
+    def ask(self, *conjuncts: Term, subst: Map | None = None) -> Iterable[Subst]:
         assert all(isinstance(c, NonVariable) for c in conjuncts)
         (query, _), (env, _) = new_term(term=conjuncts).run(({}, {}))
-        return (
-            SubstProxy(new_subst, env) for new_subst in self.run_query(query, subst)
-        )
-
-    def run_query(self, query: Term, subst: Subst | None = None) -> Iterable[Subst]:
         if subst is None:
-            subst = Subst()
+            subst = Map()
         goal = resolve(query)
         step = goal(self, subst)
         for new_subst in trampoline(lambda: step(success, failure, failure)):
-            yield new_subst
+            yield Subst(new_subst, env)
 
 
 def ground_children(term: Term) -> Iterator[Term]:

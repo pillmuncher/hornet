@@ -1,4 +1,4 @@
-# Copyright (c) 2014 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
+# Copyright (c) 2014-2025 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
 # SPDX-License-Identifier: MIT
 
 from toolz import take
@@ -60,7 +60,7 @@ def main():
         DCG(word(_, _)),
     )
 
-    for s in take(1111, db.ask(fizzbuzz(V))):
+    for s in take(111, db.ask(fizzbuzz(V))):
         print(s[V])
 
 
