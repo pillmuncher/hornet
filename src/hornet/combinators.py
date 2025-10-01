@@ -193,16 +193,17 @@ def neg[Ctx](goal: Goal[Ctx]) -> Goal[Ctx]:
     return predicate_goal([amb(seq(goal, cut, fail), unit)])
 
 
-def deref_and_compress(subst: Map, obj: Term) -> tuple[Map, Term]:
+def deref_and_compress(subst: Map, term: Term) -> tuple[Map, Term]:
     visited = set()
-    while isinstance(obj, Variable) and obj in subst:
-        if obj in visited:
-            raise RuntimeError(f"Cyclic variable binding detected: {obj}")
-        visited.add(obj)
-        obj = subst[obj]
+    while isinstance(term, Variable) and term in subst:
+        if term in visited:
+            raise RuntimeError(f"Cyclic variable binding detected: {term}")
+        visited.add(term)
+        term = subst[term]
+    mm = subst.mutate()
     for v in visited:
-        subst = subst.set(v, obj)
-    return subst, obj
+        mm[v] = term
+    return mm.finish(), term
 
 
 @dataclass(frozen=True, slots=True)
