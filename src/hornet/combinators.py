@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from functools import reduce
 from typing import Callable, Iterable
 
@@ -28,78 +27,49 @@ def failure() -> Result:
     return None
 
 
-@dataclass(frozen=True, slots=True)
-class on_success[Ctx]:
-    goal: Goal[Ctx]
-    yes: Emit[Ctx]
-    prune: Next
-
+def bind[Ctx](bind_step: Step[Ctx], goal: Goal[Ctx]) -> Step[Ctx]:
     @tailcall
-    def __call__(self, ctx: Ctx, subst: Map, no: Next) -> Result:
-        return self.goal(ctx, subst)(self.yes, no, self.prune)
+    def step(
+        yes: Emit[Ctx], no: Next, prune: Next, bind_step=bind_step, goal=goal
+    ) -> Result:
+        return bind_step(
+            tailcall(lambda ctx, subst, then_no: goal(ctx, subst)(yes, then_no, prune)),
+            no,
+            prune,
+        )
+
+    return step
 
 
-@dataclass(frozen=True, slots=True)
-class on_failure[Ctx]:
-    goal: Goal[Ctx]
-    ctx: Ctx
-    subst: Map
-    yes: Emit[Ctx]
-    no: Next
-    prune: Next
-
+def unit[Ctx](ctx: Ctx, subst: Map) -> Step[Ctx]:
     @tailcall
-    def __call__(self) -> Result:
-        return self.goal(self.ctx, self.subst)(self.yes, self.no, self.prune)
+    def step(yes: Emit[Ctx], no: Next, prune: Next, ctx=ctx, subst=subst) -> Result:
+        return yes(ctx, subst, no)
+
+    return step
 
 
-@dataclass(frozen=True, slots=True)
-class bind[Ctx]:
-    step: Step[Ctx]
-    goal: Goal[Ctx]
-
+def cut[Ctx](ctx: Ctx, subst: Map) -> Step[Ctx]:
     @tailcall
-    def __call__(self, yes: Emit[Ctx], no: Next, prune: Next) -> Result:
-        return self.step(on_success(self.goal, yes, prune), no, prune)
+    def step(yes: Emit[Ctx], no: Next, prune: Next, ctx=ctx, subst=subst) -> Result:
+        return yes(ctx, subst, prune)
+
+    return step
 
 
-@dataclass(frozen=True, slots=True)
-class unit[Ctx]:
-    ctx: Ctx
-    subst: Map
-
+def fail[Ctx](ctx: Ctx, subst: Map) -> Step[Ctx]:
     @tailcall
-    def __call__(self, yes: Emit[Ctx], no: Next, prune: Next) -> Result:
-        return yes(self.ctx, self.subst, no)
-
-
-@dataclass(frozen=True, slots=True)
-class cut[Ctx]:
-    ctx: Ctx
-    subst: Map
-
-    @tailcall
-    def __call__(self, yes: Emit[Ctx], no: Next, prune: Next) -> Result:
-        return yes(self.ctx, self.subst, prune)
-
-
-@dataclass(frozen=True, slots=True)
-class fail[Ctx]:
-    ctx: Ctx
-    subst: Map
-
-    @tailcall
-    def __call__(self, yes: Emit[Ctx], no: Next, prune: Next) -> Result:
+    def step(yes: Emit[Ctx], no: Next, prune: Next, ctx=ctx, subst=subst) -> Result:
         return no()
 
+    return step
 
-@dataclass(frozen=True, slots=True)
-class then[Ctx]:
-    goal1: Goal[Ctx]
-    goal2: Goal[Ctx]
 
-    def __call__(self, ctx: Ctx, subst: Map) -> Step[Ctx]:
-        return bind(self.goal1(ctx, subst), self.goal2)
+def then[Ctx](goal1: Goal[Ctx], goal2: Goal[Ctx]) -> Goal[Ctx]:
+    def goal(ctx: Ctx, subst: Map, goal1=goal1, goal2=goal2) -> Step[Ctx]:
+        return bind(goal1(ctx, subst), goal2)
+
+    return goal
 
 
 def seq_from_iterable[Ctx](goals: Iterable[Goal[Ctx]]) -> Goal[Ctx]:
@@ -110,79 +80,56 @@ def seq[Ctx](*goals: Goal[Ctx]) -> Goal[Ctx]:
     return seq_from_iterable(goals)
 
 
-@dataclass(frozen=True, slots=True)
-class choice_step[Ctx]:
-    goal1: Goal[Ctx]
-    goal2: Goal[Ctx]
-    ctx: Ctx
-    subst: Map
+def choice[Ctx](goal1: Goal[Ctx], goal2: Goal[Ctx]) -> Goal[Ctx]:
+    def goal(ctx: Ctx, subst: Map, goal1=goal1, goal2=goal2) -> Step[Ctx]:
+        @tailcall
+        def step(
+            yes: Emit[Ctx], no: Next, prune: Next, goal1=goal1, goal2=goal2
+        ) -> Result:
+            return goal1(ctx, subst)(
+                yes,
+                tailcall(lambda: goal2(ctx, subst)(yes, no, prune)),
+                prune,
+            )
 
-    @tailcall
-    def __call__(self, yes: Emit[Ctx], no: Next, prune: Next) -> Result:
-        return self.goal1(self.ctx, self.subst)(
-            yes,
-            on_failure(self.goal2, self.ctx, self.subst, yes, no, prune),
-            prune,
-        )
+        return step
 
-
-@dataclass(frozen=True, slots=True)
-class choice[Ctx]:
-    goal1: Goal[Ctx]
-    goal2: Goal[Ctx]
-
-    def __call__(self, ctx: Ctx, subst: Map) -> Step[Ctx]:
-        return choice_step(self.goal1, self.goal2, ctx, subst)
-
-
-@dataclass(frozen=True, slots=True)
-class amb_step[Ctx]:
-    goal: Goal[Ctx]
-    ctx: Ctx
-    subst: Map
-
-    @tailcall
-    def __call__(self, yes: Emit[Ctx], no: Next, prune: Next) -> Result:
-        return self.goal(self.ctx, self.subst)(yes, no, prune)
-
-
-@dataclass(frozen=True, slots=True)
-class amb_goal[Ctx]:
-    goal: Goal[Ctx]
-
-    def __call__(self, ctx: Ctx, subst: Map) -> Step[Ctx]:
-        return amb_step(self.goal, ctx, subst)
+    return goal
 
 
 def amb_from_iterable[Ctx](goals: Iterable[Goal[Ctx]]) -> Goal[Ctx]:
-    return amb_goal(reduce(flip(choice), reversed(tuple(goals)), fail))  # type: ignore
+    def goal(ctx: Ctx, subst: Map) -> Step[Ctx]:
+        @tailcall
+        def step(
+            yes: Emit[Ctx], no: Next, prune: Next, ctx=ctx, subst=subst, goals=goals
+        ) -> Result:
+            amb_goal: Goal[Ctx] = reduce(flip(choice), reversed(tuple(goals)), fail)  # pyright: ignore
+            return amb_goal(ctx, subst)(yes, no, prune)
+
+        return step
+
+    return goal
 
 
 def amb[Ctx](*goals: Goal[Ctx]) -> Goal[Ctx]:
     return amb_from_iterable(goals)
 
 
-@dataclass(frozen=True, slots=True)
-class predicate_step[Ctx]:
-    goals: list[Goal[Ctx]]
-    ctx: Ctx
-    subst: Map
+def prunable[Ctx](goals: Iterable[Goal[Ctx]]) -> Goal[Ctx]:
+    def goal(ctx: Ctx, subst: Map, goals=goals) -> Step[Ctx]:
+        @tailcall
+        def step(
+            yes: Emit[Ctx], no: Next, prune: Next, ctx=ctx, subst=subst, goals=goals
+        ) -> Result:
+            return amb_from_iterable(goals)(ctx, subst)(yes, no, no)
 
-    @tailcall
-    def __call__(self, yes: Emit[Ctx], no: Next, prune: Next) -> Result:
-        return amb_from_iterable(self.goals)(self.ctx, self.subst)(yes, no, no)
+        return step
 
-
-@dataclass(frozen=True, slots=True)
-class predicate_goal[Ctx]:
-    goals: list[Goal[Ctx]]
-
-    def __call__(self, ctx: Ctx, subst: Map) -> Step[Ctx]:
-        return predicate_step(self.goals, ctx, subst)
+    return goal
 
 
 def neg[Ctx](goal: Goal[Ctx]) -> Goal[Ctx]:
-    return predicate_goal([amb(seq(goal, cut, fail), unit)])
+    return prunable([amb(seq(goal, cut, fail), unit)])
 
 
 def deref_and_compress(subst: Map, term: Term) -> tuple[Map, Term]:
@@ -198,43 +145,30 @@ def deref_and_compress(subst: Map, term: Term) -> tuple[Map, Term]:
     return mm.finish(), term
 
 
-@dataclass(frozen=True, slots=True)
-class unify[Ctx]:
-    this: Term
-    that: Term
-
-    def __call__(self, ctx: Ctx, subst: Map) -> Step[Ctx]:
-        subst, this = deref_and_compress(subst, self.this)
-        subst, that = deref_and_compress(subst, self.that)
+def unify[Ctx](this: Term, that: Term) -> Goal[Ctx]:
+    def goal(ctx: Ctx, subst: Map, this=this, that=that) -> Step[Ctx]:
+        subst, this = deref_and_compress(subst, this)
+        subst, that = deref_and_compress(subst, that)
         return _unify(this, that)(ctx, subst)
 
+    return goal
 
-@dataclass(frozen=True, slots=True)
-class unify_variable[Ctx]:
-    variable: Variable
-    term: Term
 
-    def __call__(self, ctx: Ctx, subst: Map) -> Step[Ctx]:
-        subst, value = deref_and_compress(subst, self.variable)
-        if value is self.variable:
-            return unit(ctx, subst.set(self.variable, self.term))
+def unify_variable[Ctx](variable: Variable, term: Term) -> Goal[Ctx]:
+    def goal(ctx: Ctx, subst: Map, variable=variable, term=term) -> Step[Ctx]:
+        subst, value = deref_and_compress(subst, variable)
+        if value is variable:
+            return unit(ctx, subst.set(variable, term))
         else:
-            return tailcall(unify(value, self.term)(ctx, subst))
+            return tailcall(unify(value, term)(ctx, subst))
+
+    return goal
 
 
-@dataclass(frozen=True, slots=True, init=False)
-class unify_pairs[Ctx]:
-    pairs: tuple[tuple[Term, Term], ...]
-
-    def __init__(self, *pairs: tuple[Term, Term]) -> None:
-        object.__setattr__(self, "pairs", pairs)
-
-    def __call__(self, ctx: Ctx, subst: Map) -> Step[Ctx]:
-        return tailcall(
-            seq_from_iterable(unify(this, that) for this, that in self.pairs)(
-                ctx, subst
-            )
-        )
+def unify_pairs[Ctx](*pairs: tuple[Term, Term]) -> Goal[Ctx]:
+    return lambda ctx, subst, pairs=pairs: tailcall(
+        seq_from_iterable(unify(this, that) for this, that in pairs)(ctx, subst)
+    )
 
 
 def unify_any[Ctx](variable: Variable, *values: Term) -> Goal[Ctx]:

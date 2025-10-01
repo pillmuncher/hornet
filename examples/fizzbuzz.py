@@ -58,7 +58,7 @@ def main(db):
         DCG(word(_, _)),
     )
 
-    for s in take(111, db.ask(fizzbuzz(V))):
+    for s in take(1111, db.ask(fizzbuzz(V))):
         print(s[V])
 
 

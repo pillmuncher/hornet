@@ -20,7 +20,7 @@ from .combinators import (
     fail,
     failure,
     neg,
-    predicate_goal,
+    prunable,
     seq_from_iterable,
     success,
     then,
@@ -186,8 +186,8 @@ def resolve(query: Term) -> Goal[Database]:
             return fail
 
         case Atom() | Functor():
-            return lambda db, subst: predicate_goal(
-                [fresh(clause, query) for clause in db[query.indicator]]
+            return lambda db, subst: prunable(
+                fresh(clause, query) for clause in db[query.indicator]
             )(db, subst)
 
         case Conjunction(args=args):
