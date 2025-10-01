@@ -501,6 +501,11 @@ def DCG(term: Term) -> Functor | Rule:
     return expanded_term
 
 
+def DCGs(*terms: Term) -> Iterator[Functor | Rule]:
+    for term in terms:
+        yield DCG(term)
+
+
 def fresh_name(canonical_name: str) -> str:
     return f"{canonical_name}!{next(_var_counter)}"
 

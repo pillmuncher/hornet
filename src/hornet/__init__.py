@@ -7,7 +7,7 @@ from typing import Callable
 
 from hornet.clauses import Database, Subst, predicate
 from hornet.combinators import Step, unit
-from hornet.terms import DCG
+from hornet.terms import DCGs
 
 from . import combinators, symbols, terms
 from .symbols import (
@@ -59,7 +59,7 @@ __all__ = (
     "combinators",
     "symbols",
     "terms",
-    "DCG",
+    "DCGs",
     "database",
     "append",
     "arithmetic_equal",

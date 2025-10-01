@@ -3,7 +3,7 @@
 
 from toolz import take
 
-from hornet import DCG, database
+from hornet import DCGs, database
 from hornet.symbols import (
     M,
     N,
@@ -44,18 +44,18 @@ def main(db):
             let(M, N + 1),
             fb(M, R),
         ),
-        DCG(
+        *DCGs(
             words(N).when(
                 word(3, N),
                 word(5, N),
                 word(7, N),
                 inline(cut),
-            )
+            ),
+            word(3, N).when(inline(let(M, N % 3), equal(M, 0)), ["fizz"]),
+            word(5, N).when(inline(let(M, N % 5), equal(M, 0)), ["buzz"]),
+            word(7, N).when(inline(let(M, N % 7), equal(M, 0)), ["quux"]),
+            word(_, _),
         ),
-        DCG(word(3, N).when(inline(let(M, N % 3), equal(M, 0)), ["fizz"])),
-        DCG(word(5, N).when(inline(let(M, N % 5), equal(M, 0)), ["buzz"])),
-        DCG(word(7, N).when(inline(let(M, N % 7), equal(M, 0)), ["quux"])),
-        DCG(word(_, _)),
     )
 
     for s in take(1111, db.ask(fizzbuzz(V))):
