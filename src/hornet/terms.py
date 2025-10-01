@@ -420,7 +420,6 @@ def advance_variables() -> StateGenerator[VarCount, tuple[Variable, Variable]]:
 @with_state
 def dcg_expand_cons(term: Term) -> StateGenerator[VarCount, Term]:
     result_terms = []
-
     while True:
         match term:
             case Cons(head=head, tail=tail):
@@ -429,8 +428,6 @@ def dcg_expand_cons(term: Term) -> StateGenerator[VarCount, Term]:
                 term = tail
             case Empty():
                 break
-
-    Sin = yield current_variable()
     return Conjunction(*result_terms)
 
 
@@ -442,7 +439,6 @@ def walk_body(term: Term) -> StateGenerator[VarCount, Term]:
             return Functor(name, Sout, Sin)
 
         case Functor(name="inline", args=inlined):
-            Sin = yield current_variable()
             return Conjunction(*inlined)  # type: ignore
 
         case Functor(name=name, args=args):
@@ -457,7 +453,6 @@ def walk_body(term: Term) -> StateGenerator[VarCount, Term]:
             for goal in goals:
                 new_goal = yield walk_body(goal)
                 new_goals.append(new_goal)
-            Sin = yield current_variable()
             return Conjunction(*new_goals)
 
         case Disjunction(body=goals):
@@ -465,7 +460,6 @@ def walk_body(term: Term) -> StateGenerator[VarCount, Term]:
             for goal in goals:
                 new_goal = yield walk_body(goal)
                 new_goals.append(new_goal)
-            Sin = yield current_variable()
             return Disjunction(*new_goals)
 
     raise TypeError(f"Expected query term in DCG body, got: {term!r}")
