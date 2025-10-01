@@ -420,14 +420,16 @@ def advance_variables() -> StateGenerator[VarCount, tuple[Variable, Variable]]:
 @with_state
 def dcg_expand_cons(term: Term) -> StateGenerator[VarCount, Term]:
     result_terms = []
+    tail = term
     while True:
-        match term:
+        match tail:
             case Cons(head=head, tail=tail):
                 Sout, Sin = yield advance_variables()
                 result_terms.append(Functor("equal", Sout, Cons(head, Sin)))
-                term = tail
             case Empty():
                 break
+            case _:
+                raise TypeError(f"Expected Cons or Empty, got {tail}")
     return Conjunction(*result_terms)
 
 
