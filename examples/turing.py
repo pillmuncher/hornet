@@ -37,9 +37,7 @@ from hornet.symbols import (
 )
 
 
-def main():
-    db = database()
-
+def main(db):
     db.tell(
         turing(Tape0, Tape).when(
             perform(q0, [], Ls, Tape0, Rs),
@@ -72,4 +70,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(database())

@@ -26,9 +26,7 @@ from hornet.symbols import (
 QUEENS = 6
 
 
-def main():
-    db = database()
-
+def main(db):
     db.tell(
         queens(S).when(
             equal(Ns, [i + 1 for i in range(QUEENS)]),
@@ -54,4 +52,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(database())

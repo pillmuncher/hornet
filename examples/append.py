@@ -5,9 +5,7 @@ from hornet import database
 from hornet.symbols import L1, L2, append
 
 
-def main():
-    db = database()
-
+def main(db):
     for subst in db.ask(append([1, 2, 3], [4, 5], L1)):
         print(subst[L1])
     print()
@@ -16,4 +14,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(database())

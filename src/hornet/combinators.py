@@ -204,13 +204,15 @@ def deref_and_compress(subst: Map, obj: Term) -> tuple[Map, Term]:
     return subst, obj
 
 
-def unify_deref[Ctx](this: Term, that: Term) -> Goal[Ctx]:
-    def inner(ctx: Ctx, subst: Map) -> Step[Ctx]:
-        subst1, this1 = deref_and_compress(subst, this)
-        subst2, that1 = deref_and_compress(subst1, that)
-        return _unify(this1, that1)(ctx, subst2)
+@dataclass(frozen=True, slots=True)
+class unify[Ctx]:
+    this: Term
+    that: Term
 
-    return inner
+    def __call__(self, ctx: Ctx, subst: Map) -> Step[Ctx]:
+        subst, this = deref_and_compress(subst, self.this)
+        subst, that = deref_and_compress(subst, self.that)
+        return _unify(this, that)(ctx, subst)
 
 
 @dataclass(frozen=True, slots=True)
@@ -223,7 +225,7 @@ class unify_variable[Ctx]:
         if value is self.variable:
             return unit(ctx, subst.set(self.variable, self.term))
         else:
-            return tailcall(_unify(value, self.term)(ctx, subst))
+            return tailcall(unify(value, self.term)(ctx, subst))
 
 
 @dataclass(frozen=True, slots=True, init=False)
@@ -235,19 +237,10 @@ class unify_pairs[Ctx]:
 
     def __call__(self, ctx: Ctx, subst: Map) -> Step[Ctx]:
         return tailcall(
-            seq_from_iterable(unify_deref(this, that) for this, that in self.pairs)(
+            seq_from_iterable(unify(this, that) for this, that in self.pairs)(
                 ctx, subst
             )
         )
-
-
-@dataclass(frozen=True, slots=True)
-class unify[Ctx]:
-    this: Term
-    that: Term
-
-    def __call__(self, ctx: Ctx, subst: Map) -> Step[Ctx]:
-        return unify_deref(self.this, self.that)(ctx, subst)
 
 
 def unify_any[Ctx](variable: Variable, *values: Term) -> Goal[Ctx]:

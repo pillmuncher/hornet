@@ -395,12 +395,11 @@ def diff_test(db):
         print(subst[C])
 
 
-def main():
-    db = database()
+def main(db):
     diff_rules(db)
     simp_rules(db)
     diff_test(db)
 
 
 if __name__ == "__main__":
-    main()
+    main(database())

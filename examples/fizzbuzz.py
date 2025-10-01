@@ -25,10 +25,8 @@ from hornet.symbols import (
     words,
 )
 
-db = database()
 
-
-def main():
+def main(db):
     db.tell(
         fizzbuzz(R).when(
             fb(1, R),
@@ -65,4 +63,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    main(database())

@@ -1,5 +1,3 @@
-# Copyright (c) 2014-2025 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
-# SPDX-License-Identifier: MIT
 from turtle import Turtle, clear, goto, ht, listen, mainloop, onkey, penup, write
 from typing import SupportsIndex, cast
 
@@ -37,13 +35,12 @@ stretched to rectangles by shapesize()
        To exit press STOP button
  ---------------------------------------
 
-Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010,
+Original work: Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010,
 2011, 2012 Python Software Foundation; All Rights Reserved
-"""
 
-"""
-I replaced the original algorithm by one written in hornet to demonstrate
-how to interface hornet code with python code.  -- m.krippendorf+hornet@posteo.de
+Modifications: Copyright (c) 2014-2025 Mick Krippendorf
+
+Original algorithm replaced to demonstrate how to interface Hornet with Python code.
 """
 
 

@@ -1,5 +1,6 @@
 # Copyright (c) 2025 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
 # SPDX-License-Identifier: MIT
+
 import time
 import tracemalloc
 from contextlib import contextmanager
