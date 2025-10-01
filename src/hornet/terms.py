@@ -434,7 +434,7 @@ def dcg_expand_cons(term: Term) -> StateGenerator[VarCount, Term]:
 
 
 @with_state
-def walk_body(term: Term) -> StateGenerator[VarCount, Term]:
+def walk_dcg_body(term: Term) -> StateGenerator[VarCount, Term]:
     match term:
         case Atom(name=name):
             Sout, Sin = yield advance_variables()
@@ -453,14 +453,14 @@ def walk_body(term: Term) -> StateGenerator[VarCount, Term]:
         case Conjunction(args=goals):
             new_goals = []
             for goal in goals:
-                new_goal = yield walk_body(goal)
+                new_goal = yield walk_dcg_body(goal)
                 new_goals.append(new_goal)
             return Conjunction(*new_goals)
 
         case Disjunction(body=goals):
             new_goals = []
             for goal in goals:
-                new_goal = yield walk_body(goal)
+                new_goal = yield walk_dcg_body(goal)
                 new_goals.append(new_goal)
             return Disjunction(*new_goals)
 
@@ -480,12 +480,12 @@ def _dcg_expand(
         case HornetRule(head=head, body=body):
             match head:
                 case Atom(name=name):
-                    body_expanded = yield walk_body(body)
+                    body_expanded = yield walk_dcg_body(body)
                     Sin = yield current_variable()
                     head_expanded = Functor(name, Sout, Sin)
                     return HornetRule(head=head_expanded, body=body_expanded)
                 case Functor(name=name, args=args):
-                    body_expanded = yield walk_body(body)
+                    body_expanded = yield walk_dcg_body(body)
                     Sin = yield current_variable()
                     head_expanded = Functor(name, *args, Sout, Sin)
                     return HornetRule(head=head_expanded, body=body_expanded)
