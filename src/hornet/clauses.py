@@ -234,10 +234,8 @@ def ground_children(term: Term) -> Iterator[Term]:
 
 def prune_ground_memo(memo: Memo) -> Memo:
     roots = set(memo.values())
-    for term in list(roots):
-        for child in ground_children(term):
-            if child in roots:
-                roots.remove(child)
+    for term in tuple(roots):
+        roots.difference_update(ground_children(term))
     return {id(term): term for term in roots}
 
 
