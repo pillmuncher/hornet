@@ -91,13 +91,14 @@ class cut[Ctx]:
         return yes(self.ctx, self.subst, prune)
 
 
-@tailcall
-def fail_step[Ctx](yes: Emit[Ctx], no: Next, prune: Next) -> Result:
-    return no()
+@dataclass(frozen=True, slots=True)
+class fail[Ctx]:
+    ctx: Ctx
+    subst: Map
 
-
-def fail[Ctx](ctx: Ctx, subst: Map) -> Step[Ctx]:
-    return fail_step
+    @tailcall
+    def __call__(self, yes: Emit[Ctx], no: Next, prune: Next) -> Result:
+        return no()
 
 
 @dataclass(frozen=True, slots=True)

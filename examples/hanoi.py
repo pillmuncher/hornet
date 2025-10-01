@@ -71,9 +71,7 @@ class Tower(list[int]):
         return d
 
 
-def hanoi():
-    db = database()
-
+def hanoi(db):
     db.tell(
         play_hanoi(N, From, To, With).when(
             greater(N, 0),
@@ -103,7 +101,7 @@ def hanoi():
 def play():
     onkey(lambda: None, "space")
     clear()
-    hanoi()
+    hanoi(database())
     write("press STOP button to exit", align="center", font=("Courier", 16, "bold"))
 
 
