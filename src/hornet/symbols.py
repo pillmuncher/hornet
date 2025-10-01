@@ -11,9 +11,9 @@ __all__ = []
 
 __scan__ = __re__.compile(
     r"""
-    (?P<dunder>__.*__)       |   # matches dunder names
-    (?P<atom>[a-z].*)        |   # starts with lowercase
-    (?P<variable>[A-Z_].*)      # starts with uppercase or _
+    (?P<dunder>__.*__)      |  # matches dunder names
+    (?P<atom>[a-z].*)       |  # starts with lowercase
+    (?P<variable>[A-Z_].*)     # starts with uppercase or _
     """,
     __re__.VERBOSE,
 ).fullmatch
