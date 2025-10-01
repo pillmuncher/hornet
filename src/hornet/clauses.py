@@ -284,7 +284,7 @@ def make_args(items: Arguments) -> StateGenerator[FreshState, tuple[Arguments, b
 
 
 @with_state
-def make_term(term: Term | Arguments) -> StateGenerator[FreshState, Arguments]:
+def make_term(term: Term) -> StateGenerator[FreshState, Arguments]:
     match term:
         case str() | int() | float() | bool() | complex() | Exception():
             yield add_ground(term)
