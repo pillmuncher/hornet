@@ -216,7 +216,7 @@ class Database(ChainMap[Indicator, list[Clause]]):
 
     def ask(self, *conjuncts: Term, subst: Map | None = None) -> Iterable[Subst]:
         assert all(isinstance(c, NonVariable) for c in conjuncts)
-        (query, _), (env, _) = make_term(term=conjuncts).run(({}, {}))
+        (query, _), (env, _) = new_term(term=conjuncts).run(({}, {}))
         if subst is None:
             subst = Map()
         goal = resolve(query)
@@ -271,11 +271,11 @@ def make_variable(old_var: Variable) -> StateGenerator[FreshState, Term]:
 
 
 @with_state
-def make_args(items: Arguments) -> StateGenerator[FreshState, tuple[Arguments, bool]]:
+def new_args(items: Arguments) -> StateGenerator[FreshState, tuple[Arguments, bool]]:
     new_items = []
     all_ground = True
     for item in items:
-        new_item, ground = yield make_term(item)
+        new_item, ground = yield new_term(item)
         if ground:
             yield add_ground(new_item)
         all_ground = all_ground and ground
@@ -284,7 +284,7 @@ def make_args(items: Arguments) -> StateGenerator[FreshState, tuple[Arguments, b
 
 
 @with_state
-def make_term(term: Term) -> StateGenerator[FreshState, Arguments]:
+def new_term(term: Term) -> StateGenerator[FreshState, Arguments]:
     match term:
         case str() | int() | float() | bool() | complex() | Exception():
             yield add_ground(term)
@@ -303,54 +303,54 @@ def make_term(term: Term) -> StateGenerator[FreshState, Arguments]:
             return term, True
 
         case Functor(name=name, args=args):
-            new_args, ground = yield make_args(args)
-            result = Functor(name, *new_args)
+            args, ground = yield new_args(args)
+            term = Functor(name, *args)
             if ground:
-                yield add_ground(result)
-            return result, ground
+                yield add_ground(term)
+            return term, ground
 
         case Empty():
             yield add_ground(term)
             return term, True
 
         case Cons(head=head, tail=tail):
-            new_head, head_ground = yield make_term(head)
-            new_tail, tail_ground = yield make_term(tail)
+            head, head_ground = yield new_term(head)
+            tail, tail_ground = yield new_term(tail)
             ground = head_ground and tail_ground
-            result = Cons(new_head, new_tail)
+            term = Cons(head, tail)
             if ground:
-                yield add_ground(result)
-            return result, ground
+                yield add_ground(term)
+            return term, ground
 
         case UnaryOperator(operand=operand):
-            new_operand, ground = yield make_term(operand)
-            result = type(term)(new_operand)
+            operand, ground = yield new_term(operand)
+            term = type(term)(operand)
             if ground:
-                yield add_ground(result)
-            return result, ground
+                yield add_ground(term)
+            return term, ground
 
         case BinaryOperator(left=left, right=right):
-            new_left, left_ground = yield make_term(left)
-            new_right, right_ground = yield make_term(right)
+            left, left_ground = yield new_term(left)
+            right, right_ground = yield new_term(right)
             ground = left_ground and right_ground
-            result = type(term)(new_left, new_right)
+            term = type(term)(left, right)
             if ground:
-                yield add_ground(result)
-            return result, ground
+                yield add_ground(term)
+            return term, ground
 
         case Conjunction(args=conjuncts):
-            new_conjuncts, ground = yield make_args(conjuncts)
-            result = Conjunction(*new_conjuncts)
+            conjuncts, ground = yield new_args(conjuncts)
+            term = Conjunction(*conjuncts)
             if ground:
-                yield add_ground(result)
-            return result, ground
+                yield add_ground(term)
+            return term, ground
 
         case tuple() as conjuncts:
-            new_conjuncts, ground = yield make_args(conjuncts)
-            result = Conjunction(*new_conjuncts)
+            conjuncts, ground = yield new_args(conjuncts)
+            term = Conjunction(*conjuncts)
             if ground:
-                yield add_ground(result)
-            return result, ground
+                yield add_ground(term)
+            return term, ground
 
     raise TypeError(f"Unsupported Term node: {term}")
 
@@ -359,48 +359,45 @@ def make_term(term: Term) -> StateGenerator[FreshState, Arguments]:
 def term_to_clause(term: Term) -> StateGenerator[FreshState, tuple[Clause, Indicator]]:
     match term:
         case Atom(name=name) as head:
-            new_head, _ = yield make_term(head)
+            head, _ = yield new_term(head)
             env, memo = yield get_state()
             memo = prune_ground_map(memo)
             return AtomicFact(env, memo), (name, 0)
 
         case Compound(name=name, args=args) as head:
-            new_head, _ = yield make_term(head)
+            head, _ = yield new_term(head)
             env, memo = yield get_state()
             memo = prune_ground_map(memo)
-            return CompoundFact(env, memo, new_head), (new_head.name, len(head.args))
+            return CompoundFact(env, memo, head), (head.name, len(head.args))
 
         case HornetRule(head=Atom(name=name) as head, body=body):
-            new_body, _ = yield make_term(body)
+            body, _ = yield new_term(body)
             env, memo = yield get_state()
             memo = prune_ground_map(memo)
-            return AtomicRule(env, memo, new_body), (name, 0)
+            return AtomicRule(env, memo, body), (name, 0)
 
         case HornetRule(head=Functor(name=name, args=args) as head, body=body):
-            new_head, _ = yield make_term(head)
+            head, _ = yield new_term(head)
             if body:
-                new_body, _ = yield make_term(body)
+                body, _ = yield new_term(body)
                 env, memo = yield get_state()
                 memo = prune_ground_map(memo)
-                return CompoundRule(env, memo, new_head, new_body), (
-                    name,
-                    len(new_head.args),
-                )
+                return CompoundRule(env, memo, head, body), (name, len(head.args))
             else:
                 env, memo = yield get_state()
                 memo = prune_ground_map(memo)
-                return CompoundFact(env, memo, new_head), (name, len(new_head.args))
+                return CompoundFact(env, memo, head), (name, len(head.args))
 
         case PythonRule(head=Atom(name=name) as head, body=body):
-            new_head, _ = yield make_term(head)
+            head, _ = yield new_term(head)
             env, memo = yield get_state()
             memo = prune_ground_map(memo)
             return AtomicPythonRule(env, memo, body), (name, 0)
 
         case PythonRule(head=Functor(name=name, args=args) as head, body=body):
-            new_head, _ = yield make_term(head)
+            head, _ = yield new_term(head)
             env, memo = yield get_state()
             memo = prune_ground_map(memo)
-            return CompoundPythonRule(env, memo, new_head, body), (name, len(args))
+            return CompoundPythonRule(env, memo, head, body), (name, len(args))
 
     raise TypeError(f"Unsupported Term node: {term}")
