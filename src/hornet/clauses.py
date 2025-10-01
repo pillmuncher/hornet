@@ -368,7 +368,7 @@ def term_to_clause(
             new_head, _ = yield new_term(head)
             env, memo = yield get_state()
             memo = prune_ground_memo(memo)
-            return AtomicFact(env, memo), (name, None)
+            return AtomicFact(env, memo), (name, 0)
 
         case Compound(name=name, args=args) as head:
             new_head, _ = yield new_term(head)
@@ -380,7 +380,7 @@ def term_to_clause(
             new_body, _ = yield new_term(body)
             env, memo = yield get_state()
             memo = prune_ground_memo(memo)
-            return AtomicRule(env, memo, new_body), (name, None)
+            return AtomicRule(env, memo, new_body), (name, 0)
 
         case HornetRule(head=Functor(name=name, args=args) as head, body=body):
             new_head, _ = yield new_term(head)
@@ -401,7 +401,7 @@ def term_to_clause(
             new_head, _ = yield new_term(head)
             env, memo = yield get_state()
             memo = prune_ground_memo(memo)
-            return AtomicPythonRule(env, memo, body), (name, None)
+            return AtomicPythonRule(env, memo, body), (name, 0)
 
         case PythonRule(head=Functor(name=name, args=args) as head, body=body):
             new_head, _ = yield new_term(head)

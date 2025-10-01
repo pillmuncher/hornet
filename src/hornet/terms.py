@@ -11,7 +11,7 @@ from typing import Any, ClassVar, Iterator
 from .states import StateGenerator, const, get_state, set_state, with_state
 
 type Term = Variable | NonVariable | Primitive | Exception
-type Indicator = tuple[str, int | None]
+type Indicator = tuple[str, int]
 
 
 @dataclass(frozen=True, slots=True, init=False)
