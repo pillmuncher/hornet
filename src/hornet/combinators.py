@@ -29,14 +29,6 @@ def failure() -> Result:
 
 
 @dataclass(frozen=True, slots=True)
-class start_query[Ctx]:
-    step: Step[Ctx]
-
-    def __call__(self) -> Result:
-        return self.step(success, failure, failure)
-
-
-@dataclass(frozen=True, slots=True)
 class on_success[Ctx]:
     goal: Goal[Ctx]
     yes: Emit[Ctx]
