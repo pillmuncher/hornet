@@ -232,7 +232,7 @@ def ground_children(term: Term) -> Iterator[Term]:
         yield term.body
 
 
-def prune_ground_memo(memo: Memo) -> Memo:
+def prune_ground_map(memo: Memo) -> Memo:
     roots = set(memo.values())
     for term in tuple(roots):
         roots.difference_update(ground_children(term))
@@ -361,19 +361,19 @@ def term_to_clause(term: Term) -> StateGenerator[FreshState, tuple[Clause, Indic
         case Atom(name=name) as head:
             new_head, _ = yield make_term(head)
             env, memo = yield get_state()
-            memo = prune_ground_memo(memo)
+            memo = prune_ground_map(memo)
             return AtomicFact(env, memo), (name, 0)
 
         case Compound(name=name, args=args) as head:
             new_head, _ = yield make_term(head)
             env, memo = yield get_state()
-            memo = prune_ground_memo(memo)
+            memo = prune_ground_map(memo)
             return CompoundFact(env, memo, new_head), (new_head.name, len(head.args))
 
         case HornetRule(head=Atom(name=name) as head, body=body):
             new_body, _ = yield make_term(body)
             env, memo = yield get_state()
-            memo = prune_ground_memo(memo)
+            memo = prune_ground_map(memo)
             return AtomicRule(env, memo, new_body), (name, 0)
 
         case HornetRule(head=Functor(name=name, args=args) as head, body=body):
@@ -381,26 +381,26 @@ def term_to_clause(term: Term) -> StateGenerator[FreshState, tuple[Clause, Indic
             if body:
                 new_body, _ = yield make_term(body)
                 env, memo = yield get_state()
-                memo = prune_ground_memo(memo)
+                memo = prune_ground_map(memo)
                 return CompoundRule(env, memo, new_head, new_body), (
                     name,
                     len(new_head.args),
                 )
             else:
                 env, memo = yield get_state()
-                memo = prune_ground_memo(memo)
+                memo = prune_ground_map(memo)
                 return CompoundFact(env, memo, new_head), (name, len(new_head.args))
 
         case PythonRule(head=Atom(name=name) as head, body=body):
             new_head, _ = yield make_term(head)
             env, memo = yield get_state()
-            memo = prune_ground_memo(memo)
+            memo = prune_ground_map(memo)
             return AtomicPythonRule(env, memo, body), (name, 0)
 
         case PythonRule(head=Functor(name=name, args=args) as head, body=body):
             new_head, _ = yield make_term(head)
             env, memo = yield get_state()
-            memo = prune_ground_memo(memo)
+            memo = prune_ground_map(memo)
             return CompoundPythonRule(env, memo, new_head, body), (name, len(args))
 
     raise TypeError(f"Unsupported Term node: {term}")
