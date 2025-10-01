@@ -9,7 +9,7 @@ from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import dataclass
 from functools import wraps
-from typing import Any, Callable, Iterable, Iterator, Sequence
+from typing import Callable, Iterable, Iterator, Sequence
 
 from .combinators import (
     Goal,
@@ -51,6 +51,8 @@ from .terms import (
 )
 
 type Environment = dict[NonVariable, Variable]
+type Memo = dict[int, Term]
+type FreshState = tuple[Environment, Memo]
 
 type PythonBody = Callable[[Environment], Goal[Database]]
 type PythonGoal = Callable[[Database, Subst], Step[Database]]
@@ -113,14 +115,14 @@ class Subst(Mapping):
 @dataclass(frozen=True, slots=True)
 class Clause(ABC):
     env: Environment
-    ground: dict[int, Any]
+    ground: Memo
 
     @abstractmethod
     def __call__(self, query) -> Goal[Database]: ...
 
 
 def fresh(clause: Clause, query: NonVariable) -> Goal[Database]:
-    memo = {id(var): fresh_variable() for var in clause.env.values()}
+    memo: Memo = {id(var): fresh_variable() for var in clause.env.values()}
     memo.update(clause.ground)
     fresh_clause = deepcopy(clause, memo=memo)
     return fresh_clause(query)
@@ -230,7 +232,7 @@ def ground_children(term: Term) -> Iterator[Term]:
         yield term.body
 
 
-def prune_ground_memo(memo: dict[int, Term]) -> dict[int, Term]:
+def prune_ground_memo(memo: Memo) -> Memo:
     roots = set(memo.values())
     for term in list(roots):
         for child in ground_children(term):
@@ -239,16 +241,11 @@ def prune_ground_memo(memo: dict[int, Term]) -> dict[int, Term]:
     return {id(term): term for term in roots}
 
 
-type FreshState = tuple[Environment, dict[int, Term]]
-
-
-def get_mapped_var(var: Variable) -> State[FreshState, Variable | None]:
+def get_var(var: Variable) -> State[FreshState, Variable | None]:
     return get_state(lambda state: state[0].get(var))
 
 
-def set_mapped_var(
-    canonical: Variable, renamed: Variable
-) -> State[FreshState, FreshState]:
+def add_var(canonical: Variable, renamed: Variable) -> State[FreshState, FreshState]:
     def setter(state) -> FreshState:
         env, memo = state
         env[canonical] = renamed
@@ -257,22 +254,22 @@ def set_mapped_var(
     return set_state(setter)
 
 
-@with_state
-def new_variable(old_var: Variable) -> StateGenerator[FreshState, Term]:
-    new_var = yield get_mapped_var(old_var)
-    if new_var is None:
-        new_var = Variable(fresh_name(old_var.name))
-        yield set_mapped_var(old_var, new_var)
-    return new_var
-
-
-def set_ground(term: Term) -> State[FreshState, FreshState]:
+def add_ground(term: Term) -> State[FreshState, FreshState]:
     def setter(state) -> FreshState:
         env, memo = state
         memo[id(term)] = term
         return env, memo
 
     return set_state(setter)
+
+
+@with_state
+def new_variable(old_var: Variable) -> StateGenerator[FreshState, Term]:
+    new_var = yield get_var(old_var)
+    if new_var is None:
+        new_var = Variable(fresh_name(old_var.name))
+        yield add_var(old_var, new_var)
+    return new_var
 
 
 @with_state
@@ -284,7 +281,7 @@ def new_args_list(
     for item in items:
         new_item, ground = yield new_term(item)
         if ground:
-            yield set_ground(new_item)
+            yield add_ground(new_item)
         all_ground = all_ground and ground
         new_items.append(new_item)
     return tuple(new_items), all_ground
@@ -296,11 +293,11 @@ def new_term(
 ) -> StateGenerator[FreshState, tuple[Term, bool]]:
     match term:
         case str() | int() | float() | bool() | complex() | Exception():
-            yield set_ground(term)
+            yield add_ground(term)
             return term, True
 
         case Variable(name="_"):
-            yield set_ground(term)
+            yield add_ground(term)
             return term, True
 
         case Variable():
@@ -308,18 +305,18 @@ def new_term(
             return variable, False
 
         case Atom():
-            yield set_ground(term)
+            yield add_ground(term)
             return term, True
 
         case Functor(name=name, args=args):
             new_args, ground = yield new_args_list(args)
             result = Functor(name, *new_args)
             if ground:
-                yield set_ground(result)
+                yield add_ground(result)
             return result, ground
 
         case Empty():
-            yield set_ground(term)
+            yield add_ground(term)
             return term, True
 
         case Cons(head=head, tail=tail):
@@ -328,14 +325,14 @@ def new_term(
             ground = head_ground and tail_ground
             result = Cons(new_head, new_tail)
             if ground:
-                yield set_ground(result)
+                yield add_ground(result)
             return result, ground
 
         case UnaryOperator(operand=operand):
             new_operand, ground = yield new_term(operand)
             result = type(term)(new_operand)
             if ground:
-                yield set_ground(result)
+                yield add_ground(result)
             return result, ground
 
         case BinaryOperator(left=left, right=right):
@@ -344,21 +341,21 @@ def new_term(
             ground = left_ground and right_ground
             result = type(term)(new_left, new_right)
             if ground:
-                yield set_ground(result)
+                yield add_ground(result)
             return result, ground
 
         case Conjunction(args=conjuncts):
             new_conjuncts, ground = yield new_args_list(conjuncts)
             result = Conjunction(*new_conjuncts)
             if ground:
-                yield set_ground(result)
+                yield add_ground(result)
             return result, ground
 
         case tuple() as conjuncts:
             new_conjuncts, ground = yield new_args_list(conjuncts)
             result = Conjunction(*new_conjuncts)
             if ground:
-                yield set_ground(result)
+                yield add_ground(result)
             return result, ground
 
     raise TypeError(f"Unsupported Term node: {term}")
