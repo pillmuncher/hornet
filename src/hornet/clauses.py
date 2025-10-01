@@ -121,13 +121,6 @@ class Clause(ABC):
     def __call__(self, query) -> Goal[Database]: ...
 
 
-def fresh(clause: Clause, query: NonVariable) -> Goal[Database]:
-    memo: Memo = {id(var): fresh_variable() for var in clause.env.values()}
-    memo.update(clause.ground)
-    fresh_clause = deepcopy(clause, memo=memo)
-    return fresh_clause(query)
-
-
 @dataclass(frozen=True, slots=True)
 class AtomicFact(Clause):
     def __call__(self, query: NonVariable) -> Goal[Database]:
@@ -174,6 +167,12 @@ class CompoundPythonRule(Clause):
 
     def __call__(self, query: NonVariable) -> Goal[Database]:
         return then(unify(query, self.head), self.body(self.env))
+
+
+def fresh(clause: Clause, query: NonVariable) -> Goal[Database]:
+    memo: Memo = {id(var): fresh_variable() for var in clause.env.values()}
+    memo.update(clause.ground)
+    return deepcopy(clause, memo=memo)(query)
 
 
 def resolve(query: Term) -> Goal[Database]:
