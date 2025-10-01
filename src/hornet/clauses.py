@@ -66,13 +66,13 @@ class PythonRule(Rule[PythonBody]):
 def predicate(head: Term) -> Callable[[PythonGoal], PythonRule]:
     assert isinstance(head, NonVariable)
 
-    def decorator(func: PythonGoal) -> PythonRule:
-        @wraps(func)
+    def decorator(python_goal: PythonGoal) -> PythonRule:
+        @wraps(python_goal)
         def python_body(env: Environment) -> Goal[Database]:
-            def python_goal(db: Database, subst: Map) -> Step[Database]:
-                return func(db, Subst(subst, env))
+            def goal(db: Database, subst: Map) -> Step[Database]:
+                return python_goal(db, Subst(subst, env))
 
-            return python_goal
+            return goal
 
         return PythonRule(head=head, body=python_body)
 
