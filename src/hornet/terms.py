@@ -367,7 +367,7 @@ EMPTY = Empty()
 
 @dataclass(frozen=True, slots=True, init=False)
 class Connective(Compound, ABC):
-    def __init__(self, *args: NonVariable):
+    def __init__(self, *args: Term):
         object.__setattr__(self, "args", args)
 
     def __str__(self):
@@ -551,21 +551,29 @@ def promote(obj: Any) -> Term | tuple:
             | Exception()
         ):
             return obj
+
         case Functor(name=name, args=args):
             return Functor(name, *(promote(arg) for arg in args))
+
         case Operator(args=args):
             return type(obj)(*(promote(arg) for arg in args))
+
         case tuple():
             return tuple(promote(each) for each in obj)
+
         case Cons(head=BitOr(left=left, right=right)):
             return Cons(promote(left), promote(right))
+
         case []:
             return EMPTY
+
         case [BitOr(left=left, right=right), *tail]:
             assert not tail
             return Cons(head=promote(left), tail=promote(right))
+
         case [head, *tail]:
             return Cons(head=promote(head), tail=promote(list(tail)))
+
         case _:
             raise TypeError(f"{type(obj)}")
 

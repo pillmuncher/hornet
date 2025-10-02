@@ -3,11 +3,10 @@
 
 from __future__ import annotations
 
-from functools import reduce
 from typing import Callable, Iterable
 
 from immutables import Map
-from toolz import flip
+from toolz import flip, reduce
 
 from .tailcalls import Frame, tailcall
 from .terms import Compound, Term, Variable

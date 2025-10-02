@@ -310,26 +310,35 @@ def _bootstrap_database() -> Callable[[], Database]:
     check(db, is_str(V), V, lambda term: isinstance(term, str))
 
     @db.tell
-    @predicate(univ(P, L))
+    @predicate(univ(C, L))
     def _univ(db: Database, subst: Subst) -> Step:
-        match subst[P]:
+        cin = subst[C]
+        lin = subst[L]
+        match cin:
             case Atom(name=name) as res:
-                left = promote([res])
+                items = promote([res])
             case Functor(name=name, args=args):
-                actual_args = tuple(subst[a] for a in args)
-                left = promote([Atom(name), *actual_args])
+                actualized_args = tuple(subst[a] for a in args)
+                items = promote([Atom(name), *actualized_args])
             case v:
-                left = v
-        match subst[L]:
+                items = v
+        match lin:
             case Cons(head=Atom() as head, tail=Empty()):
-                right = head
+                clause = head
             case Cons(head=Atom(name=name) as head, tail=tail):
                 args = to_python_list(tail, subst)
-                right = Functor(name, *(promote(item) for item in args))
+                clause = Functor(name, *args)
             case v:
-                right = v
-        assert not (isinstance(left, Variable) and isinstance(right, Variable))
-        return _unify(left, right)(db, subst.map)
+                clause = v
+        match cin, lin:
+            case Variable(), Variable():
+                raise TypeError()
+            case Variable(), _:
+                return _unify(cin, clause)(db, subst.map)
+            case _, Variable():
+                return _unify(lin, items)(db, subst.map)
+            case _:
+                return then(_unify(cin, clause), _unify(lin, items))(db, subst.map)
 
     @db.tell
     @predicate(call(G))

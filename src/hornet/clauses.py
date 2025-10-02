@@ -187,6 +187,12 @@ def resolve(query: Term) -> Goal[Database]:
         case Atom("fail"):
             return fail
 
+        case Functor(name="all_of", args=args):
+            return seq_from_iterable(resolve(a) for a in args)
+
+        case Functor(name="any_of", args=args):
+            return amb_from_iterable(resolve(a) for a in args)
+
         case Atom() | Functor():
             return lambda db, subst: prunable(
                 fresh(clause, query) for clause in db[query.indicator]
