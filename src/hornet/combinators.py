@@ -191,11 +191,8 @@ def _unify[Ctx](this: Term, that: Term) -> Goal[Ctx]:
         case _, Variable():
             return unify_variable(that, this)
 
-        case Compound(), Compound():
-            if this.indicator == that.indicator:
-                return unify_pairs(*zip(this.args, that.args))
-            else:
-                return fail
+        case Compound(), Compound() if this.indicator == that.indicator:
+            return unify_pairs(*zip(this.args, that.args))
 
         case _:
             return fail

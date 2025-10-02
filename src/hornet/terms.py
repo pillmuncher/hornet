@@ -10,7 +10,7 @@ from typing import Any, ClassVar, Iterator
 
 from .states import StateGenerator, const, get_state, set_state, with_state
 
-type Term = Variable | NonVariable | Primitive | Exception
+type Term = Symbolic | Primitive | Exception
 type Indicator = tuple[str, int]
 
 
