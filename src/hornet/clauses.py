@@ -33,9 +33,7 @@ from .terms import (
     Atom,
     BinaryOperator,
     Compound,
-    Conjunction,
     Cons,
-    Disjunction,
     Empty,
     Functor,
     HornetRule,
@@ -46,6 +44,7 @@ from .terms import (
     Term,
     UnaryOperator,
     Variable,
+    conjunction,
     fresh_name,
     fresh_variable,
 )
@@ -198,12 +197,6 @@ def resolve(query: Term) -> Goal[Database]:
                 fresh(clause, query) for clause in db[query.indicator]
             )(db, subst)
 
-        case Conjunction(args=args):
-            return seq_from_iterable(resolve(a) for a in args)
-
-        case Disjunction(body=args):
-            return amb_from_iterable(resolve(a) for a in args)
-
         case Invert(args=(inner,)):
             return neg(resolve(inner))
 
@@ -222,7 +215,7 @@ class Database(ChainMap[Indicator, list[Clause]]):
 
     def ask(self, *conjuncts: Term, subst: Map | None = None) -> Iterable[Subst]:
         assert all(isinstance(c, NonVariable) for c in conjuncts)
-        (query, _), (env, _) = new_term(term=conjuncts).run(({}, {}))
+        (query, _), (env, _) = new_term(term=conjunction(*conjuncts)).run(({}, {}))
         if subst is None:
             subst = Map()
         goal = resolve(query)
@@ -341,20 +334,6 @@ def new_term(term: Term) -> StateOp[FreshState, tuple[Term, bool]]:
             right, right_ground = yield new_term(right)
             ground = left_ground and right_ground
             term = type(term)(left, right)
-            if ground:
-                yield add_ground(term)
-            return term, ground
-
-        case Conjunction(args=conjuncts):
-            conjuncts, ground = yield new_args(conjuncts)
-            term = Conjunction(*conjuncts)
-            if ground:
-                yield add_ground(term)
-            return term, ground
-
-        case tuple() as conjuncts:
-            conjuncts, ground = yield new_args(conjuncts)
-            term = Conjunction(*conjuncts)
             if ground:
                 yield add_ground(term)
             return term, ground

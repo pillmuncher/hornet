@@ -129,8 +129,10 @@ class Variable(Symbolic):
 @dataclass(frozen=True, slots=True, init=False)
 class NonVariable(Symbolic, ABC):
     def when(self, *args: NonVariable | list[str]) -> Rule:
-        body = Conjunction(*(promote(arg) for arg in args))  # type: ignore
-        return HornetRule(head=self, body=body)
+        return HornetRule(
+            head=self,
+            body=conjunction(*map(promote, args)),
+        )
 
     @property
     @abstractmethod
@@ -365,23 +367,12 @@ class Empty(NonVariable):
 EMPTY = Empty()
 
 
-@dataclass(frozen=True, slots=True, init=False)
-class Connective(Compound, ABC):
-    def __init__(self, *args: Term):
-        object.__setattr__(self, "args", args)
-
-    def __str__(self):
-        return ", ".join(map(str, self.args))
+def conjunction(*concjuncts):
+    return Functor("all_of", *concjuncts)
 
 
-@dataclass(frozen=True, slots=True, init=False)
-class Conjunction(Connective):
-    name: ClassVar[str] = ","
-
-
-@dataclass(frozen=True, slots=True, init=False)
-class Disjunction(Connective):
-    name: ClassVar[str] = ";"
+def disjunction(*concjuncts):
+    return Functor("any_of", *concjuncts)
 
 
 @dataclass(frozen=True, slots=True)
@@ -430,7 +421,7 @@ def dcg_expand_cons(term: Term) -> StateOp[VarCount, Term]:
                 break
             case _:
                 raise TypeError(f"Expected Cons or Empty, got {tail}")
-    return Conjunction(*result_terms)
+    return conjunction(*result_terms)
 
 
 @with_state
@@ -441,7 +432,21 @@ def walk_dcg_body(term: Term) -> StateOp[VarCount, Term]:
             return Functor(name, Sout, Sin)
 
         case Functor(name="inline", args=inlined):
-            return Conjunction(*inlined)  # type: ignore
+            return conjunction(*inlined)  # type: ignore
+
+        case Functor(name="all_of", args=goals):
+            new_goals = []
+            for goal in goals:
+                new_goal = yield walk_dcg_body(goal)
+                new_goals.append(new_goal)
+            return conjunction(*new_goals)
+
+        case Functor(name="any_of", args=goals):
+            new_goals = []
+            for goal in goals:
+                new_goal = yield walk_dcg_body(goal)
+                new_goals.append(new_goal)
+            return disjunction(*new_goals)
 
         case Functor(name=name, args=args):
             Sout, Sin = yield advance_variables()
@@ -449,20 +454,6 @@ def walk_dcg_body(term: Term) -> StateOp[VarCount, Term]:
 
         case Cons():
             return (yield dcg_expand_cons(term))
-
-        case Conjunction(args=goals):
-            new_goals = []
-            for goal in goals:
-                new_goal = yield walk_dcg_body(goal)
-                new_goals.append(new_goal)
-            return Conjunction(*new_goals)
-
-        case Disjunction(body=goals):
-            new_goals = []
-            for goal in goals:
-                new_goal = yield walk_dcg_body(goal)
-                new_goals.append(new_goal)
-            return Disjunction(*new_goals)
 
     raise TypeError(f"Expected query term in DCG body, got: {term!r}")
 
