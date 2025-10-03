@@ -27,7 +27,7 @@ from .combinators import (
     unify,
     unit,
 )
-from .states import State, StateGenerator, get_state, set_state, with_state
+from .states import State, StateOp, get_state, set_state, with_state
 from .tailcalls import trampoline
 from .terms import (
     Atom,
@@ -268,7 +268,7 @@ def add_ground(term: Term) -> State[FreshState, FreshState]:
 
 
 @with_state
-def make_variable(old_var: Variable) -> StateGenerator[FreshState, Term]:
+def make_variable(old_var: Variable) -> StateOp[FreshState, Term]:
     new_var = yield get_var(old_var)
     if new_var is None:
         new_var = Variable(fresh_name(old_var.name))
@@ -277,7 +277,7 @@ def make_variable(old_var: Variable) -> StateGenerator[FreshState, Term]:
 
 
 @with_state
-def new_args(items: Arguments) -> StateGenerator[FreshState, tuple[Arguments, bool]]:
+def new_args(items: Arguments) -> StateOp[FreshState, tuple[Arguments, bool]]:
     new_items = []
     all_ground = True
     for item in items:
@@ -290,9 +290,18 @@ def new_args(items: Arguments) -> StateGenerator[FreshState, tuple[Arguments, bo
 
 
 @with_state
-def new_term(term: Term) -> StateGenerator[FreshState, Arguments]:
+def new_term(term: Term) -> StateOp[FreshState, tuple[Term, bool]]:
     match term:
-        case str() | int() | float() | bool() | complex() | Exception():
+        case (
+            Atom()
+            | Empty()
+            | str()
+            | int()
+            | float()
+            | bool()
+            | complex()
+            | Exception()
+        ):
             yield add_ground(term)
             return term, True
 
@@ -304,20 +313,12 @@ def new_term(term: Term) -> StateGenerator[FreshState, Arguments]:
             variable = yield make_variable(term)
             return variable, False
 
-        case Atom():
-            yield add_ground(term)
-            return term, True
-
         case Functor(name=name, args=args):
             args, ground = yield new_args(args)
             term = Functor(name, *args)
             if ground:
                 yield add_ground(term)
             return term, ground
-
-        case Empty():
-            yield add_ground(term)
-            return term, True
 
         case Cons(head=head, tail=tail):
             head, head_ground = yield new_term(head)
@@ -362,7 +363,7 @@ def new_term(term: Term) -> StateGenerator[FreshState, Arguments]:
 
 
 @with_state
-def term_to_clause(term: Term) -> StateGenerator[FreshState, tuple[Clause, Indicator]]:
+def term_to_clause(term: Term) -> StateOp[FreshState, tuple[Clause, Indicator]]:
     match term:
         case Atom(name=name) as head:
             head, _ = yield new_term(head)
@@ -374,7 +375,7 @@ def term_to_clause(term: Term) -> StateGenerator[FreshState, tuple[Clause, Indic
             head, _ = yield new_term(head)
             env, memo = yield get_state()
             memo = prune_ground_map(memo)
-            return CompoundFact(env, memo, head), (head.name, len(head.args))
+            return CompoundFact(env, memo, head), (name, len(args))
 
         case HornetRule(head=Atom(name=name) as head, body=body):
             body, _ = yield new_term(body)
@@ -384,15 +385,10 @@ def term_to_clause(term: Term) -> StateGenerator[FreshState, tuple[Clause, Indic
 
         case HornetRule(head=Functor(name=name, args=args) as head, body=body):
             head, _ = yield new_term(head)
-            if body:
-                body, _ = yield new_term(body)
-                env, memo = yield get_state()
-                memo = prune_ground_map(memo)
-                return CompoundRule(env, memo, head, body), (name, len(head.args))
-            else:
-                env, memo = yield get_state()
-                memo = prune_ground_map(memo)
-                return CompoundFact(env, memo, head), (name, len(head.args))
+            body, _ = yield new_term(body)
+            env, memo = yield get_state()
+            memo = prune_ground_map(memo)
+            return CompoundRule(env, memo, head, body), (name, len(args))
 
         case PythonRule(head=Atom(name=name) as head, body=body):
             head, _ = yield new_term(head)

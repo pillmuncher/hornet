@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Generator
 
 type StateFunction[S, V] = Callable[[V], State[S, V]]
-type StateGenerator[S, R] = Generator[State[S, Any], Any, R]
+type StateOp[S, R] = Generator[State[S, Any], Any, R]
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,7 +27,7 @@ class State[S, V]:
 
 
 def with_state[S, R](
-    fn: Callable[..., StateGenerator[S, R]],
+    fn: Callable[..., StateOp[S, R]],
 ) -> Callable[..., State[S, R]]:
     def wrapper(*args, **kwargs) -> State[S, R]:
         gen = fn(*args, **kwargs)

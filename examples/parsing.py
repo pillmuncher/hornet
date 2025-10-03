@@ -6,6 +6,7 @@ from hornet.symbols import (
     C,
     Case,
     D,
+    E,
     F,
     Gender,
     Number,
@@ -214,6 +215,7 @@ def grammar(db):
     # words = "eine maus jagt viele katzen".split()
     # words = "manche maeuse jagen viele katze".split()
     words = ["der", C, D, "die", F]
+    # words = [C, D, "schlaeft"]
     # words = ["manche", B, C]
     # words = [B, "hund", D, E, F]
     # words = [B, "hunde", "jagen", C, "katzen"]
@@ -228,5 +230,4 @@ def grammar(db):
         print("No.")
 
 
-db = database()
-grammar(db)
+grammar(database())

@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from itertools import count
 from typing import Any, ClassVar, Iterator
 
-from .states import StateGenerator, const, get_state, set_state, with_state
+from .states import StateOp, const, get_state, set_state, with_state
 
 type Term = Symbolic | Primitive | Exception
 type Indicator = tuple[str, int]
@@ -404,13 +404,13 @@ _var_counter: Iterator[int] = count()
 
 
 @with_state
-def current_variable() -> StateGenerator[VarCount, Variable]:
+def current_variable() -> StateOp[VarCount, Variable]:
     i, _ = yield get_state()
     return Variable(f"S${i}")
 
 
 @with_state
-def advance_variables() -> StateGenerator[VarCount, tuple[Variable, Variable]]:
+def advance_variables() -> StateOp[VarCount, tuple[Variable, Variable]]:
     i, counter = yield get_state()
     j = next(counter)
     yield set_state(const((j, counter)))
@@ -418,7 +418,7 @@ def advance_variables() -> StateGenerator[VarCount, tuple[Variable, Variable]]:
 
 
 @with_state
-def dcg_expand_cons(term: Term) -> StateGenerator[VarCount, Term]:
+def dcg_expand_cons(term: Term) -> StateOp[VarCount, Term]:
     result_terms = []
     tail = term
     while True:
@@ -434,7 +434,7 @@ def dcg_expand_cons(term: Term) -> StateGenerator[VarCount, Term]:
 
 
 @with_state
-def walk_dcg_body(term: Term) -> StateGenerator[VarCount, Term]:
+def walk_dcg_body(term: Term) -> StateOp[VarCount, Term]:
     match term:
         case Atom(name=name):
             Sout, Sin = yield advance_variables()
@@ -468,9 +468,7 @@ def walk_dcg_body(term: Term) -> StateGenerator[VarCount, Term]:
 
 
 @with_state
-def _dcg_expand(
-    term: NonVariable | HornetRule,
-) -> StateGenerator[VarCount, Functor | Rule]:
+def _dcg_expand(term: NonVariable | HornetRule) -> StateOp[VarCount, Functor | Rule]:
     Sout = yield current_variable()
     match term:
         case Atom(name=name):
