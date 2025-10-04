@@ -131,6 +131,25 @@ def neg[Ctx](goal: Goal[Ctx]) -> Goal[Ctx]:
     return prunable([amb(seq(goal, cut, fail), unit)])
 
 
+def if_then_else[Ctx](cond: Goal[Ctx], then: Goal[Ctx], else_: Goal[Ctx]) -> Goal[Ctx]:
+    def goal(ctx: Ctx, subst: Map) -> Step[Ctx]:
+        cond_step = cond(ctx, subst)
+
+        @tailcall
+        def step(yes: Emit[Ctx], no: Next, prune: Next) -> Result:
+            def yes_branch(ctx: Ctx, subst: Map, _):
+                return then(ctx, subst)(yes, no, prune)
+
+            def no_branch():
+                return else_(ctx, subst)(yes, no, prune)
+
+            return cond_step(yes_branch, no_branch, prune)
+
+        return step
+
+    return goal
+
+
 def deref_and_compress(subst: Map, term: Term) -> tuple[Map, Term]:
     visited = set()
     while isinstance(term, Variable) and term in subst:

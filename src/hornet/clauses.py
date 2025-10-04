@@ -200,7 +200,7 @@ def resolve(query: Term) -> Goal[Database]:
         case Invert(args=(inner,)):
             return neg(resolve(inner))
 
-    raise TypeError(f"Type error: `callable' expected, found {query!r}")
+    raise TypeError(f"Type error: 'callable' expected, found {query!r}")
 
 
 class Database(ChainMap[Indicator, list[Clause]]):

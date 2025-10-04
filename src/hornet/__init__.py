@@ -3,10 +3,11 @@
 
 from __future__ import annotations
 
+from operator import sub
 from typing import Callable
 
 from hornet.clauses import Database, Subst, predicate
-from hornet.combinators import Step, unit
+from hornet.combinators import Step, if_then_else, unit
 from hornet.terms import DCGs
 
 from . import combinators, symbols, terms
@@ -339,10 +340,11 @@ def _bootstrap_database() -> Callable[[], Database]:
     @db.tell
     @predicate(ifelse(T, Y, N))
     def _ifelse(db: Database, subst: Subst) -> Step:
-        for new_subst in db.ask(subst[T], subst=subst.map):
-            return resolve(subst[Y])(db, new_subst.map)
-        else:
-            return resolve(subst[N])(db, subst.map)
+        return if_then_else(
+            resolve(subst[T]),
+            resolve(subst[Y]),
+            resolve(subst[N]),
+        )(db, subst.map)
 
     @db.tell
     @predicate(smaller(A, B))
