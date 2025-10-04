@@ -173,14 +173,14 @@ def _bootstrap_database() -> Callable[[], Database]:
         Y,
     )
 
-    def to_python_list(cons_list: Term, subst: Subst) -> list[Term]:
-        assert isinstance(cons_list, Cons | Empty)
+    def to_python_list(tail: Term) -> list[Term]:
+        assert isinstance(tail, Cons | Empty)
         result = []
         while True:
-            match subst[cons_list]:
+            match tail:
                 case Cons(head=head, tail=tail):
                     result.append(head)
-                    cons_list = tail
+                    tail = tail
                 case Empty():
                     return result
                 case other:
@@ -314,31 +314,17 @@ def _bootstrap_database() -> Callable[[], Database]:
     def _univ(db: Database, subst: Subst) -> Step:
         cin = subst[C]
         lin = subst[L]
+        assert isinstance(cin, Functor | Atom | Variable)
         match cin:
-            case Atom(name=name) as res:
-                items = promote([res])
+            case Atom(name=name):
+                return _unify(lin, promote([cin]))(db, subst.map)
             case Functor(name=name, args=args):
-                actualized_args = tuple(subst[a] for a in args)
-                items = promote([Atom(name), *actualized_args])
-            case v:
-                items = v
-        match lin:
-            case Cons(head=Atom() as head, tail=Empty()):
-                clause = head
-            case Cons(head=Atom(name=name) as head, tail=tail):
-                args = to_python_list(tail, subst)
-                clause = Functor(name, *args)
-            case v:
-                clause = v
-        match cin, lin:
-            case Variable(), Variable():
-                raise TypeError()
-            case Variable(), _:
-                return _unify(cin, clause)(db, subst.map)
-            case _, Variable():
-                return _unify(lin, items)(db, subst.map)
-            case _:
-                return then(_unify(cin, clause), _unify(lin, items))(db, subst.map)
+                return _unify(lin, promote([Atom(name), *args]))(db, subst.map)
+            case Variable():
+                assert isinstance(lin, Cons | Empty)
+                head, *tail = to_python_list(lin)
+                assert isinstance(head, Atom)
+                return _unify(cin, Functor(head.name, *tail))(db, subst.map)
 
     @db.tell
     @predicate(call(G))
@@ -353,8 +339,8 @@ def _bootstrap_database() -> Callable[[], Database]:
     @db.tell
     @predicate(ifelse(T, Y, N))
     def _ifelse(db: Database, subst: Subst) -> Step:
-        for new_proxy in db.ask(subst[T], subst=subst.map):
-            return resolve(subst[Y])(db, new_proxy.map)
+        for new_subst in db.ask(subst[T], subst=subst.map):
+            return resolve(subst[Y])(db, new_subst.map)
         else:
             return resolve(subst[N])(db, subst.map)
 
@@ -396,12 +382,9 @@ def _bootstrap_database() -> Callable[[], Database]:
     def _join(db: Database, subst: Subst) -> Step:
         items = subst[L]
         assert isinstance(items, Cons | Empty)
-        result = to_python_list(items, subst)
+        result = to_python_list(items)
         assert all(isinstance(each, str) for each in result)
         return _unify(subst[S], "".join(map(str, result)))(db, subst.map)
-
-    def list_to_cons(items: list[Term]) -> Cons | Empty:
-        return reduce(flip(Cons), reversed(items), EMPTY)  # type: ignore
 
     @db.tell
     @predicate(findall(O, G, L))
@@ -410,8 +393,8 @@ def _bootstrap_database() -> Callable[[], Database]:
         assert isinstance(obj, Variable)
         goal = subst[G]
         assert isinstance(goal, NonVariable)
-        items = [s[obj] for s in db.ask(goal, subst=subst.map)]
-        return _unify(subst[L], list_to_cons(items))(db, subst.map)
+        items = promote([s[obj] for s in db.ask(goal, subst=subst.map)])
+        return _unify(subst[L], items)(db, subst.map)
 
     # Printing predicates
     @db.tell

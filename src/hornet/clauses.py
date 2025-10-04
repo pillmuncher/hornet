@@ -44,7 +44,7 @@ from .terms import (
     Term,
     UnaryOperator,
     Variable,
-    conjunction,
+    all_of,
     fresh_name,
     fresh_variable,
 )
@@ -215,7 +215,7 @@ class Database(ChainMap[Indicator, list[Clause]]):
 
     def ask(self, *conjuncts: Term, subst: Map | None = None) -> Iterable[Subst]:
         assert all(isinstance(c, NonVariable) for c in conjuncts)
-        (query, _), (env, _) = new_term(term=conjunction(*conjuncts)).run(({}, {}))
+        (query, _), (env, _) = new_term(term=all_of(*conjuncts)).run(({}, {}))
         if subst is None:
             subst = Map()
         goal = resolve(query)

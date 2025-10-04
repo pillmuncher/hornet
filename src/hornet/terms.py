@@ -97,7 +97,7 @@ class Symbolic(ABC):
     def __ror__(self, other):
         return BitOr(promote(other), promote(self))
 
-    def __call__(self, *args) -> Functor:
+    def __call__(self, *_) -> Functor:
         raise TypeError(f"Atom required, not {self}")
 
 
@@ -116,9 +116,6 @@ class Variable(Symbolic):
     def __hash__(self):
         return self._hash
 
-    def __deepcopy__(self, memo):
-        return self
-
     def __repr__(self):
         return self.name
 
@@ -131,7 +128,7 @@ class NonVariable(Symbolic, ABC):
     def when(self, *args: NonVariable | list[str]) -> Rule:
         return HornetRule(
             head=self,
-            body=conjunction(*map(promote, args)),
+            body=all_of(*map(promote, args)),
         )
 
     @property
@@ -146,9 +143,6 @@ class Atom(NonVariable):
     @property
     def indicator(self) -> Indicator:
         return self.name, 0
-
-    def __deepcopy__(self, memo):
-        return self
 
     def __str__(self):
         return self.name
@@ -354,9 +348,6 @@ class Empty(NonVariable):
     def indicator(self) -> Indicator:
         return self.name, 0
 
-    def __deepcopy__(self, memo):
-        return self
-
     def __repr__(self):
         return "[]"
 
@@ -367,12 +358,12 @@ class Empty(NonVariable):
 EMPTY = Empty()
 
 
-def conjunction(*concjuncts):
-    return Functor("all_of", *concjuncts)
+def all_of(*conjuncts):
+    return Functor("all_of", *conjuncts)
 
 
-def disjunction(*concjuncts):
-    return Functor("any_of", *concjuncts)
+def any_of(*disjuncts):
+    return Functor("any_of", *disjuncts)
 
 
 @dataclass(frozen=True, slots=True)
@@ -421,7 +412,7 @@ def dcg_expand_cons(term: Term) -> StateOp[VarCount, Term]:
                 break
             case _:
                 raise TypeError(f"Expected Cons or Empty, got {tail}")
-    return conjunction(*result_terms)
+    return all_of(*result_terms)
 
 
 @with_state
@@ -432,21 +423,21 @@ def walk_dcg_body(term: Term) -> StateOp[VarCount, Term]:
             return Functor(name, Sout, Sin)
 
         case Functor(name="inline", args=inlined):
-            return conjunction(*inlined)  # type: ignore
+            return all_of(*inlined)
 
         case Functor(name="all_of", args=goals):
             new_goals = []
             for goal in goals:
                 new_goal = yield walk_dcg_body(goal)
                 new_goals.append(new_goal)
-            return conjunction(*new_goals)
+            return all_of(*new_goals)
 
         case Functor(name="any_of", args=goals):
             new_goals = []
             for goal in goals:
                 new_goal = yield walk_dcg_body(goal)
                 new_goals.append(new_goal)
-            return disjunction(*new_goals)
+            return any_of(*new_goals)
 
         case Functor(name=name, args=args):
             Sout, Sin = yield advance_variables()
@@ -568,4 +559,4 @@ def promote(obj: Any) -> Term | tuple:
 
 
 Primitive = str | int | float | bool | complex | bytes | tuple
-Atomic = Primitive | Atom
+Atomic = Primitive | Atom | Empty
