@@ -30,6 +30,8 @@ from .combinators import (
 from .states import State, StateOp, get_state, set_state, with_state
 from .tailcalls import trampoline
 from .terms import (
+    AllOf,
+    AnyOf,
     Atom,
     BinaryOperator,
     Compound,
@@ -40,11 +42,11 @@ from .terms import (
     Indicator,
     Invert,
     NonVariable,
+    Operator,
     Rule,
     Term,
     UnaryOperator,
     Variable,
-    all_of,
     fresh_name,
     fresh_variable,
 )
@@ -97,7 +99,7 @@ class Subst(Mapping):
         match self.deref(obj):
             case Functor(name=name, args=args):
                 return Functor(name, *(self.actualize(a) for a in args))
-            case Compound(args=args) as struct:
+            case Operator(args=args) as struct:
                 return type(struct)(*(self.actualize(a) for a in args))
             case obj:
                 return obj
@@ -129,7 +131,7 @@ class AtomicFact(Clause):
 
 @dataclass(frozen=True, slots=True)
 class CompoundFact(Clause):
-    head: Compound
+    head: Functor
 
     def __call__(self, query: NonVariable) -> Goal[Database]:
         return unify(query, self.head)
@@ -162,7 +164,7 @@ class AtomicPythonRule(Clause):
 
 @dataclass(frozen=True, slots=True)
 class CompoundPythonRule(Clause):
-    head: Compound
+    head: Functor
     body: PythonBody
 
     def __call__(self, query: NonVariable) -> Goal[Database]:
@@ -186,10 +188,10 @@ def resolve(query: Term) -> Goal[Database]:
         case Atom("fail"):
             return fail
 
-        case Functor(name="all_of", args=args):
+        case AllOf(args=args):
             return seq_from_iterable(resolve(a) for a in args)
 
-        case Functor(name="any_of", args=args):
+        case AnyOf(args=args):
             return amb_from_iterable(resolve(a) for a in args)
 
         case Atom() | Functor():
@@ -215,7 +217,7 @@ class Database(ChainMap[Indicator, list[Clause]]):
 
     def ask(self, *conjuncts: Term, subst: Map | None = None) -> Iterable[Subst]:
         assert all(isinstance(c, NonVariable) for c in conjuncts)
-        (query, _), (env, _) = new_term(term=all_of(*conjuncts)).run(({}, {}))
+        (query, _), (env, _) = new_term(term=AllOf(*conjuncts)).run(({}, {}))
         if subst is None:
             subst = Map()
         goal = resolve(query)
@@ -305,6 +307,13 @@ def new_term(term: Term) -> StateOp[FreshState, tuple[Term, bool]]:
         case Variable():
             variable = yield make_variable(term)
             return variable, False
+
+        case AllOf(args=args):
+            args, ground = yield new_args(args)
+            term = AllOf(*args)
+            if ground:
+                yield add_ground(term)
+            return term, ground
 
         case Functor(name=name, args=args):
             args, ground = yield new_args(args)

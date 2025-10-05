@@ -3,8 +3,10 @@
 
 from __future__ import annotations
 
+import re as re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from functools import cache
 from itertools import count
 from typing import Any, ClassVar, Iterator
 
@@ -128,7 +130,7 @@ class NonVariable(Symbolic, ABC):
     def when(self, *args: NonVariable | list[str]) -> Rule:
         return HornetRule(
             head=self,
-            body=all_of(*map(promote, args)),
+            body=AllOf(*(promote(a) for a in args)),
         )
 
     @property
@@ -314,11 +316,11 @@ class Pow(BinaryOperator):
 
 
 @dataclass(frozen=True, slots=True)
-class Cons(BinaryOperator):
+class Cons(Operator):
     name: ClassVar[str] = "."
 
     def __init__(self, head: Term, tail: Term):
-        BinaryOperator.__init__(self, head, tail)
+        Operator.__init__(self, head, tail)
 
     @property
     def head(self) -> Term:
@@ -358,12 +360,14 @@ class Empty(NonVariable):
 EMPTY = Empty()
 
 
-def all_of(*conjuncts):
-    return Functor("all_of", *conjuncts)
+@dataclass(frozen=True, slots=True, init=False)
+class AllOf(Operator):
+    name: ClassVar[str] = "all_of"
 
 
-def any_of(*disjuncts):
-    return Functor("any_of", *disjuncts)
+@dataclass(frozen=True, slots=True, init=False)
+class AnyOf(Operator):
+    name: ClassVar[str] = "any_of"
 
 
 @dataclass(frozen=True, slots=True)
@@ -412,7 +416,7 @@ def dcg_expand_cons(term: Term) -> StateOp[VarCount, Term]:
                 break
             case _:
                 raise TypeError(f"Expected Cons or Empty, got {tail}")
-    return all_of(*result_terms)
+    return AllOf(*result_terms)
 
 
 @with_state
@@ -423,21 +427,21 @@ def walk_dcg_body(term: Term) -> StateOp[VarCount, Term]:
             return Functor(name, Sout, Sin)
 
         case Functor(name="inline", args=inlined):
-            return all_of(*inlined)
+            return AllOf(*inlined)
 
-        case Functor(name="all_of", args=goals):
+        case AllOf(args=goals):
             new_goals = []
             for goal in goals:
                 new_goal = yield walk_dcg_body(goal)
                 new_goals.append(new_goal)
-            return all_of(*new_goals)
+            return AllOf(*new_goals)
 
-        case Functor(name="any_of", args=goals):
+        case AnyOf(args=goals):
             new_goals = []
             for goal in goals:
                 new_goal = yield walk_dcg_body(goal)
                 new_goals.append(new_goal)
-            return any_of(*new_goals)
+            return AnyOf(*new_goals)
 
         case Functor(name=name, args=args):
             Sout, Sin = yield advance_variables()
@@ -560,3 +564,30 @@ def promote(obj: Any) -> Term | tuple:
 
 Primitive = str | int | float | bool | complex | bytes | tuple
 Atomic = Primitive | Atom | Empty
+scan = re.compile(
+    r"""
+    (?P<dunder>__.*__)      |  # matches dunder names
+    (?P<atom>[a-z].*)       |  # starts with lowercase
+    (?P<variable>[A-Z_].*)     # starts with uppercase or _
+    """,
+    re.VERBOSE,
+).fullmatch
+
+
+@cache
+def symbol(name: str) -> Atom | Variable:
+    """
+    Convert a string into a Term according to Prolog conventions:
+      - "_" becomes the anonymous variable
+      - strings starting with uppercase or "_" become Variables
+      - strings starting with lowercase become Atoms
+    """
+    if (m := scan(name)) is None:
+        raise AttributeError(f"Invalid symbol name: {name}")
+    match m.lastgroup:
+        case "variable":
+            return Variable(name=name)
+        case "atom":
+            return Atom(name=name)
+        case _:
+            raise AttributeError(f"Invalid symbol name: {name}")

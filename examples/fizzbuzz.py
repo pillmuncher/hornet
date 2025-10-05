@@ -59,13 +59,13 @@ def main(db):
     )
 
     for s in take(1111, db.ask(fizzbuzz(V))):
-        print(s[V])
-        # pass
+        # print(s[V])
+        pass
 
 
 if __name__ == "__main__":
-    # from cProfile import Profile
+    from cProfile import Profile
 
-    # with Profile() as pr:
-    main(database())
-    # pr.print_stats()
+    with Profile() as pr:
+        main(database())
+        pr.print_stats()

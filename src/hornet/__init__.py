@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-from operator import sub
 from typing import Callable
 
 from hornet.clauses import Database, Subst, predicate
@@ -110,8 +109,6 @@ __all__ = (
 def _bootstrap_database() -> Callable[[], Database]:
     from numbers import Number
 
-    from toolz import flip, reduce
-
     from hornet.clauses import predicate, resolve
     from hornet.combinators import cut as _cut
     from hornet.combinators import fail as _fail
@@ -119,7 +116,6 @@ def _bootstrap_database() -> Callable[[], Database]:
     from hornet.combinators import unify as _unify
     from hornet.combinators import unit as _unit
     from hornet.terms import (
-        EMPTY,
         Add,
         Atom,
         Atomic,
