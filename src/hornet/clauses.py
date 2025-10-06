@@ -114,6 +114,40 @@ class Subst(Mapping):
         return obj
 
 
+def fresh(clause: Clause) -> Clause:
+    memo: Memo = {id(var): fresh_variable() for var in clause.env.values()}
+    memo.update(clause.ground)
+    return deepcopy(clause, memo=memo)
+
+
+def resolve(query: Term) -> Goal[Database]:
+    match query:
+        case Atom("true"):
+            return unit
+
+        case Atom("cut"):
+            return cut
+
+        case Atom("fail"):
+            return fail
+
+        case AllOf(args=args):
+            return seq_from_iterable(resolve(a) for a in args)
+
+        case AnyOf(args=args):
+            return amb_from_iterable(resolve(a) for a in args)
+
+        case Atom() | Functor():
+            return lambda db, subst: prunable(
+                fresh(clause)(query) for clause in db[query.indicator]
+            )(db, subst)
+
+        case Invert(args=(inner,)):
+            return neg(resolve(inner))
+
+    raise TypeError(f"Type error: 'callable' expected, found {query!r}")
+
+
 @dataclass(frozen=True, slots=True)
 class Clause(ABC):
     env: Environment
@@ -171,53 +205,20 @@ class CompoundPythonRule(Clause):
         return then(unify(query, self.head), self.body(self.env))
 
 
-def fresh(clause: Clause, query: NonVariable) -> Goal[Database]:
-    memo: Memo = {id(var): fresh_variable() for var in clause.env.values()}
-    memo.update(clause.ground)
-    return deepcopy(clause, memo=memo)(query)
-
-
-def resolve(query: Term) -> Goal[Database]:
-    match query:
-        case Atom("true"):
-            return unit
-
-        case Atom("cut"):
-            return cut
-
-        case Atom("fail"):
-            return fail
-
-        case AllOf(args=args):
-            return seq_from_iterable(resolve(a) for a in args)
-
-        case AnyOf(args=args):
-            return amb_from_iterable(resolve(a) for a in args)
-
-        case Atom() | Functor():
-            return lambda db, subst: prunable(
-                fresh(clause, query) for clause in db[query.indicator]
-            )(db, subst)
-
-        case Invert(args=(inner,)):
-            return neg(resolve(inner))
-
-    raise TypeError(f"Type error: 'callable' expected, found {query!r}")
-
-
 class Database(ChainMap[Indicator, list[Clause]]):
     def tell(self, *terms: NonVariable) -> None:
+        # we first collect all clauses in case there's one that fails, so we don't leave
+        # the database in a partially updated state:
         results = []
         for term in terms:
             assert isinstance(term, NonVariable)
-            result, _ = term_to_clause(term).run(({}, {}))
-            results.append(result)
+            results.append(make_clause(term))
         for clause, indicator in results:
             self.setdefault(indicator, []).append(clause)
 
     def ask(self, *conjuncts: Term, subst: Map | None = None) -> Iterable[Subst]:
         assert all(isinstance(c, NonVariable) for c in conjuncts)
-        (query, _), (env, _) = new_term(term=AllOf(*conjuncts)).run(({}, {}))
+        query, env = make_term(term=AllOf(*conjuncts))
         if subst is None:
             subst = Map()
         goal = resolve(query)
@@ -263,7 +264,7 @@ def add_ground(term: Term) -> State[FreshState, FreshState]:
 
 
 @with_state
-def make_variable(old_var: Variable) -> StateOp[FreshState, Term]:
+def new_variable(old_var: Variable) -> StateOp[FreshState, Term]:
     new_var = yield get_var(old_var)
     if new_var is None:
         new_var = Variable(fresh_name(old_var.name))
@@ -305,7 +306,7 @@ def new_term(term: Term) -> StateOp[FreshState, tuple[Term, bool]]:
             return term, True
 
         case Variable():
-            variable = yield make_variable(term)
+            variable = yield new_variable(term)
             return variable, False
 
         case AllOf(args=args):
@@ -351,7 +352,7 @@ def new_term(term: Term) -> StateOp[FreshState, tuple[Term, bool]]:
 
 
 @with_state
-def term_to_clause(term: Term) -> StateOp[FreshState, tuple[Clause, Indicator]]:
+def new_clause(term: Term) -> StateOp[FreshState, tuple[Clause, Indicator]]:
     match term:
         case Atom(name=name) as head:
             head, _ = yield new_term(head)
@@ -391,3 +392,13 @@ def term_to_clause(term: Term) -> StateOp[FreshState, tuple[Clause, Indicator]]:
             return CompoundPythonRule(env, memo, head, body), (name, len(args))
 
     raise TypeError(f"Unsupported Term node: {term}")
+
+
+def make_term(term: Term) -> tuple[Term, Environment]:
+    (term, _), (env, _) = new_term(term=term).run(({}, {}))
+    return term, env
+
+
+def make_clause(term: Term) -> tuple[Clause, Indicator]:
+    result, _ = new_clause(term).run(({}, {}))
+    return result
