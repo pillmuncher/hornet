@@ -186,7 +186,7 @@ class Operator(Compound, ABC):
 @dataclass(frozen=True, slots=True, init=False)
 class UnaryOperator(Operator, ABC):
     def __init__(self, operand):
-        Compound.__init__(self, operand)
+        Operator.__init__(self, operand)
 
     @property
     def indicator(self) -> Indicator:
@@ -209,7 +209,7 @@ class UnaryOperator(Operator, ABC):
 @dataclass(frozen=True, slots=True, init=False)
 class BinaryOperator(Operator, ABC):
     def __init__(self, left, right):
-        Compound.__init__(self, left, right)
+        Operator.__init__(self, left, right)
 
     @property
     def indicator(self) -> Indicator:
@@ -311,8 +311,15 @@ class Pow(BinaryOperator):
     name: ClassVar[str] = "**"
 
     def __str__(self):
-        left, right = self.args
-        return f"{left}{self.name}{right}"
+        match self.left, self.right:
+            case Operator() as left, Operator() as right:
+                return f"({left}){self.name}({right})"
+            case Operator() as left, right:
+                return f"({left}){self.name}{right}"
+            case left, Operator() as right:
+                return f"{left}{self.name}({right})"
+            case left, right:
+                return f"{left}{self.name}{right}"
 
 
 @dataclass(frozen=True, slots=True)
