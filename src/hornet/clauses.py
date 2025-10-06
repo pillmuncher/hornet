@@ -207,12 +207,9 @@ def resolve(query: Term) -> Goal[Database]:
 
 class Database(ChainMap[Indicator, list[Clause]]):
     def tell(self, *terms: NonVariable) -> None:
-        results = []
         for term in terms:
             assert isinstance(term, NonVariable)
-            result, _ = term_to_clause(term).run(({}, {}))
-            results.append(result)
-        for clause, indicator in results:
+            (clause, indicator), _ = term_to_clause(term).run(({}, {}))
             self.setdefault(indicator, []).append(clause)
 
     def ask(self, *conjuncts: Term, subst: Map | None = None) -> Iterable[Subst]:
