@@ -310,17 +310,6 @@ class Mod(BinaryOperator):
 class Pow(BinaryOperator):
     name: ClassVar[str] = "**"
 
-    def __str__(self):
-        match self.left, self.right:
-            case Operator() as left, Operator() as right:
-                return f"({left}){self.name}({right})"
-            case Operator() as left, right:
-                return f"({left}){self.name}{right}"
-            case left, Operator() as right:
-                return f"{left}{self.name}({right})"
-            case left, right:
-                return f"{left}{self.name}{right}"
-
 
 @dataclass(frozen=True, slots=True)
 class Cons(Operator):
