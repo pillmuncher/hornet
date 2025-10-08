@@ -514,9 +514,6 @@ def rank(term: UnaryOperator | BinaryOperator) -> int:
 
 
 def promote(obj: Any) -> Term | tuple:
-    """
-    Convert a Python object to a Term.
-    """
     match obj:
         case (
             Variable()
@@ -555,7 +552,7 @@ def promote(obj: Any) -> Term | tuple:
             return Cons(head=promote(head), tail=promote(list(tail)))
 
         case _:
-            raise TypeError(f"{type(obj)}")
+            raise TypeError(str(type(obj)))
 
 
 Primitive = str | int | float | bool | complex | bytes | tuple

@@ -390,9 +390,9 @@ def simp_rules(db):
 def diff_test(db):
     formula = x**-3 + 2 * x**2 + 7 * (x + 9)
     for subst in db.ask(simp(formula, A), diff(A, x, B), simp(B, C)):
-        print(subst[A])
-        print(subst[B])
-        print(subst[C])
+        print(f"{subst[A] = !s}")
+        print(f"{subst[B] = !s}")
+        print(f"{subst[C] = !s}")
 
 
 def main(db):

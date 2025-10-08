@@ -110,7 +110,7 @@ class Subst(Mapping):
             if obj in visited:
                 raise RuntimeError(f"Cyclic variable binding detected: {obj}")
             visited.add(obj)
-            obj = self.map.get(obj, obj)
+            obj = self.map[obj]
         return obj
 
 
@@ -131,19 +131,19 @@ def resolve(query: Term) -> Goal[Database]:
         case Atom("fail"):
             return fail
 
-        case AllOf(args=args):
-            return seq_from_iterable(resolve(a) for a in args)
+        case AllOf():
+            return seq_from_iterable(resolve(a) for a in query.args)
 
-        case AnyOf(args=args):
-            return amb_from_iterable(resolve(a) for a in args)
+        case AnyOf():
+            return amb_from_iterable(resolve(a) for a in query.args)
+
+        case Invert():
+            return neg(resolve(query.operand))
 
         case Atom() | Functor():
             return lambda db, subst: prunable(
                 fresh(clause)(query) for clause in db[query.indicator]
             )(db, subst)
-
-        case Invert(args=(inner,)):
-            return neg(resolve(inner))
 
     raise TypeError(f"Type error: 'callable' expected, found {query!r}")
 
@@ -219,10 +219,8 @@ class Database(ChainMap[Indicator, list[Clause]]):
     def ask(self, *conjuncts: Term, subst: Map | None = None) -> Iterable[Subst]:
         assert all(isinstance(c, NonVariable) for c in conjuncts)
         query, env = make_term(term=AllOf(*conjuncts))
-        if subst is None:
-            subst = Map()
         goal = resolve(query)
-        step = goal(self, subst)
+        step = goal(self, Map() if subst is None else subst)
         for new_subst in trampoline(lambda: step(success, failure, failure)):
             yield Subst(new_subst, env)
 

@@ -38,7 +38,6 @@ from hornet.symbols import (
 
 def grammar(db):
     db.tell(
-        s(S).when(s(S, [])),
         *DCGs(
             s.when(
                 np(Number, nominative),
