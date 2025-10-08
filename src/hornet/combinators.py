@@ -9,7 +9,7 @@ from immutables import Map
 from toolz import flip, reduce
 
 from .tailcalls import Frame, tailcall
-from .terms import Compound, Term, Variable
+from .terms import Compound, Term, Variable, Wildcard
 
 type Result = Frame[Map]
 type Next = Callable[[], Result]
@@ -198,10 +198,10 @@ def _unify[Ctx](this: Term, that: Term) -> Goal[Ctx]:
         case _ if this == that:
             return unit
 
-        case Variable(name="_"), _:
+        case Wildcard(), _:
             return unit
 
-        case _, Variable(name="_"):
+        case _, Wildcard():
             return unit
 
         case Variable(), _:

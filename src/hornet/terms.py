@@ -125,6 +125,15 @@ class Variable(Symbolic):
         return self.name
 
 
+@dataclass(init=False, repr=False, eq=False, frozen=True, slots=True)
+class Wildcard(Variable):
+    def __init__(self):
+        Variable.__init__(self, "_")
+
+
+WILDCARD = Wildcard()
+
+
 @dataclass(frozen=True, slots=True, init=False)
 class NonVariable(Symbolic, ABC):
     def when(self, *args: NonVariable | list[str]) -> Rule:
@@ -559,7 +568,8 @@ Primitive = str | int | float | bool | complex | bytes | tuple
 Atomic = Primitive | Atom | Empty
 scan = re.compile(
     r"""
-    (?P<dunder>__.*__)      |  # matches dunder names
+    (?P<dunder>__.*__)      |  # dunder names
+    (?P<wildcard>_)         |  # anonymous variable
     (?P<atom>[a-z].*)       |  # starts with lowercase
     (?P<variable>[A-Z_].*)     # starts with uppercase or _
     """,
@@ -578,9 +588,11 @@ def symbol(name: str) -> Atom | Variable:
     if (m := scan(name)) is None:
         raise AttributeError(f"Invalid symbol name: {name}")
     match m.lastgroup:
+        case "wildcard":
+            return WILDCARD
         case "variable":
-            return Variable(name=name)
+            return Variable(name)
         case "atom":
-            return Atom(name=name)
+            return Atom(name)
         case _:
             raise AttributeError(f"Invalid symbol name: {name}")
