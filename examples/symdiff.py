@@ -40,7 +40,7 @@ from hornet.symbols import (
 
 def diff_rules(db):
     db.tell(
-        diff(X, Y, Z).when(cut, d(X, Y, Z)),
+        diff(X, Y, Z).when(d(X, Y, Z)),
         d(X, X, 1).when(
             cut,
         ),
