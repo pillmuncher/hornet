@@ -48,22 +48,6 @@ def diff_rules(db):
             is_atomic(C),
             cut,
         ),
-        s(X + 0, Y).when(
-            cut,
-            s(X, Y),
-        ),
-        s(0 + X, Y).when(
-            cut,
-            s(X, Y),
-        ),
-        s(X - 0, Y).when(
-            cut,
-            s(X, Y),
-        ),
-        s(0 - X, -Y).when(
-            cut,
-            s(X, Y),
-        ),
         d(U + V, X, A + B).when(
             cut,
             d(U, X, A),
@@ -88,7 +72,12 @@ def diff_rules(db):
             cut,
             d(U, X, V),
         ),
-        d(C * U, X, C * A).when(is_atomic(C), ~equal(C, X), cut, d(U, X, A)),
+        d(C * U, X, C * A).when(
+            is_atomic(C),
+            ~equal(C, X),
+            cut,
+            d(U, X, A),
+        ),
         d(U * V, X, B * U + A * V).when(
             cut,
             d(U, X, A),

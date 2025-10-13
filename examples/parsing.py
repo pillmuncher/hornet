@@ -221,7 +221,7 @@ def grammar(db):
     # words = [B, C, "jagen"]
     # words = [B, C, "jagt", D, E]
 
-    print(f"senstences that match {str(words)}:")
+    print(f"senstences that match {words!s}:")
     print()
     for subst in db.ask(equal(words, W), phrase(s, W)):
         print(str(subst[W]))

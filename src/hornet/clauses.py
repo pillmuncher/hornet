@@ -76,7 +76,7 @@ def predicate(head: Term) -> Callable[[PythonGoal], PythonRule]:
 
             return goal
 
-        return PythonRule(head=head, body=python_body)
+        return PythonRule(head, python_body)
 
     return decorator
 
@@ -117,7 +117,7 @@ class Subst(Mapping):
 def fresh(clause: Clause) -> Clause:
     memo: Memo = {id(var): fresh_variable() for var in clause.env.values()}
     memo.update(clause.ground)
-    return deepcopy(clause, memo=memo)
+    return deepcopy(clause, memo)
 
 
 def resolve(query: Term) -> Goal[Database]:
@@ -207,8 +207,8 @@ class CompoundPythonRule(Clause):
 
 class Database(ChainMap[Indicator, list[Clause]]):
     def tell(self, *terms: NonVariable) -> None:
-        # we first collect all clauses in case there's one that fails, so we don't leave
-        # the database in a partially updated state:
+        # we first collect all clauses in case there's one that fails,
+        # so we don't leave the database in a partially updated state:
         results = []
         for term in terms:
             assert isinstance(term, NonVariable)
@@ -218,7 +218,7 @@ class Database(ChainMap[Indicator, list[Clause]]):
 
     def ask(self, *conjuncts: Term, subst: Map | None = None) -> Iterable[Subst]:
         assert all(isinstance(c, NonVariable) for c in conjuncts)
-        query, env = make_term(term=AllOf(*conjuncts))
+        query, env = make_term(AllOf(*conjuncts))
         goal = resolve(query)
         step = goal(self, Map() if subst is None else subst)
         for new_subst in trampoline(lambda: step(success, failure, failure)):
@@ -393,7 +393,7 @@ def new_clause(term: Term) -> StateOp[FreshState, tuple[Clause, Indicator]]:
 
 
 def make_term(term: Term) -> tuple[Term, Environment]:
-    (term, _), (env, _) = new_term(term=term).run(({}, {}))
+    (term, _), (env, _) = new_term(term).run(({}, {}))
     return term, env
 
 

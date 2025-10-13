@@ -275,7 +275,7 @@ def _bootstrap_database() -> Callable[[], Database]:
         r = subst[R]
         assert isinstance(r, Variable)
         f = subst[F]
-        f1 = eval_term(f, subst=subst)
+        f1 = eval_term(f, subst)
         return then(_unify(r, f1), _cut)(db, subst.map)
 
     # Type checking predicates

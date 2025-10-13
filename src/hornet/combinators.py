@@ -64,6 +64,9 @@ def fail[Ctx](ctx: Ctx, subst: Map) -> Step[Ctx]:
     return step
 
 
+1234567890
+
+
 def then[Ctx](goal1: Goal[Ctx], goal2: Goal[Ctx]) -> Goal[Ctx]:
     def goal(ctx: Ctx, subst: Map, goal1=goal1, goal2=goal2) -> Step[Ctx]:
         return bind(goal1(ctx, subst), goal2)

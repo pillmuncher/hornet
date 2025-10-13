@@ -137,10 +137,7 @@ WILDCARD = Wildcard()
 @dataclass(frozen=True, slots=True, init=False)
 class NonVariable(Symbolic, ABC):
     def when(self, *args: NonVariable | list[str]) -> Rule:
-        return HornetRule(
-            head=self,
-            body=AllOf(*(promote(a) for a in args)),
-        )
+        return HornetRule(self, AllOf(*(promote(a) for a in args)))
 
     @property
     @abstractmethod
@@ -472,12 +469,12 @@ def _dcg_expand(term: NonVariable | HornetRule) -> StateOp[VarCount, Functor | R
                     body_expanded = yield walk_dcg_body(body)
                     Sin = yield current_variable()
                     head_expanded = Functor(name, Sout, Sin)
-                    return HornetRule(head=head_expanded, body=body_expanded)
+                    return HornetRule(head_expanded, body_expanded)
                 case Functor(name=name, args=args):
                     body_expanded = yield walk_dcg_body(body)
                     Sin = yield current_variable()
                     head_expanded = Functor(name, *args, Sout, Sin)
-                    return HornetRule(head=head_expanded, body=body_expanded)
+                    return HornetRule(head_expanded, body_expanded)
     raise TypeError(f" {term!r}")
 
 
@@ -555,10 +552,10 @@ def promote(obj: Any) -> Term | tuple:
 
         case [BitOr(left=left, right=right), *tail]:
             assert not tail
-            return Cons(head=promote(left), tail=promote(right))
+            return Cons(promote(left), promote(right))
 
         case [head, *tail]:
-            return Cons(head=promote(head), tail=promote(list(tail)))
+            return Cons(promote(head), promote(list(tail)))
 
         case _:
             raise TypeError(str(type(obj)))
