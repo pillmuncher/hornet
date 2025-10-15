@@ -114,10 +114,9 @@ class Variable(Symbolic):
         return self.name
 
 
-@dataclass(init=False, repr=False, eq=False, frozen=True, slots=True)
-class Wildcard(Variable):
-    def __init__(self):
-        Variable.__init__(self, "_")
+@dataclass(repr=False, frozen=True, slots=True)
+class Wildcard(Symbolic):
+    name: ClassVar[str] = "_"
 
 
 WILDCARD = Wildcard()
@@ -512,6 +511,7 @@ def promote(obj: Any) -> Term | tuple:
     match obj:
         case (
             Variable()
+            | Wildcard()
             | Atom()
             | Empty()
             | str()
@@ -564,7 +564,7 @@ scan = re.compile(
 
 
 @cache
-def symbol(name: str) -> Atom | Variable:
+def symbol(name: str) -> Atom | Variable | Wildcard:
     """
     Convert a string into a Term according to Prolog conventions:
       - "_" becomes the anonymous variable

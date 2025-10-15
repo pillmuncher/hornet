@@ -47,6 +47,7 @@ from .terms import (
     Term,
     UnaryOperator,
     Variable,
+    Wildcard,
     fresh_name,
     fresh_variable,
 )
@@ -299,7 +300,7 @@ def new_term(term: Term) -> StateOp[FreshState, tuple[Term, bool]]:
             yield add_ground(term)
             return term, True
 
-        case Variable(name="_"):
+        case Wildcard():
             yield add_ground(term)
             return term, True
 
