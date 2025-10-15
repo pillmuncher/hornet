@@ -59,8 +59,12 @@ def main(db):
     )
 
     for s in take(1111, db.ask(fizzbuzz(V))):
-        print(s[V])
+        # print(s[V])
+        pass
 
 
 if __name__ == "__main__":
-    main(database())
+    from examples import timer
+
+    with timer():
+        main(database())

@@ -103,20 +103,9 @@ class Symbolic(ABC):
         raise TypeError(f"Atom required, not {self}")
 
 
-@dataclass(init=False, repr=False, eq=False, frozen=True, slots=True)
+@dataclass(repr=False, frozen=True, slots=True)
 class Variable(Symbolic):
-    name: str = field(init=False, repr=False, hash=False)
-    _hash: int = field(init=False, repr=False, hash=False, compare=False)
-
-    def __init__(self, name: str):
-        object.__setattr__(self, "name", name)
-        object.__setattr__(self, "_hash", hash(name))
-
-    def __eq__(self, other):
-        return isinstance(other, Variable) and self.name == other.name
-
-    def __hash__(self):
-        return self._hash
+    name: str
 
     def __repr__(self):
         return self.name
