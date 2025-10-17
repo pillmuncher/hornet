@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import re as re
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from functools import cache
 from itertools import count
 from typing import Any, ClassVar, Iterator
@@ -484,7 +484,7 @@ def fresh_variable(canonical_name: str = "S") -> Variable:
     return Variable(fresh_name(canonical_name))
 
 
-RANK: dict[type[UnaryOperator | BinaryOperator], int] = {
+RANK: dict[type[Term], int] = {
     BitOr: 10,
     BitXor: 20,
     BitAnd: 30,
@@ -503,7 +503,7 @@ RANK: dict[type[UnaryOperator | BinaryOperator], int] = {
 }
 
 
-def rank(term: UnaryOperator | BinaryOperator) -> int:
+def rank(term: Term) -> int:
     return RANK.get(type(term), 0)
 
 
