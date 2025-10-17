@@ -45,6 +45,12 @@ class Symbolic(ABC):
     def __rmul__(self, other):
         return Mul(promote(other), promote(self))
 
+    def __matmul__(self, other):
+        return MatMul(promote(self), promote(other))
+
+    def __rmatmul__(self, other):
+        return MatMul(promote(other), promote(self))
+
     def __truediv__(self, other):
         return Div(promote(self), promote(other))
 
@@ -286,6 +292,11 @@ class Mul(BinaryOperator):
 
 
 @dataclass(frozen=True, slots=True, init=False)
+class MatMul(BinaryOperator):
+    name: ClassVar[str] = "@"
+
+
+@dataclass(frozen=True, slots=True, init=False)
 class Div(BinaryOperator):
     name: ClassVar[str] = "/"
 
@@ -493,6 +504,7 @@ RANK: dict[type[Term], int] = {
     Add: 50,
     Sub: 50,
     Mul: 60,
+    MatMul: 60,
     Div: 60,
     FloorDiv: 60,
     Mod: 60,
