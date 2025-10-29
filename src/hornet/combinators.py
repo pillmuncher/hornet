@@ -64,9 +64,6 @@ def fail[Ctx](ctx: Ctx, subst: Map) -> Step[Ctx]:
     return step
 
 
-1234567890
-
-
 def then[Ctx](goal1: Goal[Ctx], goal2: Goal[Ctx]) -> Goal[Ctx]:
     def goal(ctx: Ctx, subst: Map, goal1=goal1, goal2=goal2) -> Step[Ctx]:
         return bind(goal1(ctx, subst), goal2)
@@ -147,6 +144,51 @@ def if_then_else[Ctx](cond: Goal[Ctx], then: Goal[Ctx], else_: Goal[Ctx]) -> Goa
                 return else_(ctx, subst)(yes, no, prune)
 
             return cond_step(yes_branch, no_branch, prune)
+
+        return step
+
+    return goal
+
+
+def call_cc[Ctx](f: Callable[[Emit[Ctx], Next, Next], Step[Ctx]]) -> Step[Ctx]:
+    """Call with Current Continuation"""
+
+    @tailcall
+    def step(yes: Emit[Ctx], no: Next, prune: Next) -> Result:
+        return f(yes, no, prune)(yes, no, prune)
+
+    return step
+
+
+def call_ec[Ctx](
+    fn: Callable[[Callable[[Goal[Ctx]], Goal[Ctx]]], Goal[Ctx]],
+) -> Goal[Ctx]:
+    """Call with Escape Continuation"""
+
+    def goal(ctx: Ctx, subst: Map, fn=fn) -> Step[Ctx]:
+        @tailcall
+        def step(yes: Emit[Ctx], no: Next, prune: Next) -> Result:
+            # escape: given a goal g, return a goal that, when run,
+            # forwards any success to the captured `yes` and uses the
+            # captured `prune` as the next continuation (thus pruning).
+            def escape(g: Goal[Ctx]) -> Goal[Ctx]:
+                def escaped_goal(inner_ctx: Ctx, inner_subst: Map) -> Step[Ctx]:
+                    @tailcall
+                    def inner_step(_yes: Emit[Ctx], _no: Next, _prune: Next) -> Result:
+                        # when g emits success, forward it to the captured yes
+                        def forward_emit(_ctx: Ctx, _subst: Map, _next: Next) -> Result:
+                            return yes(_ctx, _subst, prune)
+
+                        # run g; on success forward to captured yes, on failure fall back to
+                        # the current `no`, and preserve `prune` for deeper pruning behavior.
+                        return g(inner_ctx, inner_subst)(forward_emit, no, prune)
+
+                    return inner_step
+
+                return escaped_goal
+
+            # call user-supplied fn with our escape and run the resulting goal
+            return fn(escape)(ctx, subst)(yes, no, prune)
 
         return step
 

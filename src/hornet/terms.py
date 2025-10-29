@@ -113,9 +113,6 @@ class Symbolic(ABC):
 class Variable(Symbolic):
     name: str
 
-    def __repr__(self):
-        return self.name
-
     def __str__(self):
         return self.name
 
@@ -123,6 +120,9 @@ class Variable(Symbolic):
 @dataclass(repr=False, frozen=True, slots=True)
 class Wildcard(Symbolic):
     name: ClassVar[str] = "_"
+
+    def __str__(self):
+        return "_"
 
 
 WILDCARD = Wildcard()
@@ -197,11 +197,10 @@ class UnaryOperator(Operator, ABC):
         return self.args[0]
 
     def __str__(self):
-        (operand,) = self.args
-        if not isinstance(operand, (UnaryOperator, BinaryOperator)):
-            return f"{self.name}{str(operand)}"
-        elif rank(operand) < rank(self):
-            return f"{self.name}{str(operand)}"
+        if not isinstance(self.operand, (UnaryOperator, BinaryOperator)):
+            return f"{self.name}{str(self.operand)}"
+        elif rank(self.operand) < rank(self):
+            return f"{self.name}{str(self.operand)}"
         else:
             return f"{self.name}({str(self.operand)})"
 
