@@ -26,9 +26,7 @@ class State[S, V]:
         return State(lambda s: (value, s))
 
 
-def with_state[S, R](
-    fn: Callable[..., StateOp[S, R]],
-) -> Callable[..., State[S, R]]:
+def with_state[S, R](fn: Callable[..., StateOp[S, R]]) -> Callable[..., State[S, R]]:
     def wrapper(*args, **kwargs) -> State[S, R]:
         gen = fn(*args, **kwargs)
 

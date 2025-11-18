@@ -151,7 +151,7 @@ def if_then_else[Ctx](cond: Goal[Ctx], then: Goal[Ctx], else_: Goal[Ctx]) -> Goa
 
 
 def call_cc[Ctx](f: Callable[[Emit[Ctx], Next, Next], Step[Ctx]]) -> Step[Ctx]:
-    """Call with Current Continuation"""
+    """Call with Current Continuations"""
 
     @tailcall
     def step(yes: Emit[Ctx], no: Next, prune: Next) -> Result:
