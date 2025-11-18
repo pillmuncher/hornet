@@ -52,7 +52,7 @@ from .terms import (
     fresh_variable,
 )
 
-type Environment = dict[NonVariable, Variable]
+type Environment = dict[Variable, Variable]
 type Memo = dict[int, Term]
 type FreshState = tuple[Environment, Memo]
 type Arguments = tuple[Term, ...]
