@@ -3,7 +3,7 @@ This software is licensed under the MIT License, except where otherwise noted.
 -------------------------------------------------------------------------------
 MIT License
 -------------------------------------------------------------------------------
-Copyright (c) 2025 Mick Krippendorf
+Copyright (c) 2013-2025 Mick Krippendorf
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

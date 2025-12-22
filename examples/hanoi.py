@@ -38,7 +38,7 @@ stretched to rectangles by shapesize()
 Original work: Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010,
 2011, 2012 Python Software Foundation; All Rights Reserved
 
-Modifications: Copyright (c) 2014-2025 Mick Krippendorf
+Modifications: Copyright (c) 2013-2025 Mick Krippendorf
 
 Original algorithm replaced to demonstrate how to interface Hornet with Python code.
 """
