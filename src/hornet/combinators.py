@@ -28,9 +28,7 @@ def failure() -> Result:
 
 def bind[Ctx](bind_step: Step[Ctx], goal: Goal[Ctx]) -> Step[Ctx]:
     @tailcall
-    def step(
-        yes: Emit[Ctx], no: Next, prune: Next, bind_step=bind_step, goal=goal
-    ) -> Result:
+    def step(yes: Emit[Ctx], no: Next, prune: Next, bind_step=bind_step, goal=goal) -> Result:
         return bind_step(
             tailcall(lambda ctx, subst, then_no: goal(ctx, subst)(yes, then_no, prune)),
             no,
@@ -82,9 +80,7 @@ def seq[Ctx](*goals: Goal[Ctx]) -> Goal[Ctx]:
 def choice[Ctx](goal1: Goal[Ctx], goal2: Goal[Ctx]) -> Goal[Ctx]:
     def goal(ctx: Ctx, subst: Map, goal1=goal1, goal2=goal2) -> Step[Ctx]:
         @tailcall
-        def step(
-            yes: Emit[Ctx], no: Next, prune: Next, goal1=goal1, goal2=goal2
-        ) -> Result:
+        def step(yes: Emit[Ctx], no: Next, prune: Next, goal1=goal1, goal2=goal2) -> Result:
             return goal1(ctx, subst)(
                 yes,
                 tailcall(lambda: goal2(ctx, subst)(yes, no, prune)),
@@ -199,7 +195,7 @@ def deref_and_compress(subst: Map, term: Term) -> tuple[Map, Term]:
     visited = set()
     while isinstance(term, Variable) and term in subst:
         if term in visited:
-            raise RuntimeError(f"Cyclic variable binding detected: {term}")
+            raise RuntimeError(f'Cyclic variable binding detected: {term}')
         visited.add(term)
         term = subst[term]
     mm = subst.mutate()

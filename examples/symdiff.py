@@ -306,7 +306,7 @@ def simp_rules(db):
         ),
         # Division
         s(A / 0, 0).when(
-            throw(ZeroDivisionError(f"Division by zero: {A / 0}")),
+            throw(ZeroDivisionError(f'Division by zero: {A / 0}')),
         ),
         s(0 / _, 0).when(
             cut,
@@ -379,9 +379,9 @@ def simp_rules(db):
 def diff_test(db):
     formula = x**-3 + 2 * x**2 + 7 * (x + 9)
     for subst in db.ask(simp(formula, A), diff(A, x, B), simp(B, C)):
-        print(f"{subst[A] = !s}")
-        print(f"{subst[B] = !s}")
-        print(f"{subst[C] = !s}")
+        print(f'{subst[A] = !s}')
+        print(f'{subst[B] = !s}')
+        print(f'{subst[C] = !s}')
 
 
 def main(db):
@@ -390,5 +390,5 @@ def main(db):
     diff_test(db)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main(database())

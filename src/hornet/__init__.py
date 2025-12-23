@@ -55,54 +55,54 @@ from .symbols import (
 )
 
 __all__ = (
-    "unit",
-    "combinators",
-    "symbols",
-    "terms",
-    "DCGs",
-    "database",
-    "append",
-    "arithmetic_equal",
-    "call",
-    "cut",
-    "equal",
-    "fail",
-    "findall",
-    "greater",
-    "ifelse",
-    "ignore",
-    "is_atom",
-    "is_atomic",
-    "is_bool",
-    "is_bytes",
-    "is_complex",
-    "is_constant",
-    "is_float",
-    "is_int",
-    "is_numeric",
-    "is_str",
-    "is_var",
-    "join",
-    "length",
-    "let",
-    "lwriteln",
-    "maplist",
-    "member",
-    "nl",
-    "nonvar",
-    "once",
-    "phrase",
-    "predicate",
-    "repeat",
-    "reverse",
-    "select",
-    "smaller",
-    "throw",
-    "true",
-    "unequal",
-    "univ",
-    "write",
-    "writeln",
+    'unit',
+    'combinators',
+    'symbols',
+    'terms',
+    'DCGs',
+    'database',
+    'append',
+    'arithmetic_equal',
+    'call',
+    'cut',
+    'equal',
+    'fail',
+    'findall',
+    'greater',
+    'ifelse',
+    'ignore',
+    'is_atom',
+    'is_atomic',
+    'is_bool',
+    'is_bytes',
+    'is_complex',
+    'is_constant',
+    'is_float',
+    'is_int',
+    'is_numeric',
+    'is_str',
+    'is_var',
+    'join',
+    'length',
+    'let',
+    'lwriteln',
+    'maplist',
+    'member',
+    'nl',
+    'nonvar',
+    'once',
+    'phrase',
+    'predicate',
+    'repeat',
+    'reverse',
+    'select',
+    'smaller',
+    'throw',
+    'true',
+    'unequal',
+    'univ',
+    'write',
+    'writeln',
 )
 
 
@@ -144,31 +144,7 @@ def _bootstrap_database() -> Callable[[], Database]:
     )
 
     from . import symbols
-    from .symbols import (
-        G0,
-        G1,
-        L0,
-        L1,
-        A,
-        B,
-        C,
-        D,
-        E,
-        F,
-        G,
-        H,
-        L,
-        N,
-        O,
-        P,
-        Q,
-        R,
-        S,
-        T,
-        V,
-        X,
-        Y,
-    )
+    from .symbols import G0, G1, L0, L1, A, B, C, D, E, F, G, H, L, N, O, P, Q, R, S, T, V, X, Y
 
     def to_python_list(tail: Term) -> list[Term]:
         assert isinstance(tail, Cons | Empty)
@@ -181,7 +157,7 @@ def _bootstrap_database() -> Callable[[], Database]:
                 case Empty():
                     return result
                 case other:
-                    raise TypeError(f"Expected Cons list, got {other!r}")
+                    raise TypeError(f'Expected Cons list, got {other!r}')
 
     def eval_term(val: Term, subst: Subst) -> int | float | complex | bool:
         """Evaluate a Hornet arithmetic term directly from Terms."""
@@ -262,10 +238,10 @@ def _bootstrap_database() -> Callable[[], Database]:
 
             # Unbound variable
             case Variable():
-                raise ValueError(f"Cannot evaluate unbound variable: {val!r}")
+                raise ValueError(f'Cannot evaluate unbound variable: {val!r}')
 
             case _:
-                raise TypeError(f"Cannot evaluate non-arithmetic Term: {val!r}")
+                raise TypeError(f'Cannot evaluate non-arithmetic Term: {val!r}')
 
     db = Database()
 
@@ -373,7 +349,7 @@ def _bootstrap_database() -> Callable[[], Database]:
                 case Cons(tail=tail):
                     count += 1
                 case _:
-                    raise TypeError(f"list must end with [], not {tail}")
+                    raise TypeError(f'list must end with [], not {tail}')
 
     @db.tell
     @predicate(join(L, S))
@@ -382,7 +358,7 @@ def _bootstrap_database() -> Callable[[], Database]:
         assert isinstance(items, Cons | Empty)
         result = to_python_list(items)
         assert all(isinstance(each, str) for each in result)
-        return _unify(subst[S], "".join(map(str, result)))(db, subst.map)
+        return _unify(subst[S], ''.join(map(str, result)))(db, subst.map)
 
     @db.tell
     @predicate(findall(O, G, L))
@@ -398,7 +374,7 @@ def _bootstrap_database() -> Callable[[], Database]:
     @db.tell
     @predicate(write(V))
     def _write(db: Database, subst: Subst) -> Step:
-        print(subst[V], end="")
+        print(subst[V], end='')
         return _unit(db, subst.map)
 
     @db.tell
@@ -482,7 +458,7 @@ def _bootstrap_database() -> Callable[[], Database]:
         #
         # write out a newline:
         nl.when(
-            writeln(""),
+            writeln(''),
         ),
         #
         # test to see if two arithemtic expressions yield the same result:

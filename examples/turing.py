@@ -69,5 +69,5 @@ def main(db):
         print(subst[Ts])
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main(database())

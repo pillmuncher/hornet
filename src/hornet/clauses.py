@@ -109,7 +109,7 @@ class Subst(Mapping):
         visited = set()
         while isinstance(obj, Variable) and obj in self.map:
             if obj in visited:
-                raise RuntimeError(f"Cyclic variable binding detected: {obj}")
+                raise RuntimeError(f'Cyclic variable binding detected: {obj}')
             visited.add(obj)
             obj = self.map[obj]
         return obj
@@ -123,13 +123,13 @@ def fresh(clause: Clause) -> Clause:
 
 def resolve(query: Term) -> Goal[Database]:
     match query:
-        case Atom("true"):
+        case Atom('true'):
             return unit
 
-        case Atom("cut"):
+        case Atom('cut'):
             return cut
 
-        case Atom("fail"):
+        case Atom('fail'):
             return fail
 
         case AllOf():
@@ -146,7 +146,7 @@ def resolve(query: Term) -> Goal[Database]:
                 fresh(clause)(query) for clause in db[query.indicator]
             )(db, subst)
 
-    raise TypeError(f"Type error: 'callable' expected, found {query!r}")
+    raise TypeError(f'Type error: "callable" expected, found {query!r}')
 
 
 @dataclass(frozen=True, slots=True)
@@ -287,16 +287,7 @@ def new_args(items: Arguments) -> StateOp[FreshState, tuple[Arguments, bool]]:
 @with_state
 def new_term(term: Term) -> StateOp[FreshState, tuple[Term, bool]]:
     match term:
-        case (
-            Atom()
-            | Empty()
-            | str()
-            | int()
-            | float()
-            | bool()
-            | complex()
-            | Exception()
-        ):
+        case Atom() | Empty() | str() | int() | float() | bool() | complex() | Exception():
             yield add_ground(term)
             return term, True
 
@@ -347,7 +338,7 @@ def new_term(term: Term) -> StateOp[FreshState, tuple[Term, bool]]:
                 yield add_ground(term)
             return term, ground
 
-    raise TypeError(f"Unsupported Term node: {term}")
+    raise TypeError(f'Unsupported Term node: {term}')
 
 
 @with_state
@@ -390,7 +381,7 @@ def new_clause(term: Term) -> StateOp[FreshState, tuple[Clause, Indicator]]:
             memo = prune_ground_map(memo)
             return CompoundPythonRule(env, memo, head, body), (name, len(args))
 
-    raise TypeError(f"Unsupported Term node: {term}")
+    raise TypeError(f'Unsupported Term node: {term}')
 
 
 def make_term(term: Term) -> tuple[Term, Environment]:

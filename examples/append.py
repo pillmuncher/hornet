@@ -10,8 +10,8 @@ def main(db):
         print(subst[L])
     print()
     for i, subst in enumerate(db.ask(append(L1, L2, [1, 2, 3, 4, 5]))):
-        print(f"{i}:", subst[L1], "+", subst[L2])
+        print(f'{i}:', subst[L1], '+', subst[L2])
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main(database())

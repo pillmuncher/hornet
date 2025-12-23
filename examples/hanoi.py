@@ -2,20 +2,7 @@ from turtle import Turtle, clear, goto, ht, listen, mainloop, onkey, penup, writ
 from typing import SupportsIndex, cast
 
 from hornet import Database, Step, Subst, database, predicate, unit
-from hornet.symbols import (
-    From,
-    M,
-    N,
-    To,
-    With,
-    _,
-    cut,
-    greater,
-    let,
-    move,
-    play_hanoi,
-    show,
-)
+from hornet.symbols import From, M, N, To, With, _, cut, greater, let, move, play_hanoi, show
 
 """turtle-example-suite:
 
@@ -29,7 +16,7 @@ An imho quite elegant and concise
 implementation using a tower class, which
 is derived from the built-in type list.
 
-Discs are turtles with shape "square", but
+Discs are turtles with shape 'square', but
 stretched to rectangles by shapesize()
  ---------------------------------------
        To exit press STOP button
@@ -46,7 +33,7 @@ Original algorithm replaced to demonstrate how to interface Hornet with Python c
 
 class Disc(Turtle):
     def __init__(self, n):
-        Turtle.__init__(self, shape="square", visible=False)
+        Turtle.__init__(self, shape='square', visible=False)
         self.pu()
         self.shapesize(1.5, n * 1.5, 2)
         self.fillcolor(n / 6, 0, 1 - n / 6)
@@ -99,10 +86,10 @@ def hanoi(db):
 
 
 def play():
-    onkey(lambda: None, "space")
+    onkey(lambda: None, 'space')
     clear()
     hanoi(database())
-    write("press STOP button to exit", align="center", font=("Courier", 16, "bold"))
+    write('press STOP button to exit', align='center', font=('Courier', 16, 'bold'))
 
 
 def main():
@@ -118,13 +105,13 @@ def main():
     for i in range(6, 0, -1):
         t1.push(Disc(i))
     # prepare spartanic user interface ;-)
-    write("press spacebar to start game", align="center", font=("Courier", 16, "bold"))
-    onkey(play, "space")
+    write('press spacebar to start game', align='center', font=('Courier', 16, 'bold'))
+    onkey(play, 'space')
     listen()
-    return "EVENTLOOP"
+    return 'EVENTLOOP'
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     msg = main()
     print(msg)
     mainloop()

@@ -35,7 +35,7 @@ def main(db):
             phrase(words(N), Ws),
             join(Ws, S),
             ifelse(
-                equal(S, ""),
+                equal(S, ''),
                 equal(N, R),
                 equal(S, R),
             ),
@@ -51,9 +51,9 @@ def main(db):
                 word(7, N),
                 inline(cut),
             ),
-            word(3, N).when(inline(let(M, N % 3), equal(M, 0)), ["fizz"]),
-            word(5, N).when(inline(let(M, N % 5), equal(M, 0)), ["buzz"]),
-            word(7, N).when(inline(let(M, N % 7), equal(M, 0)), ["quux"]),
+            word(3, N).when(inline(let(M, N % 3), equal(M, 0)), ['fizz']),
+            word(5, N).when(inline(let(M, N % 5), equal(M, 0)), ['buzz']),
+            word(7, N).when(inline(let(M, N % 7), equal(M, 0)), ['quux']),
             word(_, _),
         ),
     )
@@ -62,5 +62,5 @@ def main(db):
         print(s[V])
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main(database())

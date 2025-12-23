@@ -29,6 +29,13 @@ verify_ssl = true
 [tool.pytest.ini_options]
 flake8-show-source = true
 
+[tool.ruff]
+line-length = 99
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+
 [tool.coverage.run]
 branch = true
 source = ["src"]

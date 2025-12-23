@@ -6,11 +6,11 @@ from __future__ import annotations
 from typing import Callable, Iterable
 
 __all__ = (
-    "Cont",
-    "Thunk",
-    "Frame",
-    "tailcall",
-    "trampoline",
+    'Cont',
+    'Thunk',
+    'Frame',
+    'tailcall',
+    'trampoline',
 )
 
 type Cont[R] = Callable[..., Frame[R]]

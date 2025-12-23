@@ -106,7 +106,7 @@ class Symbolic(ABC):
         return BitOr(promote(other), promote(self))
 
     def __call__(self, *_) -> Functor:
-        raise TypeError(f"Atom required, not {self}")
+        raise TypeError(f'Atom required, not {self}')
 
 
 @dataclass(repr=False, frozen=True, slots=True)
@@ -119,10 +119,10 @@ class Variable(Symbolic):
 
 @dataclass(repr=False, frozen=True, slots=True)
 class Wildcard(Symbolic):
-    name: ClassVar[str] = "_"
+    name: ClassVar[str] = '_'
 
     def __str__(self):
-        return "_"
+        return '_'
 
 
 WILDCARD = Wildcard()
@@ -163,7 +163,7 @@ class Compound(NonVariable, ABC):
         return self.name, len(self.args)
 
     def __init__(self, *args: Term):
-        object.__setattr__(self, "args", args)
+        object.__setattr__(self, 'args', args)
 
 
 @dataclass(frozen=True, slots=True, init=False)
@@ -171,11 +171,11 @@ class Functor(Compound):
     name: str  # type: ignore
 
     def __init__(self, name: str, *args: Term):
-        object.__setattr__(self, "name", name)
+        object.__setattr__(self, 'name', name)
         Compound.__init__(self, *args)
 
     def __str__(self):
-        return f"{self.name}({', '.join(str(arg) for arg in self.args)})"
+        return f'{self.name}({", ".join(str(arg) for arg in self.args)})'
 
 
 @dataclass(frozen=True, slots=True, init=False)
@@ -198,11 +198,11 @@ class UnaryOperator(Operator, ABC):
 
     def __str__(self):
         if not isinstance(self.operand, (UnaryOperator, BinaryOperator)):
-            return f"{self.name}{str(self.operand)}"
+            return f'{self.name}{str(self.operand)}'
         elif rank(self.operand) < rank(self):
-            return f"{self.name}{str(self.operand)}"
+            return f'{self.name}{str(self.operand)}'
         else:
-            return f"{self.name}({str(self.operand)})"
+            return f'{self.name}({str(self.operand)})'
 
 
 @dataclass(frozen=True, slots=True, init=False)
@@ -225,99 +225,99 @@ class BinaryOperator(Operator, ABC):
     def __str__(self):
         left, right = self.args
         if isinstance(left, BinaryOperator) and rank(left) < rank(self):
-            left_str = f"({left})"
+            left_str = f'({left})'
         else:
             left_str = str(left)
         if isinstance(right, BinaryOperator) and rank(right) < rank(self):
-            right_str = f"({right})"
+            right_str = f'({right})'
         else:
             right_str = str(right)
-        return f"{left_str} {self.name} {right_str}"
+        return f'{left_str} {self.name} {right_str}'
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class Invert(UnaryOperator):
-    name: ClassVar[str] = "~"
+    name: ClassVar[str] = '~'
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class UAdd(UnaryOperator):
-    name: ClassVar[str] = "+"
+    name: ClassVar[str] = '+'
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class USub(UnaryOperator):
-    name: ClassVar[str] = "-"
+    name: ClassVar[str] = '-'
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class LShift(BinaryOperator):
-    name: ClassVar[str] = "<<"
+    name: ClassVar[str] = '<<'
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class RShift(BinaryOperator):
-    name: ClassVar[str] = ">>"
+    name: ClassVar[str] = '>>'
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class BitOr(BinaryOperator):
-    name: ClassVar[str] = "|"
+    name: ClassVar[str] = '|'
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class BitXor(BinaryOperator):
-    name: ClassVar[str] = "^"
+    name: ClassVar[str] = '^'
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class BitAnd(BinaryOperator):
-    name: ClassVar[str] = "&"
+    name: ClassVar[str] = '&'
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class Add(BinaryOperator):
-    name: ClassVar[str] = "+"
+    name: ClassVar[str] = '+'
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class Sub(BinaryOperator):
-    name: ClassVar[str] = "-"
+    name: ClassVar[str] = '-'
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class Mul(BinaryOperator):
-    name: ClassVar[str] = "*"
+    name: ClassVar[str] = '*'
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class MatMul(BinaryOperator):
-    name: ClassVar[str] = "@"
+    name: ClassVar[str] = '@'
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class Div(BinaryOperator):
-    name: ClassVar[str] = "/"
+    name: ClassVar[str] = '/'
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class FloorDiv(BinaryOperator):
-    name: ClassVar[str] = "//"
+    name: ClassVar[str] = '//'
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class Mod(BinaryOperator):
-    name: ClassVar[str] = "%"
+    name: ClassVar[str] = '%'
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class Pow(BinaryOperator):
-    name: ClassVar[str] = "**"
+    name: ClassVar[str] = '**'
 
 
 @dataclass(frozen=True, slots=True)
 class Cons(Operator):
-    name: ClassVar[str] = "."
+    name: ClassVar[str] = '.'
 
     def __init__(self, head: Term, tail: Term):
         Operator.__init__(self, head, tail)
@@ -337,24 +337,24 @@ class Cons(Operator):
             acc.append(str(tail.head))
             tail = tail.tail
         if tail == EMPTY:
-            return f"[{', '.join(acc)}]"
+            return f'[{", ".join(acc)}]'
         else:
-            return f"[{', '.join(acc)} | {tail}]"
+            return f'[{", ".join(acc)} | {tail}]'
 
 
 @dataclass(frozen=True, slots=True)
 class Empty(NonVariable):
-    name: ClassVar[str] = "[]"
+    name: ClassVar[str] = '[]'
 
     @property
     def indicator(self) -> Indicator:
         return self.name, 0
 
     def __repr__(self):
-        return "[]"
+        return '[]'
 
     def __str__(self):
-        return "[]"
+        return '[]'
 
 
 EMPTY = Empty()
@@ -362,12 +362,12 @@ EMPTY = Empty()
 
 @dataclass(frozen=True, slots=True, init=False)
 class AllOf(Operator):
-    name: ClassVar[str] = "all_of"
+    name: ClassVar[str] = 'all_of'
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class AnyOf(Operator):
-    name: ClassVar[str] = "any_of"
+    name: ClassVar[str] = 'any_of'
 
 
 @dataclass(frozen=True, slots=True)
@@ -392,7 +392,7 @@ _var_counter: Iterator[int] = count()
 @with_state
 def current_variable() -> StateOp[VarCount, Variable]:
     i, _ = yield get_state()
-    return Variable(f"S${i}")
+    return Variable(f'S${i}')
 
 
 @with_state
@@ -400,7 +400,7 @@ def advance_variables() -> StateOp[VarCount, tuple[Variable, Variable]]:
     i, counter = yield get_state()
     j = next(counter)
     yield set_state(const((j, counter)))
-    return Variable(f"S${i}"), Variable(f"S${j}")
+    return Variable(f'S${i}'), Variable(f'S${j}')
 
 
 @with_state
@@ -411,11 +411,11 @@ def dcg_expand_cons(term: Term) -> StateOp[VarCount, Term]:
         match tail:
             case Cons(head=head, tail=tail):
                 Sout, Sin = yield advance_variables()
-                result_terms.append(Functor("equal", Sout, Cons(head, Sin)))
+                result_terms.append(Functor('equal', Sout, Cons(head, Sin)))
             case Empty():
                 break
             case _:
-                raise TypeError(f"Expected Cons or Empty, got {tail}")
+                raise TypeError(f'Expected Cons or Empty, got {tail}')
     return AllOf(*result_terms)
 
 
@@ -426,7 +426,7 @@ def walk_dcg_body(term: Term) -> StateOp[VarCount, Term]:
             Sout, Sin = yield advance_variables()
             return Functor(name, Sout, Sin)
 
-        case Functor(name="inline", args=inlined):
+        case Functor(name='inline', args=inlined):
             return AllOf(*inlined)
 
         case AllOf(args=goals):
@@ -450,7 +450,7 @@ def walk_dcg_body(term: Term) -> StateOp[VarCount, Term]:
         case Cons():
             return (yield dcg_expand_cons(term))
 
-    raise TypeError(f"Expected query term in DCG body, got: {term!r}")
+    raise TypeError(f'Expected query term in DCG body, got: {term!r}')
 
 
 @with_state
@@ -473,7 +473,7 @@ def _dcg_expand(term: NonVariable | HornetRule) -> StateOp[VarCount, Functor | R
                     Sin = yield current_variable()
                     head_expanded = Functor(name, *args, Sout, Sin)
                     return HornetRule(head_expanded, body_expanded)
-    raise TypeError(f" {term!r}")
+    raise TypeError(f' {term!r}')
 
 
 def DCG(term: Term) -> Functor | Rule:
@@ -487,10 +487,10 @@ def DCGs(*terms: Term) -> Iterator[Functor | Rule]:
 
 
 def fresh_name(canonical_name: str) -> str:
-    return f"{canonical_name}!{next(_var_counter)}"
+    return f'{canonical_name}!{next(_var_counter)}'
 
 
-def fresh_variable(canonical_name: str = "S") -> Variable:
+def fresh_variable(canonical_name: str = 'S') -> Variable:
     return Variable(fresh_name(canonical_name))
 
 
@@ -583,13 +583,13 @@ def symbol(name: str) -> Atom | Variable | Wildcard:
       - strings starting with lowercase become Atoms
     """
     if (m := scan(name)) is None:
-        raise AttributeError(f"Invalid symbol name: {name}")
+        raise AttributeError(f'Invalid symbol name: {name}')
     match m.lastgroup:
-        case "wildcard":
+        case 'wildcard':
             return WILDCARD
-        case "variable":
+        case 'variable':
             return Variable(name)
-        case "atom":
+        case 'atom':
             return Atom(name)
         case _:
-            raise AttributeError(f"Invalid symbol name: {name}")
+            raise AttributeError(f'Invalid symbol name: {name}')
