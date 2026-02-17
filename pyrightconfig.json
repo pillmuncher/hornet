@@ -1,0 +1,12 @@
+{
+  "venvPath": ".pdm/venvs",
+  "venv": "hornet",
+  "pythonVersion": "3.13",
+  "extraPaths": ["./src"],
+  "exclude": ["tests"],
+  "typeCheckingMode": "strict",
+  "reportMissingImports": true,
+  "reportUnusedImport": true,
+  "reportUnknownMemberType": false,
+  "reportUnknownVariableType": false
+}

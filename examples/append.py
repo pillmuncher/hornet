@@ -2,10 +2,11 @@
 # SPDX-License-Identifier: MIT
 
 from hornet import database
+from hornet.clauses import Database
 from hornet.symbols import L1, L2, L, append
 
 
-def main(db):
+def main(db: Database):
     for subst in db.ask(append([1, 2, 3], [4, 5], L)):
         print(subst[L])
     print()

@@ -12,6 +12,7 @@ from functools import wraps
 from typing import Callable, Iterable, Iterator
 
 from .combinators import (
+    Env,
     Goal,
     Map,
     Step,
@@ -43,7 +44,6 @@ from .terms import (
     Invert,
     NonVariable,
     Operator,
-    Rule,
     Term,
     UnaryOperator,
     Variable,
@@ -62,8 +62,13 @@ type PythonGoal = Callable[[Database, Subst], Step[Database]]
 
 
 @dataclass(frozen=True, slots=True)
-class PythonRule(Rule[PythonBody]):
-    pass
+class PythonRule(NonVariable):
+    head: NonVariable
+    body: PythonBody
+
+    @property
+    def indicator(self) -> Indicator:
+        return self.head.indicator
 
 
 def predicate(head: Term) -> Callable[[PythonGoal], PythonRule]:
@@ -72,7 +77,7 @@ def predicate(head: Term) -> Callable[[PythonGoal], PythonRule]:
     def decorator(python_goal: PythonGoal) -> PythonRule:
         @wraps(python_goal)
         def python_body(env: Environment) -> Goal[Database]:
-            def goal(db: Database, subst: Map) -> Step[Database]:
+            def goal(db: Database, subst: Env) -> Step[Database]:
                 return python_goal(db, Subst(subst, env))
 
             return goal
@@ -83,20 +88,22 @@ def predicate(head: Term) -> Callable[[PythonGoal], PythonRule]:
 
 
 @dataclass(frozen=True, slots=True)
-class Subst(Mapping):
-    map: Map
+class Subst(Mapping[Variable, Term]):
+    map: Env
     env: Environment
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.map)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Variable]:
         yield from self.map.keys()
 
-    def __getitem__(self, variable):
-        return self.actualize(self.env.get(variable, variable))
+    def __getitem__(self, variable: Term) -> Term:
+        if isinstance(variable, Variable):
+            return self.actualize(self.env.get(variable, variable))
+        return self.actualize(variable)
 
-    def actualize(self, obj) -> Term:
+    def actualize(self, obj: Term) -> Term:
         match self.deref(obj):
             case Functor(name=name, args=args):
                 return Functor(name, *(self.actualize(a) for a in args))
@@ -105,8 +112,8 @@ class Subst(Mapping):
             case obj:
                 return obj
 
-    def deref(self, obj) -> Term:
-        visited = set()
+    def deref(self, obj: Term) -> Term:
+        visited: set[Variable] = set()
         while isinstance(obj, Variable) and obj in self.map:
             if obj in visited:
                 raise RuntimeError(f'Cyclic variable binding detected: {obj}')
@@ -146,7 +153,8 @@ def resolve(query: Term) -> Goal[Database]:
                 fresh(clause)(query) for clause in db[query.indicator]
             )(db, subst)
 
-    raise TypeError(f'Type error: "callable" expected, found {query!r}')
+        case _:
+            raise TypeError(f'Type error: "callable" expected, found {query!r}')
 
 
 @dataclass(frozen=True, slots=True)
@@ -155,7 +163,7 @@ class Clause(ABC):
     ground: Memo
 
     @abstractmethod
-    def __call__(self, query) -> Goal[Database]: ...
+    def __call__(self, query: NonVariable) -> Goal[Database]: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -208,16 +216,14 @@ class CompoundPythonRule(Clause):
 
 class Database(ChainMap[Indicator, list[Clause]]):
     def tell(self, *terms: NonVariable) -> None:
-        # we first collect all clauses in case there's one that fails,
-        # so we don't leave the database in a partially updated state:
-        results = []
+        results: list[tuple[Clause, Indicator]] = []
         for term in terms:
             assert isinstance(term, NonVariable)
             results.append(make_clause(term))
         for clause, indicator in results:
             self.setdefault(indicator, []).append(clause)
 
-    def ask(self, *conjuncts: Term, subst: Map | None = None) -> Iterable[Subst]:
+    def ask(self, *conjuncts: Term, subst: Env | None = None) -> Iterable[Subst]:
         assert all(isinstance(c, NonVariable) for c in conjuncts)
         query, env = make_term(AllOf(*conjuncts))
         goal = resolve(query)
@@ -229,7 +235,7 @@ class Database(ChainMap[Indicator, list[Clause]]):
 def ground_children(term: Term) -> Iterator[Term]:
     if isinstance(term, Compound):
         yield from term.args
-    if isinstance(term, AtomicRule | CompoundRule) and term.body is not None:
+    if isinstance(term, (AtomicRule, CompoundRule)):
         yield term.body
 
 
@@ -241,11 +247,14 @@ def prune_ground_map(memo: Memo) -> Memo:
 
 
 def get_var(var: Variable) -> State[FreshState, Variable | None]:
-    return get_state(lambda state: state[0].get(var))
+    def get_env(state: FreshState) -> Variable | None:
+        return state[0].get(var)
+
+    return get_state(get_env)
 
 
 def add_var(canonical: Variable, renamed: Variable) -> State[FreshState, FreshState]:
-    def setter(state) -> FreshState:
+    def setter(state: FreshState) -> FreshState:
         env, memo = state
         env[canonical] = renamed
         return env, memo
@@ -254,7 +263,7 @@ def add_var(canonical: Variable, renamed: Variable) -> State[FreshState, FreshSt
 
 
 def add_ground(term: Term) -> State[FreshState, FreshState]:
-    def setter(state) -> FreshState:
+    def setter(state: FreshState) -> FreshState:
         env, memo = state
         memo[id(term)] = term
         return env, memo
@@ -264,7 +273,7 @@ def add_ground(term: Term) -> State[FreshState, FreshState]:
 
 @with_state
 def new_variable(old_var: Variable) -> StateOp[FreshState, Term]:
-    new_var = yield get_var(old_var)
+    new_var: Variable | None = yield get_var(old_var)
     if new_var is None:
         new_var = Variable(fresh_name(old_var.name))
         yield add_var(old_var, new_var)
@@ -273,7 +282,7 @@ def new_variable(old_var: Variable) -> StateOp[FreshState, Term]:
 
 @with_state
 def new_args(items: Arguments) -> StateOp[FreshState, tuple[Arguments, bool]]:
-    new_items = []
+    new_items: list[Term] = []
     all_ground = True
     for item in items:
         new_item, ground = yield new_term(item)
@@ -287,7 +296,7 @@ def new_args(items: Arguments) -> StateOp[FreshState, tuple[Arguments, bool]]:
 @with_state
 def new_term(term: Term) -> StateOp[FreshState, tuple[Term, bool]]:
     match term:
-        case Atom() | Empty() | str() | int() | float() | bool() | complex() | Exception():
+        case Atom() | Empty() | str() | int() | float() | bytes() | complex() | Exception():
             yield add_ground(term)
             return term, True
 
@@ -338,7 +347,8 @@ def new_term(term: Term) -> StateOp[FreshState, tuple[Term, bool]]:
                 yield add_ground(term)
             return term, ground
 
-    raise TypeError(f'Unsupported Term node: {term}')
+        case _:
+            raise TypeError(f'Unsupported Term node: {term}')
 
 
 @with_state
@@ -381,7 +391,8 @@ def new_clause(term: Term) -> StateOp[FreshState, tuple[Clause, Indicator]]:
             memo = prune_ground_map(memo)
             return CompoundPythonRule(env, memo, head, body), (name, len(args))
 
-    raise TypeError(f'Unsupported Term node: {term}')
+        case _:
+            raise TypeError(f'Unsupported Term node: {term}')
 
 
 def make_term(term: Term) -> tuple[Term, Environment]:

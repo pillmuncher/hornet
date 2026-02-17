@@ -3,7 +3,7 @@ version = "0.3.1a1"
 license = { file = "LICENSE.md" }
 authors = [{ name = "Mick Krippendorf", email = "m.krippendorf@freenet.de" }]
 description = "Hornet: An embedded DSL for Logic Programming in Python."
-dependencies = ["toolz", "immutables"]
+dependencies = ["toolz", "immutables", "toolz-stubs>=0.3.1"]
 readme = "README.md"
 requires-python = ">=3.13"
 classifiers = [
@@ -17,6 +17,7 @@ Homepage = "https://github.com/pillmuncher/hornet"
 
 [tool.pdm]
 distribution = true
+packages = [{ include = "hornet", from = "src" }]
 
 [tool.pdm.scripts]
 test = "pytest"
@@ -28,6 +29,7 @@ verify_ssl = true
 
 [tool.pytest.ini_options]
 flake8-show-source = true
+addopts = "--cov=src --cov-report=term-missing"
 
 [tool.ruff]
 line-length = 99
@@ -43,6 +45,7 @@ source = ["src"]
 [tool.coverage.report]
 show_missing = true
 skip_covered = true
+fail_under = 100
 
 [build-system]
 requires = ["setuptools>=61"]
@@ -52,6 +55,7 @@ build-backend = "setuptools.build_meta"
 dev = [
     "coverage",
     "flake8",
+    "hypothesis",
     "pytest",
     "pytest-cov",
     "pytest-flake8",

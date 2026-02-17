@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 from hornet import database
+from hornet.clauses import Database
 from hornet.symbols import (
     A1,
     B1,
@@ -38,7 +39,7 @@ from hornet.symbols import (
 )
 
 
-def diff_rules(db):
+def diff_rules(db: Database):
     db.tell(
         diff(X, Y, Z).when(d(X, Y, Z)),
         d(X, X, 1).when(
@@ -127,7 +128,7 @@ def diff_rules(db):
     )
 
 
-def simp_rules(db):
+def simp_rules(db: Database):
     db.tell(
         simp(X, Y).when(s(X, Y)),
         s(A, A).when(
@@ -376,7 +377,7 @@ def simp_rules(db):
     )
 
 
-def diff_test(db):
+def diff_test(db: Database):
     formula = x**-3 + 2 * x**2 + 7 * (x + 9)
     for subst in db.ask(simp(formula, A), diff(A, x, B), simp(B, C)):
         print(f'{subst[A] = !s}')
@@ -384,7 +385,7 @@ def diff_test(db):
         print(f'{subst[C] = !s}')
 
 
-def main(db):
+def main(db: Database):
     diff_rules(db)
     simp_rules(db)
     diff_test(db)

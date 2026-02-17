@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 from hornet import database
+from hornet.clauses import Database
 from hornet.symbols import (
     X1,
     Y1,
@@ -26,7 +27,7 @@ from hornet.symbols import (
 QUEENS = 6
 
 
-def main(db):
+def main(db: Database):
     db.tell(
         queens(S).when(
             equal(Ns, [i + 1 for i in range(QUEENS)]),

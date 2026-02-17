@@ -1,6 +1,23 @@
 # Copyright (c) 2025 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
 # SPDX-License-Identifier: MIT
 
+"""
+Hornet Term Algebra: A Deep EDSL for Logic Programming.
+
+This module provides the structural building blocks for Hornet. Instead of
+parsing Prolog strings, Hornet uses Python's own syntax—via operator
+overloading and `__call__` implementation—to construct logic terms.
+
+Key Concepts:
+    - **Symbolic Construction**: Python expressions like `X + 5` or `f(X)`
+      do not calculate values; they return nested `Symbolic` structures.
+    - **Term Promotion**: The `promote()` utility (used internally)
+      transparently converts Python primitives (int, str, list) into
+      their Hornet equivalents (Literal, Atom, Cons).
+    - **Rule Definition**: The `.when()` method on `NonVariable` terms
+      provides a declarative syntax for defining Horn Clauses.
+"""
+
 from __future__ import annotations
 
 import re as re
@@ -8,101 +25,112 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import cache
 from itertools import count
-from typing import Any, ClassVar, Iterator
+from typing import Any, Callable, ClassVar, Iterator
 
 from .states import StateOp, const, get_state, set_state, with_state
 
-type Term = Symbolic | Primitive | Exception
+type PrimitiveType = str | int | float | bool | complex | bytes | tuple[Term, ...]
+type AtomicType = PrimitiveType | Atom | Empty
+type Term = Symbolic | PrimitiveType | Exception
 type Indicator = tuple[str, int]
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class Symbolic(ABC):
-    def __neg__(self):
+    """
+    The root of the Hornet expression tree.
+
+    Symbolic objects overload almost all Python dunder methods (arithmetic,
+    bitwise, etc.). Instead of performing computation, these methods
+    return `Operator` compounds, allowing the construction of arithmetic
+    expressions that are evaluated later by predicates like `let`.
+    """
+
+    def __neg__(self: Term) -> USub:
         return USub(promote(self))
 
-    def __pos__(self):
+    def __pos__(self: Term) -> UAdd:
         return UAdd(promote(self))
 
-    def __invert__(self):
+    def __invert__(self: Term) -> Invert:
         return Invert(promote(self))
 
-    def __add__(self, other):
+    def __add__(self, other: Term) -> Add:
         return Add(promote(self), promote(other))
 
-    def __radd__(self, other):
+    def __radd__(self, other: Term) -> Add:
         return Add(promote(other), promote(self))
 
-    def __sub__(self, other):
+    def __sub__(self, other: Term) -> Sub:
         return Sub(promote(self), promote(other))
 
-    def __rsub__(self, other):
+    def __rsub__(self, other: Term) -> Sub:
         return Sub(promote(other), promote(self))
 
-    def __mul__(self, other):
+    def __mul__(self, other: Term) -> Mul:
         return Mul(promote(self), promote(other))
 
-    def __rmul__(self, other):
+    def __rmul__(self, other: Term) -> Mul:
         return Mul(promote(other), promote(self))
 
-    def __matmul__(self, other):
+    def __matmul__(self, other: Term) -> MatMul:
         return MatMul(promote(self), promote(other))
 
-    def __rmatmul__(self, other):
+    def __rmatmul__(self, other: Term) -> MatMul:
         return MatMul(promote(other), promote(self))
 
-    def __truediv__(self, other):
+    def __truediv__(self, other: Term) -> Div:
         return Div(promote(self), promote(other))
 
-    def __rtruediv__(self, other):
+    def __rtruediv__(self, other: Term) -> Div:
         return Div(promote(other), promote(self))
 
-    def __floordiv__(self, other):
+    def __floordiv__(self, other: Term) -> FloorDiv:
         return FloorDiv(promote(self), promote(other))
 
-    def __rfloordiv__(self, other):
+    def __rfloordiv__(self, other: Term) -> FloorDiv:
         return FloorDiv(promote(other), promote(self))
 
-    def __mod__(self, other):
+    def __mod__(self, other: Term) -> Mod:
         return Mod(promote(self), promote(other))
 
-    def __rmod__(self, other):
+    def __rmod__(self, other: Term) -> Mod:
         return Mod(promote(other), promote(self))
 
-    def __pow__(self, other):
+    def __pow__(self, other: Term) -> Pow:
         return Pow(promote(self), promote(other))
 
-    def __rpow__(self, other):
+    def __rpow__(self, other: Term) -> Pow:
         return Pow(promote(other), promote(self))
 
-    def __lshift__(self, other):
+    def __lshift__(self, other: Term) -> LShift:
         return LShift(promote(self), promote(other))
 
-    def __rlshift__(self, other):
+    def __rlshift__(self, other: Term) -> LShift:
         return LShift(promote(other), promote(self))
 
-    def __rshift__(self, other):
+    def __rshift__(self, other: Term) -> RShift:
         return RShift(promote(self), promote(other))
 
-    def __rrshift__(self, other):
+    def __rrshift__(self, other: Term) -> RShift:
         return RShift(promote(other), promote(self))
 
-    def __and__(self, other):
+    def __and__(self, other: Term) -> BitAnd:
         return BitAnd(promote(self), promote(other))
 
-    def __rand__(self, other):
+    def __rand__(self, other: Term) -> BitAnd:
         return BitAnd(promote(other), promote(self))
 
-    def __xor__(self, other):
+    def __xor__(self, other: Term) -> BitXor:
         return BitXor(promote(self), promote(other))
 
-    def __rxor__(self, other):
+    def __rxor__(self, other: Term) -> BitXor:
         return BitXor(promote(other), promote(self))
 
-    def __or__(self, other):
+    def __or__(self, other: Term) -> BitOr:
         return BitOr(promote(self), promote(other))
 
-    def __ror__(self, other):
+    def __ror__(self, other: Term) -> BitOr:
         return BitOr(promote(other), promote(self))
 
     def __call__(self, *_) -> Functor:
@@ -130,7 +158,7 @@ WILDCARD = Wildcard()
 
 @dataclass(frozen=True, slots=True, init=False)
 class NonVariable(Symbolic, ABC):
-    def when(self, *args: NonVariable | list[str]) -> Rule:
+    def when(self, *args: Term | list[str]) -> Rule[Term]:
         return HornetRule(self, AllOf(*(promote(a) for a in args)))
 
     @property
@@ -140,6 +168,16 @@ class NonVariable(Symbolic, ABC):
 
 @dataclass(frozen=True, slots=True)
 class Atom(NonVariable):
+    """
+    A symbolic constant or predicate head.
+
+    In Hornet, an Atom is both a constant value and a 'functor factory'.
+    Example:
+        >>> parent = Atom('parent')
+        >>> term = parent('bob', Variable('X'))
+        >>> # 'term' is now a Functor(name='parent', args=(Atom('bob'), Variable('X')))
+    """
+
     name: str
 
     @property
@@ -149,12 +187,19 @@ class Atom(NonVariable):
     def __str__(self):
         return self.name
 
-    def __call__(self, *args) -> Functor:
+    def __call__(self, *args: Term) -> Functor:
         return Functor(self.name, *(promote(arg) for arg in args))
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class Compound(NonVariable, ABC):
+    """
+    An N-ary logic structure.
+
+    Represents a functor and its arguments. This is the primary way
+    data (like lists) and goals (like predicates) are represented.
+    """
+
     name: ClassVar[str]
     args: tuple[Term, ...] = ()
 
@@ -180,12 +225,16 @@ class Functor(Compound):
 
 @dataclass(frozen=True, slots=True, init=False)
 class Operator(Compound, ABC):
-    pass
+    """A specialized Compound representing a symbolic operation.
+
+    Operators maintain the structure of an expression (e.g., A + B)
+    so it can be printed in infix notation or evaluated arithmetically.
+    """
 
 
 @dataclass(frozen=True, slots=True, init=False)
 class UnaryOperator(Operator, ABC):
-    def __init__(self, operand):
+    def __init__(self, operand: Term):
         Operator.__init__(self, operand)
 
     @property
@@ -207,7 +256,7 @@ class UnaryOperator(Operator, ABC):
 
 @dataclass(frozen=True, slots=True, init=False)
 class BinaryOperator(Operator, ABC):
-    def __init__(self, left, right):
+    def __init__(self, left: Term, right: Term):
         Operator.__init__(self, left, right)
 
     @property
@@ -331,7 +380,7 @@ class Cons(Operator):
         return self.args[1]
 
     def __str__(self):
-        acc = []
+        acc: list[str] = []
         tail = self
         while isinstance(tail, Cons):
             acc.append(str(tail.head))
@@ -371,7 +420,7 @@ class AnyOf(Operator):
 
 
 @dataclass(frozen=True, slots=True)
-class Rule[T](NonVariable):
+class Rule[T: Term | Callable[..., Term]](NonVariable):
     head: NonVariable
     body: T
 
@@ -381,7 +430,7 @@ class Rule[T](NonVariable):
 
 
 @dataclass(frozen=True, slots=True)
-class HornetRule(Rule[NonVariable]):
+class HornetRule(Rule[Term]):
     pass
 
 
@@ -405,7 +454,7 @@ def advance_variables() -> StateOp[VarCount, tuple[Variable, Variable]]:
 
 @with_state
 def dcg_expand_cons(term: Term) -> StateOp[VarCount, Term]:
-    result_terms = []
+    result_terms: list[Term] = []
     tail = term
     while True:
         match tail:
@@ -430,14 +479,14 @@ def walk_dcg_body(term: Term) -> StateOp[VarCount, Term]:
             return AllOf(*inlined)
 
         case AllOf(args=goals):
-            new_goals = []
+            new_goals: list[Term] = []
             for goal in goals:
                 new_goal = yield walk_dcg_body(goal)
                 new_goals.append(new_goal)
             return AllOf(*new_goals)
 
         case AnyOf(args=goals):
-            new_goals = []
+            new_goals: list[Term] = []
             for goal in goals:
                 new_goal = yield walk_dcg_body(goal)
                 new_goals.append(new_goal)
@@ -450,11 +499,12 @@ def walk_dcg_body(term: Term) -> StateOp[VarCount, Term]:
         case Cons():
             return (yield dcg_expand_cons(term))
 
-    raise TypeError(f'Expected query term in DCG body, got: {term!r}')
+        case _:
+            raise TypeError(f'Expected query term in DCG body, got: {term!r}')
 
 
 @with_state
-def _dcg_expand(term: NonVariable | HornetRule) -> StateOp[VarCount, Functor | Rule]:
+def _dcg_expand(term: NonVariable | HornetRule) -> StateOp[VarCount, Functor | Rule[Term]]:
     Sout = yield current_variable()
     match term:
         case Atom(name=name):
@@ -473,15 +523,18 @@ def _dcg_expand(term: NonVariable | HornetRule) -> StateOp[VarCount, Functor | R
                     Sin = yield current_variable()
                     head_expanded = Functor(name, *args, Sout, Sin)
                     return HornetRule(head_expanded, body_expanded)
-    raise TypeError(f' {term!r}')
+                case _:
+                    raise TypeError(f' {term!r}')
+        case _:
+            raise TypeError(f' {term!r}')
 
 
-def DCG(term: Term) -> Functor | Rule:
+def DCG(term: Term) -> Functor | Rule[Term]:
     expanded_term, _ = _dcg_expand(term).run((next(_var_counter), _var_counter))
     return expanded_term
 
 
-def DCGs(*terms: Term) -> Iterator[Functor | Rule]:
+def DCGs(*terms: Term) -> Iterator[Functor | Rule[Term]]:
     for term in terms:
         yield DCG(term)
 
@@ -518,7 +571,7 @@ def rank(term: Term) -> int:
     return RANK.get(type(term), 0)
 
 
-def promote(obj: Any) -> Term | tuple:
+def promote(obj: Any) -> Term | tuple[Term, ...]:
     match obj:
         case (
             Variable()
@@ -558,11 +611,11 @@ def promote(obj: Any) -> Term | tuple:
             return Cons(promote(head), promote(list(tail)))
 
         case _:
-            raise TypeError(str(type(obj)))
+            raise TypeError(str(type(obj)))  # type: ignore[arg-type]
 
 
-Primitive = str | int | float | bool | complex | bytes | tuple
-Atomic = Primitive | Atom | Empty
+Primitive = str, int, float, bool, complex, bytes, tuple
+Atomic = Primitive, Atom, Empty
 scan = re.compile(
     r"""
     (?P<dunder>__.*__)      |  # dunder names

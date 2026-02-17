@@ -165,7 +165,7 @@ def _bootstrap_database() -> Callable[[], Database]:
         val = subst[val]
 
         match val:
-            case int() | bool() | float() | complex():
+            case int() | float() | complex():
                 return val
 
             # Unary operators
@@ -247,7 +247,7 @@ def _bootstrap_database() -> Callable[[], Database]:
 
     @db.tell
     @predicate(let(R, F))
-    def _let(db: Database, subst: Subst) -> Step:
+    def _(db: Database, subst: Subst) -> Step[Database]:
         r = subst[R]
         assert isinstance(r, Variable)
         f = subst[F]
@@ -263,7 +263,7 @@ def _bootstrap_database() -> Callable[[], Database]:
     ) -> None:
         @db.tell
         @predicate(term)
-        def _check(db: Database, subst: Subst) -> Step:
+        def _(db: Database, subst: Subst) -> Step[Database]:
             if match(subst[var]):
                 return _unit(db, subst.map)
             else:
@@ -284,7 +284,7 @@ def _bootstrap_database() -> Callable[[], Database]:
 
     @db.tell
     @predicate(univ(C, L))
-    def _univ(db: Database, subst: Subst) -> Step:
+    def _(db: Database, subst: Subst) -> Step[Database]:
         cin = subst[C]
         lin = subst[L]
         assert isinstance(cin, Functor | Atom | Variable)
@@ -301,17 +301,17 @@ def _bootstrap_database() -> Callable[[], Database]:
 
     @db.tell
     @predicate(call(G))
-    def _call(db: Database, subst: Subst) -> Step:
+    def _(db: Database, subst: Subst) -> Step[Database]:
         return resolve(subst[G])(db, subst.map)
 
     @db.tell
     @predicate(throw(E))
-    def _throw(db: Database, subst: Subst) -> Step:
+    def _(db: Database, subst: Subst) -> Step[Database]:
         raise Exception(subst[E])
 
     @db.tell
     @predicate(ifelse(T, Y, N))
-    def _ifelse(db: Database, subst: Subst) -> Step:
+    def _(db: Database, subst: Subst) -> Step[Database]:
         return if_then_else(
             resolve(subst[T]),
             resolve(subst[Y]),
@@ -320,25 +320,25 @@ def _bootstrap_database() -> Callable[[], Database]:
 
     @db.tell
     @predicate(smaller(A, B))
-    def _smaller(db: Database, subst: Subst) -> Step:
+    def _(db: Database, subst: Subst) -> Step[Database]:
         match subst[A], subst[B]:
-            case int() | float() as a, int() | float() as b:
-                if a < b:
-                    return _unit(db, subst.map)
-        return _fail(db, subst.map)
+            case int() | float() as a, int() | float() as b if a < b:
+                return _unit(db, subst.map)
+            case _:
+                return _fail(db, subst.map)
 
     @db.tell
     @predicate(greater(A, B))
-    def _greater(db: Database, subst: Subst) -> Step:
+    def _(db: Database, subst: Subst) -> Step[Database]:
         match subst[A], subst[B]:
-            case int() | float() as a, int() | float() as b:
-                if a > b:
-                    return _unit(db, subst.map)
-        return _fail(db, subst.map)
+            case int() | float() as a, int() | float() as b if a > b:
+                return _unit(db, subst.map)
+            case _:
+                return _fail(db, subst.map)
 
     @db.tell
     @predicate(length(L, N))
-    def _length(db: Database, subst: Subst) -> Step:
+    def _(db: Database, subst: Subst) -> Step[Database]:
         count = 0
         tail = subst[L]
         length = subst[N]
@@ -353,7 +353,7 @@ def _bootstrap_database() -> Callable[[], Database]:
 
     @db.tell
     @predicate(join(L, S))
-    def _join(db: Database, subst: Subst) -> Step:
+    def _(db: Database, subst: Subst) -> Step[Database]:
         items = subst[L]
         assert isinstance(items, Cons | Empty)
         result = to_python_list(items)
@@ -362,7 +362,7 @@ def _bootstrap_database() -> Callable[[], Database]:
 
     @db.tell
     @predicate(findall(O, G, L))
-    def _findall(db: Database, subst: Subst) -> Step:
+    def _(db: Database, subst: Subst) -> Step[Database]:
         obj = subst[O]
         assert isinstance(obj, Variable)
         goal = subst[G]
@@ -373,13 +373,13 @@ def _bootstrap_database() -> Callable[[], Database]:
     # Printing predicates
     @db.tell
     @predicate(write(V))
-    def _write(db: Database, subst: Subst) -> Step:
+    def _(db: Database, subst: Subst) -> Step[Database]:
         print(subst[V], end='')
         return _unit(db, subst.map)
 
     @db.tell
     @predicate(writeln(V))
-    def _writeln(db: Database, subst: Subst) -> Step:
+    def _(db: Database, subst: Subst) -> Step[Database]:
         print(subst[V])
         return _unit(db, subst.map)
 

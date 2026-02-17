@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 from hornet import database
+from hornet.clauses import Database
 from hornet.symbols import (
     Q0,
     Q1,
@@ -37,7 +38,7 @@ from hornet.symbols import (
 )
 
 
-def main(db):
+def main(db: Database):
     db.tell(
         turing(Tape0, Tape).when(
             perform(q0, [], Ls, Tape0, Rs),

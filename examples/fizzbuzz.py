@@ -4,6 +4,7 @@
 from toolz import take
 
 from hornet import DCGs, database
+from hornet.clauses import Database
 from hornet.symbols import (
     M,
     N,
@@ -26,7 +27,7 @@ from hornet.symbols import (
 )
 
 
-def main(db):
+def main(db: Database):
     db.tell(
         fizzbuzz(R).when(
             fb(1, R),

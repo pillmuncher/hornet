@@ -32,7 +32,7 @@ Original algorithm replaced to demonstrate how to interface Hornet with Python c
 
 
 class Disc(Turtle):
-    def __init__(self, n):
+    def __init__(self, n: int):
         Turtle.__init__(self, shape='square', visible=False)
         self.pu()
         self.shapesize(1.5, n * 1.5, 2)
@@ -40,25 +40,25 @@ class Disc(Turtle):
         self.st()
 
 
-class Tower(list[int]):
+class Tower(list[Disc]):
     "Hanoi tower, a subclass of built-in type list"
 
-    def __init__(self, x):
+    def __init__(self, x: int):
         "create an empty tower. x is x-position of peg"
         self.x = x
 
-    def push(self, d):
+    def push(self, d: Disc):
         d.setx(self.x)
         d.sety(-150 + 34 * len(self))
         self.append(d)
 
-    def pop(self, _: SupportsIndex = -1) -> int:
+    def pop(self, _: SupportsIndex = -1) -> Disc:
         d = list.pop(self)
         d.sety(150)
         return d
 
 
-def hanoi(db):
+def hanoi(db: Database):
     db.tell(
         play_hanoi(N, From, To, With).when(
             greater(N, 0),
@@ -75,13 +75,13 @@ def hanoi(db):
 
     @db.tell
     @predicate(show(From, To))
-    def _show(db: Database, subst: Subst) -> Step:
+    def _show(db: Database, subst: Subst) -> Step[Database]:  # type: ignore[reportUnusedFunction]
         to = cast(int, subst[To])
         fro = cast(int, subst[From])
         towers[to].push(towers[fro].pop())
         return unit(db, subst.map)
 
-    for s in db.ask(play_hanoi(6, 0, 1, 2)):
+    for s in db.ask(play_hanoi(6, 0, 1, 2)):  # type: ignore[reportUnusedVariable]
         break
 
 

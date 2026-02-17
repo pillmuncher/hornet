@@ -1,0 +1,28 @@
+
+#+TITLE: Hornet: A Resolution Engine in Python
+#+AUTHOR: Mick Krippendorf
+#+PROPERTY: header-args :tangle no :mkdirp yes
+#+OPTIONS: toc:t num:nil
+
+* Introduction
+
+  Hornet is a small embedded DSL for representing Horn clauses and constructing
+  a Herbrand universe in Python.  It uses self-constructing expression trees and
+  a resolution engine composed of *monadic combinators*.
+
+  The engine captures Prolog's semantics by means of a *Triple-Barrelled
+  Continuation Monad* carrying three continuations: =yes=, =no=, and =prune=.
+  The =prune= continuation corresponds to the Prolog =cut= operator.
+
+  Before introducing the core logic, we begin with two foundational modules: one
+  for *tail-call elimination*, and another for *state threading*.
+
+* Next Steps
+1. Document the =Triple-Barrelled Continuation Monad=.
+2. Integrate =tailcalls= and =states= into the resolution engine.
+3. Add sections for:
+   - Representation of terms and clauses
+   - Unification
+   - Rule expansion
+   - Query evaluation
+   - Cut handling (=prune=)

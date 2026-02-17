@@ -2,15 +2,16 @@
 # SPDX-License-Identifier: MIT
 
 from hornet import DCGs, database
+from hornet.clauses import Database
+from hornet.symbols import E  # type: ignore[reportUnusedImport]
+from hornet.symbols import S  # type: ignore[reportUnusedImport]
 from hornet.symbols import (
     C,
     Case,
     D,
-    E,
     F,
     Gender,
     Number,
-    S,
     Trans,
     W,
     _,
@@ -36,7 +37,7 @@ from hornet.symbols import (
 )
 
 
-def grammar(db):
+def grammar(db: Database):
     db.tell(
         *DCGs(
             s.when(

@@ -1,8 +1,16 @@
+
+* State Monad
+
+  We also need a mechanism for state threading through computations.  This monad
+  abstracts explicit state passing and provides combinators for reading,
+  modifying, and writing state.
+
+** Implementation
+#+BEGIN_SRC python :tangle hornet/states.py
 # Copyright (c) 2025 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
 # SPDX-License-Identifier: MIT
 
 from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import Any, Callable, Generator
 
@@ -18,7 +26,6 @@ class State[S, V]:
         def inner(state: S):
             value, new_state = self.run(state)
             return f(value).run(new_state)
-
         return State(inner)
 
     @staticmethod
@@ -26,18 +33,17 @@ class State[S, V]:
         return State(lambda s: (value, s))
 
 
-def with_state[S, R](fn: Callable[..., StateOp[S, R]]) -> Callable[..., State[S, R]]:
-    def wrapper(*args: Any, **kwargs: Any) -> State[S, R]:
+def with_state[S, R](
+    fn: Callable[..., StateOp[S, R]],
+) -> Callable[..., State[S, R]]:
+    def wrapper(*args, **kwargs) -> State[S, R]:
         gen = fn(*args, **kwargs)
-
-        def step(value: Any | None = None) -> State[S, R]:
+        def step(value: Any | None = None):
             try:
                 return gen.send(value).bind(step)
             except StopIteration as e:
                 return State.unit(e.value)
-
-        return step()  # start the trampoline
-
+        return step()
     return wrapper
 
 
@@ -45,16 +51,15 @@ def identity[T](x: T) -> T:
     return x
 
 
-def const[T](x: T) -> Callable[..., T]:
-    def constant(*_: Any) -> T:
-        return x
-
-    return constant
+def const[T](x: T) -> Callable[[T], Any]:
+    return lambda *_, **__: x
 
 
-def get_state[S, V](fn: Callable[[S], V] = identity) -> State[S, V]:
+def get_state[S](fn: Callable[[S], S] = identity) -> State[S, S]:
     return State(lambda state: (fn(state), state))
 
 
 def set_state[S](f: Callable[[S], S]) -> State[S, Any]:
     return State(lambda state: (None, f(state)))
+#+END_SRC
+
