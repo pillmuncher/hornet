@@ -1,4 +1,5 @@
 [project]
+name = "hornet-dsl"
 version = "0.3.1a1"
 license = { file = "LICENSE.md" }
 authors = [{ name = "Mick Krippendorf", email = "m.krippendorf@freenet.de" }]
@@ -61,4 +62,3 @@ dev = [
     "pytest-flake8",
     "setuptools",
 ]
-name = ["hornet"]
