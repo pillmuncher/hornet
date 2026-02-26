@@ -9,7 +9,7 @@ Hornet lets you write logic programs directly in Python. Instead of parsing Prol
 ## Installation
 
 ```bash
-pip install hornet
+pip install hornet-dsl
 ```
 
 Requires Python 3.13+. Dependencies: `toolz`, `immutables`.
