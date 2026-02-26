@@ -141,35 +141,36 @@ DCG rules are automatically expanded to difference lists. The `inline(goal)` esc
 
 ## Extending with Python
 
-Register native Python predicates using the `@predicate` decorator:
+Register native Python predicates using the `@predicate` decorator. This is how `ifelse/3` is implemented internally:
 
 ```python
-from hornet import database, predicate, unit
+from hornet import database, predicate
 from hornet.clauses import Database, Subst
-from hornet.combinators import Step
-from hornet.symbols import X
+from hornet.combinators import Step, if_then_else
+from hornet.clauses import resolve
+from hornet.symbols import T, Y, N
 
 db = database()
 
 @db.tell
-@predicate(X)
+@predicate(ifelse(T, Y, N))
 def _(db: Database, subst: Subst) -> Step[Database]:
-    val = subst[X]
-    print(f'native hook: {val}')
-    return unit(db, subst.map)
+    return if_then_else(
+        resolve(subst[T]),
+        resolve(subst[Y]),
+        resolve(subst[N]),
+    )(db, subst.map)
 ```
 
 ---
 
 ## Architecture
 
-Hornet is built on three layered abstractions:
+Hornet is built on two main layers:
 
-**Tail-call elimination** (`hornet.tailcalls`): A trampoline/thunk system prevents `RecursionError` on deep recursion. Functions decorated with `@tailcall` return deferred frames; `trampoline()` drives them iteratively.
+**Term algebra** (`hornet.terms`): Python expressions construct expression trees rather than computing values. Operator overloading (`+`, `*`, `|`, `**`, …) and `__call__` produce nested `Symbolic` structures — `Functor`, `Atom`, `Variable`, `Cons`, `Operator` subclasses — which represent both data and goals. `promote()` lifts Python primitives (integers, strings, lists) into this algebra transparently.
 
-**State monad** (`hornet.states`): Used internally during clause compilation to thread fresh-variable environments without mutation. Exposed via `with_state`, `get_state`, `set_state`.
-
-**Triple-barrelled continuation monad** (`hornet.combinators`): The resolution engine carries three continuations — *success* (emit a substitution), *failure* (backtrack), and *prune* (implement cut). Goals are functions `(ctx, subst) → Step`, and the combinators `then`, `choice`, `prunable`, `neg`, `if_then_else` compose them.
+**Resolution engine** (`hornet.combinators`): A *triple-barrelled continuation monad* drives search. Every goal is a function `(ctx, subst) → Step`, where a `Step` takes three continuations — *success* (emit a substitution and continue), *failure* (backtrack), and *prune* (implement cut). The combinators `then`, `choice`, `prunable`, `neg`, and `if_then_else` compose goals; `trampoline()` drives the whole thing iteratively to avoid stack overflow.
 
 ---
 
