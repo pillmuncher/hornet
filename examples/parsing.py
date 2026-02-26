@@ -222,7 +222,7 @@ def grammar(db: Database):
     # words = [B, C, 'jagen']
     # words = [B, C, 'jagt', D, E]
 
-    print(f'senstences that match {words!s}:')
+    print(f'Sentences that match {words!s}:')
     print()
     for subst in db.ask(equal(words, W), phrase(s, W)):
         print(str(subst[W]))

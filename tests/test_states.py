@@ -22,7 +22,7 @@ def test_state_unit_returns_value_unchanged():
 def test_state_bind_chains_computations():
     """Bind threads state through computations."""
     state = State.unit(10).bind(lambda x: State.unit(x + 5))
-    value, s = state.run(0)
+    value, _ = state.run(0)
     assert value == 15
 
 

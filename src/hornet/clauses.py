@@ -223,8 +223,7 @@ class Database(ChainMap[Indicator, list[Clause]]):
         for clause, indicator in results:
             self.setdefault(indicator, []).append(clause)
 
-    def ask(self, *conjuncts: Term, subst: Env | None = None) -> Iterable[Subst]:
-        assert all(isinstance(c, NonVariable) for c in conjuncts)
+    def ask(self, *conjuncts: NonVariable, subst: Env | None = None) -> Iterable[Subst]:
         query, env = make_term(AllOf(*conjuncts))
         goal = resolve(query)
         step = goal(self, Map() if subst is None else subst)

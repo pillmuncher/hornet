@@ -4,9 +4,7 @@
 """Tests for tail-call elimination via thunking and trampolining."""
 
 import sys
-from typing import Iterable
 
-import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
