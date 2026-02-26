@@ -1,4 +1,5 @@
 _version.py
+*.egg-info
 *.lock
 *.old
 *.pyc
