@@ -169,13 +169,13 @@ def _bootstrap_database() -> Callable[[], Database]:
                 return val
 
             # Unary operators
-            case Invert(a):
+            case Invert((a,)):
                 v = eval_term(a, subst)
                 assert not isinstance(v, bool | float | complex)
                 return ~v
-            case UAdd(a):
+            case UAdd((a,)):
                 return +eval_term(a, subst)
-            case USub(a):
+            case USub((a,)):
                 return -eval_term(a, subst)
 
             # Binary operators

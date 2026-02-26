@@ -336,10 +336,8 @@ def unify[Ctx](this: Term, that: Term) -> Goal[Ctx]:
 def unify_variable[Ctx](variable: Variable, term: Term) -> Goal[Ctx]:
     def goal(ctx: Ctx, subst: Env, variable: Variable = variable, term: Term = term) -> Step[Ctx]:
         subst, value = deref_and_compress(subst, variable)
-        if value is variable:
-            return unit(ctx, subst.set(variable, term))
-        else:
-            return tailcall(unify(value, term)(ctx, subst))
+        assert value is variable
+        return unit(ctx, subst.set(variable, term))
 
     return goal
 

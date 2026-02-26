@@ -508,3 +508,108 @@ def test_operator_creates_compound_structure():
     # Only when at least one operand is Symbolic do we get Add terms
     assert isinstance(Variable('X') + 5, Add)
     assert isinstance(5 + Variable('X'), Add)
+
+
+def test_reflected_sub():
+    x = Variable('X')
+    assert isinstance(5 - x, Sub)
+
+
+def test_reflected_truediv():
+    x = Variable('X')
+    assert isinstance(5 / x, Div)
+
+
+def test_reflected_floordiv():
+    x = Variable('X')
+    assert isinstance(5 // x, FloorDiv)
+
+
+def test_reflected_mod():
+    x = Variable('X')
+    assert isinstance(5 % x, Mod)
+
+
+def test_reflected_pow():
+    x = Variable('X')
+    assert isinstance(5**x, Pow)
+
+
+def test_reflected_lshift():
+    x = Variable('X')
+    assert isinstance(5 << x, LShift)
+
+
+def test_reflected_rshift():
+    x = Variable('X')
+    assert isinstance(5 >> x, RShift)
+
+
+def test_reflected_and():
+    x = Variable('X')
+    assert isinstance(5 & x, BitAnd)
+
+
+def test_reflected_xor():
+    x = Variable('X')
+    assert isinstance(5 ^ x, BitXor)
+
+
+def test_reflected_or():
+    x = Variable('X')
+    assert isinstance(5 | x, BitOr)
+
+
+def test_reflected_matmul():
+    from hornet.terms import MatMul
+
+    x = Variable('X')
+    assert isinstance(x @ 5, MatMul)
+    assert isinstance(5 @ x, MatMul)  # __rmatmul__
+
+
+def test_unary_operator_str_parenthesized():
+    # USub of a lower-rank expression gets parenthesized
+    x, y = Variable('X'), Variable('Y')
+    expr = -(x | y)  # BitOr has lower rank than USub
+    assert '(' in str(expr)
+
+
+def test_unary_operator_str_no_parens():
+    x = Variable('X')
+    expr = -x
+    assert str(expr) == '-X'
+
+
+def test_functor_zero_args_str():
+    f = Functor('f')
+    assert str(f) == 'f()'
+
+
+def test_dcg_anyof_in_body():
+    from hornet.terms import DCG, AllOf, AnyOf
+
+    rule = Atom('a').when(AnyOf(Atom('b'), Atom('c')))
+    result = DCG(rule)
+    # body is AllOf wrapping the expanded AnyOf
+    assert isinstance(result.body, AllOf)
+    assert isinstance(result.body.args[0], AnyOf)
+
+
+def test_dcg_functor_head():
+    from hornet.terms import DCG
+
+    rule = Functor('f', Atom('x')).when(Atom('g'))
+    result = DCG(rule)
+    assert result.head.name == 'f'
+    assert len(result.head.args) == 3  # original arg + 2 state args
+
+
+def test_promote_exception():
+    e = ValueError('oops')
+    assert promote(e) is e
+
+
+def test_symbol_dunder_raises():
+    with pytest.raises(AttributeError):
+        symbol('__init__')
