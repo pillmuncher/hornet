@@ -119,19 +119,19 @@ Hornet supports DCG notation via `DCG()` and `DCGs()`:
 
 ```python
 from hornet import DCGs, database
-from hornet.symbols import S, NP, VP, noun, verb, det, phrase
+from hornet.symbols import s, np, vp, noun, verb, det, phrase
 
 db = database()
 db.tell(*DCGs(
-    S.when(NP, VP),
-    NP.when(det, noun),
-    VP.when(verb),
+    s.when(np, vp),
+    np.when(det, noun),
+    vp.when(verb),
     det.when(['the']),
     noun.when(['cat']),
     verb.when(['sleeps']),
 ))
 
-for subst in db.ask(phrase(S, ['the', 'cat', 'sleeps'])):
+for subst in db.ask(phrase(s, ['the', 'cat', 'sleeps'])):
     print('parsed!')
 ```
 
