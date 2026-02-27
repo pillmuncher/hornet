@@ -148,7 +148,7 @@ from hornet import database, predicate
 from hornet.clauses import Database, Environment, Subst
 from hornet.combinators import Step, if_then_else
 from hornet.clauses import resolve
-from hornet.symbols import T, Y, N
+from hornet.symbols import ifelse, T, Y, N
 
 db = database()
 
