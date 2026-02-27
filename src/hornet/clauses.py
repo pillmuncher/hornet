@@ -9,12 +9,13 @@ from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import dataclass
 from functools import wraps
-from typing import Callable, Iterable, Iterator
+from typing import Callable, Iterable, Iterator, cast
+
+from immutables import Map
 
 from .combinators import (
-    Env,
     Goal,
-    Map,
+    Next,
     Step,
     amb_from_iterable,
     cut,
@@ -25,11 +26,10 @@ from .combinators import (
     seq_from_iterable,
     success,
     then,
-    unify,
     unit,
 )
 from .states import State, StateOp, get_state, set_state, with_state
-from .tailcalls import trampoline
+from .tailcalls import tailcall, trampoline
 from .terms import (
     AllOf,
     AnyOf,
@@ -52,13 +52,13 @@ from .terms import (
     fresh_variable,
 )
 
-type Environment = dict[Variable, Variable]
+type Environment = Map[Variable, Term]
 type Memo = dict[int, Term]
-type FreshState = tuple[Environment, Memo]
+type FreshState = tuple[dict[Variable, Variable], Memo]
 type Arguments = tuple[Term, ...]
 
-type PythonBody = Callable[[Environment], Goal[Database]]
-type PythonGoal = Callable[[Database, Subst], Step[Database]]
+type PythonBody = Callable[[Environment], Goal[Database, Environment]]
+type PythonGoal = Callable[[Database, Subst], Step[Database, Environment]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,9 +76,9 @@ def predicate(head: Term) -> Callable[[PythonGoal], PythonRule]:
 
     def decorator(python_goal: PythonGoal) -> PythonRule:
         @wraps(python_goal)
-        def python_body(env: Environment) -> Goal[Database]:
-            def goal(db: Database, subst: Env) -> Step[Database]:
-                return python_goal(db, Subst(subst, env))
+        def python_body(renaming: Environment) -> Goal[Database, Environment]:
+            def goal(db: Database, env: Environment) -> Step[Database, Environment]:
+                return python_goal(db, Subst(env, renaming))
 
             return goal
 
@@ -87,9 +87,92 @@ def predicate(head: Term) -> Callable[[PythonGoal], PythonRule]:
     return decorator
 
 
+def deref_and_compress(env: Environment, term: Term) -> tuple[Environment, Term]:
+    """
+    Resolve variable bindings and perform path compression.
+
+    Follows the chain of substitutions for a variable and updates the map
+    to point directly to the root value to speed up future lookups.
+    """
+
+    visited = set()
+    while isinstance(term, Variable) and term in env:
+        if term in visited:
+            raise RuntimeError(f'Cyclic variable binding detected: {term}')
+        visited.add(term)
+        term = env[term]
+    mm = env.mutate()
+    for v in visited:
+        mm[v] = term
+    return mm.finish(), term
+
+
+def unify(this: Term, that: Term) -> Goal[Database, Environment]:
+    """
+    Attempt to unify two terms.
+
+    Returns a goal that succeeds if the terms can be matched under the
+    current substitution, potentially extending it.
+    """
+
+    def goal(
+        db: Database, env: Environment, this: Term = this, that: Term = that
+    ) -> Step[Database, Environment]:
+        env, this = deref_and_compress(env, this)
+        env, that = deref_and_compress(env, that)
+        return _unify(this, that)(db, env)
+
+    return goal
+
+
+def unify_variable(variable: Variable, term: Term) -> Goal[Database, Environment]:
+    def goal(
+        db: Database, env: Environment, variable: Variable = variable, term: Term = term
+    ) -> Step[Database, Environment]:
+        env, value = deref_and_compress(env, variable)
+        assert value is variable
+        return unit(db, env.set(variable, term))
+
+    return goal
+
+
+def unify_pairs(*pairs: tuple[Term, Term]) -> Goal[Database, Environment]:
+    return lambda ctx, subst, pairs=pairs: tailcall(
+        seq_from_iterable(unify(this, that) for this, that in pairs)(ctx, subst)
+    )
+
+
+def unify_any(variable: Variable, *values: Term) -> Goal[Database, Environment]:
+    return amb_from_iterable(unify(variable, value) for value in values)
+
+
+def _unify(this: Term, that: Term) -> Goal[Database, Environment]:
+    match this, that:
+        case _ if this == that:
+            return unit
+
+        case Wildcard(), _:
+            return unit
+
+        case _, Wildcard():
+            return unit
+
+        case Variable(), _:
+            return unify_variable(this, that)
+
+        case _, Variable():
+            return unify_variable(that, this)
+
+        case Compound(), Compound() if this.indicator == that.indicator:
+            return unify_pairs(*zip(this.args, that.args))
+
+        case _:
+            return fail
+
+
 @dataclass(frozen=True, slots=True)
 class Subst(Mapping[Variable, Term]):
-    map: Env
+    map: Environment
     env: Environment
 
     def __len__(self) -> int:
@@ -128,7 +211,7 @@ def fresh(clause: Clause) -> Clause:
     return deepcopy(clause, memo)
 
 
-def resolve(query: Term) -> Goal[Database]:
+def resolve(query: Term) -> Goal[Database, Environment]:
     match query:
         case Atom('true'):
             return unit
@@ -163,12 +246,12 @@ class Clause(ABC):
     ground: Memo
 
     @abstractmethod
-    def __call__(self, query: NonVariable) -> Goal[Database]: ...
+    def __call__(self, query: NonVariable) -> Goal[Database, Environment]: ...
 
 
 @dataclass(frozen=True, slots=True)
 class AtomicFact(Clause):
-    def __call__(self, query: NonVariable) -> Goal[Database]:
+    def __call__(self, query: NonVariable) -> Goal[Database, Environment]:
         return unit
 
 
@@ -176,7 +259,7 @@ class AtomicFact(Clause):
 class CompoundFact(Clause):
     head: Functor
 
-    def __call__(self, query: NonVariable) -> Goal[Database]:
+    def __call__(self, query: NonVariable) -> Goal[Database, Environment]:
         return unify(query, self.head)
 
 
@@ -184,7 +267,7 @@ class CompoundFact(Clause):
 class AtomicRule(Clause):
     body: Term
 
-    def __call__(self, query: NonVariable) -> Goal[Database]:
+    def __call__(self, query: NonVariable) -> Goal[Database, Environment]:
         return resolve(self.body)
 
 
@@ -193,7 +276,7 @@ class CompoundRule(Clause):
     head: Functor
     body: Term
 
-    def __call__(self, query: NonVariable) -> Goal[Database]:
+    def __call__(self, query: NonVariable) -> Goal[Database, Environment]:
         return then(unify(query, self.head), resolve(self.body))
 
 
@@ -201,7 +284,7 @@ class CompoundRule(Clause):
 class AtomicPythonRule(Clause):
     body: PythonBody
 
-    def __call__(self, query: NonVariable) -> Goal[Database]:
+    def __call__(self, query: NonVariable) -> Goal[Database, Environment]:
         return self.body(self.env)
 
 
@@ -210,7 +293,7 @@ class CompoundPythonRule(Clause):
     head: Functor
     body: PythonBody
 
-    def __call__(self, query: NonVariable) -> Goal[Database]:
+    def __call__(self, query: NonVariable) -> Goal[Database, Environment]:
         return then(unify(query, self.head), self.body(self.env))
 
 
@@ -223,11 +306,12 @@ class Database(ChainMap[Indicator, list[Clause]]):
         for clause, indicator in results:
             self.setdefault(indicator, []).append(clause)
 
-    def ask(self, *conjuncts: NonVariable, subst: Env | None = None) -> Iterable[Subst]:
+    def ask(self, *conjuncts: NonVariable, subst: Subst | None = None) -> Iterable[Subst]:
         query, env = make_term(AllOf(*conjuncts))
         goal = resolve(query)
-        step = goal(self, Map() if subst is None else subst)
-        for new_subst in trampoline(lambda: step(success, failure, failure)):
+        step = goal(self, Map() if subst is None else subst.map)
+        _failure: Next[Environment] = cast(Next[Environment], failure)
+        for new_subst in trampoline(lambda: step(success, _failure, _failure)):
             yield Subst(new_subst, env)
 
 
@@ -395,8 +479,8 @@ def new_clause(term: Term) -> StateOp[FreshState, tuple[Clause, Indicator]]:
 
 
 def make_term(term: Term) -> tuple[Term, Environment]:
-    (term, _), (env, _) = new_term(term).run(({}, {}))
-    return term, env
+    (term, _), (renaming, _) = new_term(term).run(({}, {}))
+    return term, Map(renaming)
 
 
 def make_clause(term: Term) -> tuple[Clause, Indicator]:

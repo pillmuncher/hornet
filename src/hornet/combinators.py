@@ -7,7 +7,7 @@ This module implements the core resolution logic for a Prolog-style system.
 It uses a "Triple-Barrelled Continuation Monad" to manage search,
 backtracking, and pruning:
 1.  **Success (Emit)**: Propagates the current substitution forward.
-2.  **Failure (Next)**: Backtracks to the last available choice point.
+2.  **Failure (Next[Env])**: Backtracks to the last available choice point.
 3.  **Prune**: Defines the jump-target for the 'cut' (!) operator.
 
 The engine is context-agnostic; `Ctx` (typically the clause database) is
@@ -19,49 +19,45 @@ from __future__ import annotations
 
 from typing import Any, Callable, Iterable
 
-from immutables import Map
 from toolz import flip, reduce
 
 from .tailcalls import Frame, tailcall
-from .terms import Compound, Term, Variable, Wildcard
 
-type Env = Map[Variable, Term]
-type Result = Frame[Env]
-type Next = Callable[[], Result]
-type Emit[Ctx] = Callable[[Ctx, Env, Next], Result]
-type Step[Ctx] = Callable[[Emit[Ctx], Next, Next], Result]
-type Goal[Ctx] = Callable[[Ctx, Env], Step[Ctx]]
+type Next[Env] = Callable[[], Frame[Env]]
+type Emit[Ctx, Env] = Callable[[Ctx, Env, Next[Env]], Frame[Env]]
+type Step[Ctx, Env] = Callable[[Emit[Ctx, Env], Next[Env], Next[Env]], Frame[Env]]
+type Goal[Ctx, Env] = Callable[[Ctx, Env], Step[Ctx, Env]]
 
 
-def success(ctx: Any, subst: Env, no: Next) -> Result:
+def success[Env](ctx: Any, subst: Env, no: Next[Env]) -> Frame[Env]:
     """
     The primitive success handler that returns the current substitution.
     """
     return subst, no
 
 
-def failure() -> Result:
+def failure[Env]() -> Frame[Env]:
     """
     The primitive failure handler that returns None.
     """
     return None
 
 
-def bind[Ctx](bind_step: Step[Ctx], goal: Goal[Ctx]) -> Step[Ctx]:
+def bind[Ctx, Env](bind_step: Step[Ctx, Env], goal: Goal[Ctx, Env]) -> Step[Ctx, Env]:
     """
     Monadic bind for goals. Chains a computation step to a subsequent goal.
     """
 
     @tailcall
     def step(
-        yes: Emit[Ctx],
-        no: Next,
-        prune: Next,
-        bind_step: Step[Ctx] = bind_step,
-        goal: Goal[Ctx] = goal,
-    ) -> Result:
+        yes: Emit[Ctx, Env],
+        no: Next[Env],
+        prune: Next[Env],
+        bind_step: Step[Ctx, Env] = bind_step,
+        goal: Goal[Ctx, Env] = goal,
+    ) -> Frame[Env]:
         @tailcall
-        def bound(ctx: Ctx, subst: Env, then_no: Next) -> Result:
+        def bound(ctx: Ctx, subst: Env, then_no: Next[Env]) -> Frame[Env]:
             return goal(ctx, subst)(yes, then_no, prune)
 
         return bind_step(bound, no, prune)
@@ -69,19 +65,21 @@ def bind[Ctx](bind_step: Step[Ctx], goal: Goal[Ctx]) -> Step[Ctx]:
     return step
 
 
-def unit[Ctx](ctx: Ctx, subst: Env) -> Step[Ctx]:
+def unit[Ctx, Env](ctx: Ctx, subst: Env) -> Step[Ctx, Env]:
     """
     A goal that always succeeds once with the current substitution.
     """
 
     @tailcall
-    def step(yes: Emit[Ctx], no: Next, prune: Next, ctx: Ctx = ctx, subst: Env = subst) -> Result:
+    def step(
+        yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env], ctx: Ctx = ctx, subst: Env = subst
+    ) -> Frame[Env]:
         return yes(ctx, subst, no)
 
     return step
 
 
-def cut[Ctx](ctx: Ctx, subst: Env) -> Step[Ctx]:
+def cut[Ctx, Env](ctx: Ctx, subst: Env) -> Step[Ctx, Env]:
     """
     A goal that succeeds once but prunes all other choices in its scope.
 
@@ -90,45 +88,49 @@ def cut[Ctx](ctx: Ctx, subst: Env) -> Step[Ctx]:
     """
 
     @tailcall
-    def step(yes: Emit[Ctx], no: Next, prune: Next, ctx: Ctx = ctx, subst: Env = subst) -> Result:
+    def step(
+        yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env], ctx: Ctx = ctx, subst: Env = subst
+    ) -> Frame[Env]:
         return yes(ctx, subst, prune)
 
     return step
 
 
-def fail[Ctx](ctx: Ctx, subst: Env) -> Step[Ctx]:
+def fail[Ctx, Env](ctx: Ctx, subst: Env) -> Step[Ctx, Env]:
     """
     A goal that always fails immediately.
     """
 
     @tailcall
-    def step(yes: Emit[Ctx], no: Next, prune: Next, ctx: Ctx = ctx, subst: Env = subst) -> Result:
+    def step(
+        yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env], ctx: Ctx = ctx, subst: Env = subst
+    ) -> Frame[Env]:
         return no()
 
     return step
 
 
-def then[Ctx](goal1: Goal[Ctx], goal2: Goal[Ctx]) -> Goal[Ctx]:
+def then[Ctx, Env](goal1: Goal[Ctx, Env], goal2: Goal[Ctx, Env]) -> Goal[Ctx, Env]:
     """
     Logical conjunction (AND) of two goals.
     """
 
     def goal(
-        ctx: Ctx, subst: Env, goal1: Goal[Ctx] = goal1, goal2: Goal[Ctx] = goal2
-    ) -> Step[Ctx]:
+        ctx: Ctx, subst: Env, goal1: Goal[Ctx, Env] = goal1, goal2: Goal[Ctx, Env] = goal2
+    ) -> Step[Ctx, Env]:
         return bind(goal1(ctx, subst), goal2)
 
     return goal
 
 
-def seq_from_iterable[Ctx](goals: Iterable[Goal[Ctx]]) -> Goal[Ctx]:
+def seq_from_iterable[Ctx, Env](goals: Iterable[Goal[Ctx, Env]]) -> Goal[Ctx, Env]:
     """
     Sequence multiple goals; all must succeed for the sequence to succeed.
     """
     return reduce(flip(then), reversed(tuple(goals)), unit)  # type: ignore
 
 
-def seq[Ctx](*goals: Goal[Ctx]) -> Goal[Ctx]:
+def seq[Ctx, Env](*goals: Goal[Ctx, Env]) -> Goal[Ctx, Env]:
     """
     Sequence multiple goals; all must succeed for the sequence to succeed.
     """
@@ -136,22 +138,22 @@ def seq[Ctx](*goals: Goal[Ctx]) -> Goal[Ctx]:
     return seq_from_iterable(goals)
 
 
-def choice[Ctx](goal1: Goal[Ctx], goal2: Goal[Ctx]) -> Goal[Ctx]:
+def choice[Ctx, Env](goal1: Goal[Ctx, Env], goal2: Goal[Ctx, Env]) -> Goal[Ctx, Env]:
     """
     Logical disjunction (OR) of two goals. Backtracks to goal2 if goal1 fails.
     """
 
     def goal(
-        ctx: Ctx, subst: Env, goal1: Goal[Ctx] = goal1, goal2: Goal[Ctx] = goal2
-    ) -> Step[Ctx]:
+        ctx: Ctx, subst: Env, goal1: Goal[Ctx, Env] = goal1, goal2: Goal[Ctx, Env] = goal2
+    ) -> Step[Ctx, Env]:
         @tailcall
         def step(
-            yes: Emit[Ctx],
-            no: Next,
-            prune: Next,
-            goal1: Goal[Ctx] = goal1,
-            goal2: Goal[Ctx] = goal2,
-        ) -> Result:
+            yes: Emit[Ctx, Env],
+            no: Next[Env],
+            prune: Next[Env],
+            goal1: Goal[Ctx, Env] = goal1,
+            goal2: Goal[Ctx, Env] = goal2,
+        ) -> Frame[Env]:
             return goal1(ctx, subst)(
                 yes,
                 tailcall(lambda: goal2(ctx, subst)(yes, no, prune)),
@@ -163,22 +165,22 @@ def choice[Ctx](goal1: Goal[Ctx], goal2: Goal[Ctx]) -> Goal[Ctx]:
     return goal
 
 
-def amb_from_iterable[Ctx](goals: Iterable[Goal[Ctx]]) -> Goal[Ctx]:
+def amb_from_iterable[Ctx, Env](goals: Iterable[Goal[Ctx, Env]]) -> Goal[Ctx, Env]:
     """
     Ambiguous choice; tries each goal in order via backtracking.
     """
 
-    def goal(ctx: Ctx, subst: Env) -> Step[Ctx]:
+    def goal(ctx: Ctx, subst: Env) -> Step[Ctx, Env]:
         @tailcall
         def step(
-            yes: Emit[Ctx],
-            no: Next,
-            prune: Next,
+            yes: Emit[Ctx, Env],
+            no: Next[Env],
+            prune: Next[Env],
             ctx: Ctx = ctx,
             subst: Env = subst,
-            goals: Iterable[Goal[Ctx]] = goals,
-        ) -> Result:
-            amb_goal: Goal[Ctx] = reduce(flip(choice), reversed(tuple(goals)), fail)  # pyright: ignore
+            goals: Iterable[Goal[Ctx, Env]] = goals,
+        ) -> Frame[Env]:
+            amb_goal: Goal[Ctx, Env] = reduce(flip(choice), reversed(tuple(goals)), fail)  # pyright: ignore
             return amb_goal(ctx, subst)(yes, no, prune)
 
         return step
@@ -186,14 +188,14 @@ def amb_from_iterable[Ctx](goals: Iterable[Goal[Ctx]]) -> Goal[Ctx]:
     return goal
 
 
-def amb[Ctx](*goals: Goal[Ctx]) -> Goal[Ctx]:
+def amb[Ctx, Env](*goals: Goal[Ctx, Env]) -> Goal[Ctx, Env]:
     """
     Ambiguous choice; tries each goal in order via backtracking.
     """
     return amb_from_iterable(goals)
 
 
-def prunable[Ctx](goals: Iterable[Goal[Ctx]]) -> Goal[Ctx]:
+def prunable[Ctx, Env](goals: Iterable[Goal[Ctx, Env]]) -> Goal[Ctx, Env]:
     """
     Establishes a pruning boundary for a collection of goals.
 
@@ -203,16 +205,16 @@ def prunable[Ctx](goals: Iterable[Goal[Ctx]]) -> Goal[Ctx]:
     by previous goals in the parent sequence.
     """
 
-    def goal(ctx: Ctx, subst: Env, goals: Iterable[Goal[Ctx]] = goals) -> Step[Ctx]:
+    def goal(ctx: Ctx, subst: Env, goals: Iterable[Goal[Ctx, Env]] = goals) -> Step[Ctx, Env]:
         @tailcall
         def step(
-            yes: Emit[Ctx],
-            no: Next,
-            prune: Next,
+            yes: Emit[Ctx, Env],
+            no: Next[Env],
+            prune: Next[Env],
             ctx: Ctx = ctx,
             subst: Env = subst,
-            goals: Iterable[Goal[Ctx]] = goals,
-        ) -> Result:
+            goals: Iterable[Goal[Ctx, Env]] = goals,
+        ) -> Frame[Env]:
             return amb_from_iterable(goals)(ctx, subst)(yes, no, no)
 
         return step
@@ -220,24 +222,26 @@ def prunable[Ctx](goals: Iterable[Goal[Ctx]]) -> Goal[Ctx]:
     return goal
 
 
-def neg[Ctx](goal: Goal[Ctx]) -> Goal[Ctx]:
+def neg[Ctx, Env](goal: Goal[Ctx, Env]) -> Goal[Ctx, Env]:
     """
     Negation by failure. Succeeds only if the provided goal fails.
     """
     return prunable([amb(seq(goal, cut, fail), unit)])
 
 
-def if_then_else[Ctx](cond: Goal[Ctx], then: Goal[Ctx], else_: Goal[Ctx]) -> Goal[Ctx]:
+def if_then_else[Ctx, Env](
+    cond: Goal[Ctx, Env], then: Goal[Ctx, Env], else_: Goal[Ctx, Env]
+) -> Goal[Ctx, Env]:
     """
     Soft-cut conditional. If `cond` succeeds, commit to `then`; otherwise `else_`.
     """
 
-    def goal(ctx: Ctx, subst: Env) -> Step[Ctx]:
+    def goal(ctx: Ctx, subst: Env) -> Step[Ctx, Env]:
         cond_step = cond(ctx, subst)
 
         @tailcall
-        def step(yes: Emit[Ctx], no: Next, prune: Next) -> Result:
-            def yes_branch(ctx: Ctx, subst: Env, _: Next):
+        def step(yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env]) -> Frame[Env]:
+            def yes_branch(ctx: Ctx, subst: Env, _: Next[Env]):
                 return then(ctx, subst)(yes, no, prune)
 
             def no_branch():
@@ -250,35 +254,41 @@ def if_then_else[Ctx](cond: Goal[Ctx], then: Goal[Ctx], else_: Goal[Ctx]) -> Goa
     return goal
 
 
-def call_cc[Ctx](f: Callable[[Emit[Ctx], Next, Next], Step[Ctx]]) -> Step[Ctx]:
+def call_cc[Ctx, Env](
+    f: Callable[[Emit[Ctx, Env], Next[Env], Next[Env]], Step[Ctx, Env]],
+) -> Step[Ctx, Env]:
     """Call with Current Continuations"""
 
     @tailcall
-    def step(yes: Emit[Ctx], no: Next, prune: Next) -> Result:
+    def step(yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env]) -> Frame[Env]:
         return f(yes, no, prune)(yes, no, prune)
 
     return step
 
 
-def call_ec[Ctx](
-    fn: Callable[[Callable[[Goal[Ctx]], Goal[Ctx]]], Goal[Ctx]],
-) -> Goal[Ctx]:
+def call_ec[Ctx, Env](
+    fn: Callable[[Callable[[Goal[Ctx, Env]], Goal[Ctx, Env]]], Goal[Ctx, Env]],
+) -> Goal[Ctx, Env]:
     """Call with Escape Continuation"""
 
     def goal(
-        ctx: Ctx, subst: Env, fn: Callable[[Callable[[Goal[Ctx]], Goal[Ctx]]], Goal[Ctx]] = fn
-    ) -> Step[Ctx]:
+        ctx: Ctx,
+        subst: Env,
+        fn: Callable[[Callable[[Goal[Ctx, Env]], Goal[Ctx, Env]]], Goal[Ctx, Env]] = fn,
+    ) -> Step[Ctx, Env]:
         @tailcall
-        def step(yes: Emit[Ctx], no: Next, prune: Next) -> Result:
+        def step(yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env]) -> Frame[Env]:
             # escape: given a goal g, return a goal that, when run,
             # forwards any success to the captured `yes` and uses the
             # captured `prune` as the next continuation (thus pruning).
-            def escape(g: Goal[Ctx]) -> Goal[Ctx]:
-                def escaped_goal(inner_ctx: Ctx, inner_subst: Env) -> Step[Ctx]:
+            def escape(g: Goal[Ctx, Env]) -> Goal[Ctx, Env]:
+                def escaped_goal(inner_ctx: Ctx, inner_subst: Env) -> Step[Ctx, Env]:
                     @tailcall
-                    def inner_step(_yes: Emit[Ctx], _no: Next, _prune: Next) -> Result:
+                    def inner_step(
+                        _yes: Emit[Ctx, Env], _no: Next[Env], _prune: Next[Env]
+                    ) -> Frame[Env]:
                         # when g emits success, forward it to the captured yes
-                        def forward_emit(_ctx: Ctx, _subst: Env, _next: Next) -> Result:
+                        def forward_emit(_ctx: Ctx, _subst: Env, _next: Next[Env]) -> Frame[Env]:
                             return yes(_ctx, _subst, prune)
 
                         # run g; on success forward to captured yes, on failure fall back to
@@ -295,82 +305,3 @@ def call_ec[Ctx](
         return step
 
     return goal
-
-
-def deref_and_compress(subst: Env, term: Term) -> tuple[Env, Term]:
-    """
-    Resolve variable bindings and perform path compression.
-
-    Follows the chain of substitutions for a variable and updates the map
-    to point directly to the root value to speed up future lookups.
-    """
-
-    visited = set()
-    while isinstance(term, Variable) and term in subst:
-        if term in visited:
-            raise RuntimeError(f'Cyclic variable binding detected: {term}')
-        visited.add(term)
-        term = subst[term]
-    mm = subst.mutate()
-    for v in visited:
-        mm[v] = term
-    return mm.finish(), term
-
-
-def unify[Ctx](this: Term, that: Term) -> Goal[Ctx]:
-    """
-    Attempt to unify two terms.
-
-    Returns a goal that succeeds if the terms can be matched under the
-    current substitution, potentially extending it.
-    """
-
-    def goal(ctx: Ctx, subst: Env, this: Term = this, that: Term = that) -> Step[Ctx]:
-        subst, this = deref_and_compress(subst, this)
-        subst, that = deref_and_compress(subst, that)
-        return _unify(this, that)(ctx, subst)
-
-    return goal
-
-
-def unify_variable[Ctx](variable: Variable, term: Term) -> Goal[Ctx]:
-    def goal(ctx: Ctx, subst: Env, variable: Variable = variable, term: Term = term) -> Step[Ctx]:
-        subst, value = deref_and_compress(subst, variable)
-        assert value is variable
-        return unit(ctx, subst.set(variable, term))
-
-    return goal
-
-
-def unify_pairs[Ctx](*pairs: tuple[Term, Term]) -> Goal[Ctx]:
-    return lambda ctx, subst, pairs=pairs: tailcall(
-        seq_from_iterable(unify(this, that) for this, that in pairs)(ctx, subst)
-    )
-
-
-def unify_any[Ctx](variable: Variable, *values: Term) -> Goal[Ctx]:
-    return amb_from_iterable(unify(variable, value) for value in values)
-
-
-def _unify[Ctx](this: Term, that: Term) -> Goal[Ctx]:
-    match this, that:
-        case _ if this == that:
-            return unit
-
-        case Wildcard(), _:
-            return unit
-
-        case _, Wildcard():
-            return unit
-
-        case Variable(), _:
-            return unify_variable(this, that)
-
-        case _, Variable():
-            return unify_variable(that, this)
-
-        case Compound(), Compound() if this.indicator == that.indicator:
-            return unify_pairs(*zip(this.args, that.args))
-
-        case _:
-            return fail

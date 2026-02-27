@@ -109,11 +109,11 @@ __all__ = (
 def _bootstrap_database() -> Callable[[], Database]:
     from numbers import Number
 
-    from hornet.clauses import predicate, resolve
+    from hornet.clauses import Environment, predicate, resolve
+    from hornet.clauses import unify as _unify
     from hornet.combinators import cut as _cut
     from hornet.combinators import fail as _fail
     from hornet.combinators import then
-    from hornet.combinators import unify as _unify
     from hornet.combinators import unit as _unit
     from hornet.terms import (
         Add,
@@ -247,7 +247,7 @@ def _bootstrap_database() -> Callable[[], Database]:
 
     @db.tell
     @predicate(let(R, F))
-    def _(db: Database, subst: Subst) -> Step[Database]:
+    def _(db: Database, subst: Subst) -> Step[Database, Environment]:
         r = subst[R]
         assert isinstance(r, Variable)
         f = subst[F]
@@ -263,7 +263,7 @@ def _bootstrap_database() -> Callable[[], Database]:
     ) -> None:
         @db.tell
         @predicate(term)
-        def _(db: Database, subst: Subst) -> Step[Database]:
+        def _(db: Database, subst: Subst) -> Step[Database, Environment]:
             if match(subst[var]):
                 return _unit(db, subst.map)
             else:
@@ -284,7 +284,7 @@ def _bootstrap_database() -> Callable[[], Database]:
 
     @db.tell
     @predicate(univ(C, L))
-    def _(db: Database, subst: Subst) -> Step[Database]:
+    def _(db: Database, subst: Subst) -> Step[Database, Environment]:
         cin = subst[C]
         lin = subst[L]
         assert isinstance(cin, Functor | Atom | Variable)
@@ -301,17 +301,17 @@ def _bootstrap_database() -> Callable[[], Database]:
 
     @db.tell
     @predicate(call(G))
-    def _(db: Database, subst: Subst) -> Step[Database]:
+    def _(db: Database, subst: Subst) -> Step[Database, Environment]:
         return resolve(subst[G])(db, subst.map)
 
     @db.tell
     @predicate(throw(E))
-    def _(db: Database, subst: Subst) -> Step[Database]:
+    def _(db: Database, subst: Subst) -> Step[Database, Environment]:
         raise Exception(subst[E])
 
     @db.tell
     @predicate(ifelse(T, Y, N))
-    def _(db: Database, subst: Subst) -> Step[Database]:
+    def _(db: Database, subst: Subst) -> Step[Database, Environment]:
         return if_then_else(
             resolve(subst[T]),
             resolve(subst[Y]),
@@ -320,7 +320,7 @@ def _bootstrap_database() -> Callable[[], Database]:
 
     @db.tell
     @predicate(smaller(A, B))
-    def _(db: Database, subst: Subst) -> Step[Database]:
+    def _(db: Database, subst: Subst) -> Step[Database, Environment]:
         match subst[A], subst[B]:
             case int() | float() as a, int() | float() as b if a < b:
                 return _unit(db, subst.map)
@@ -329,7 +329,7 @@ def _bootstrap_database() -> Callable[[], Database]:
 
     @db.tell
     @predicate(greater(A, B))
-    def _(db: Database, subst: Subst) -> Step[Database]:
+    def _(db: Database, subst: Subst) -> Step[Database, Environment]:
         match subst[A], subst[B]:
             case int() | float() as a, int() | float() as b if a > b:
                 return _unit(db, subst.map)
@@ -338,7 +338,7 @@ def _bootstrap_database() -> Callable[[], Database]:
 
     @db.tell
     @predicate(length(L, N))
-    def _(db: Database, subst: Subst) -> Step[Database]:
+    def _(db: Database, subst: Subst) -> Step[Database, Environment]:
         count = 0
         tail = subst[L]
         length = subst[N]
@@ -353,7 +353,7 @@ def _bootstrap_database() -> Callable[[], Database]:
 
     @db.tell
     @predicate(join(L, S))
-    def _(db: Database, subst: Subst) -> Step[Database]:
+    def _(db: Database, subst: Subst) -> Step[Database, Environment]:
         items = subst[L]
         assert isinstance(items, Cons | Empty)
         result = to_python_list(items)
@@ -362,24 +362,24 @@ def _bootstrap_database() -> Callable[[], Database]:
 
     @db.tell
     @predicate(findall(O, G, L))
-    def _(db: Database, subst: Subst) -> Step[Database]:
+    def _(db: Database, subst: Subst) -> Step[Database, Environment]:
         obj = subst[O]
         assert isinstance(obj, Variable)
         goal = subst[G]
         assert isinstance(goal, NonVariable)
-        items = promote([s[obj] for s in db.ask(goal, subst=subst.map)])
+        items = promote([s[obj] for s in db.ask(goal, subst=subst)])
         return _unify(subst[L], items)(db, subst.map)
 
     # Printing predicates
     @db.tell
     @predicate(write(V))
-    def _(db: Database, subst: Subst) -> Step[Database]:
+    def _(db: Database, subst: Subst) -> Step[Database, Environment]:
         print(subst[V], end='')
         return _unit(db, subst.map)
 
     @db.tell
     @predicate(writeln(V))
-    def _(db: Database, subst: Subst) -> Step[Database]:
+    def _(db: Database, subst: Subst) -> Step[Database, Environment]:
         print(subst[V])
         return _unit(db, subst.map)
 
