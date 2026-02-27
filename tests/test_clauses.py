@@ -664,7 +664,7 @@ def test_predicate_decorator():
     @d.tell
     @predicate(Atom('ping')(X))
     def _(db: Database, subst: Subst) -> Step[Database, Environment]:
-        return unit(db, subst.map)
+        return unit(db, subst.env)
 
     results = solutions(d, Atom('ping')(Atom('hello')))
     assert len(results) == 1
@@ -678,7 +678,7 @@ def test_predicate_can_read_subst():
     @predicate(Atom('spy')(X))
     def _(db: Database, subst: Subst) -> Step[Database, Environment]:
         seen.append(subst[X])
-        return unit(db, subst.map)
+        return unit(db, subst.env)
 
     solutions(d, Atom('spy')(Atom('value')))
     assert seen == [Atom('value')]
@@ -784,7 +784,7 @@ def test_python_rule_atom_head():
     @d.tell
     @predicate(Atom('beep'))
     def _(db: Database, subst: Subst) -> Step[Database, Environment]:
-        return unit(db, subst.map)
+        return unit(db, subst.env)
 
     results = solutions(d, Atom('beep'))
     assert len(results) == 1
@@ -847,7 +847,7 @@ def test_python_rule_indicator():
     @d.tell
     @predicate(Atom('boop'))
     def _(db: Database, subst: Subst) -> Step[Database, Environment]:
-        return unit(db, subst.map)
+        return unit(db, subst.env)
 
     clause, indicator = make_clause(Atom('boop'))
     assert indicator == ('boop', 0)
