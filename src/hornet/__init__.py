@@ -252,7 +252,7 @@ def _bootstrap_database() -> Callable[[], Database]:
         assert isinstance(r, Variable)
         f = subst[F]
         f1 = eval_term(f, subst)
-        return then(_unify(r, f1), _cut)(db, subst.map)
+        return then(_unify(r, f1), _cut)(db, subst.env)
 
     # Type checking predicates
     def check(
@@ -265,9 +265,9 @@ def _bootstrap_database() -> Callable[[], Database]:
         @predicate(term)
         def _(db: Database, subst: Subst) -> Step[Database, Environment]:
             if match(subst[var]):
-                return _unit(db, subst.map)
+                return _unit(db, subst.env)
             else:
-                return _fail(db, subst.map)
+                return _fail(db, subst.env)
 
     check(db, is_var(V), V, lambda term: isinstance(term, Variable))
     check(db, nonvar(V), V, lambda term: not isinstance(term, Variable))
@@ -290,19 +290,19 @@ def _bootstrap_database() -> Callable[[], Database]:
         assert isinstance(cin, Functor | Atom | Variable)
         match cin:
             case Atom(name=name):
-                return _unify(lin, promote([cin]))(db, subst.map)
+                return _unify(lin, promote([cin]))(db, subst.env)
             case Functor(name=name, args=args):
-                return _unify(lin, promote([Atom(name), *args]))(db, subst.map)
+                return _unify(lin, promote([Atom(name), *args]))(db, subst.env)
             case Variable():
                 assert isinstance(lin, Cons | Empty)
                 head, *tail = to_python_list(lin)
                 assert isinstance(head, Atom)
-                return _unify(cin, Functor(head.name, *tail))(db, subst.map)
+                return _unify(cin, Functor(head.name, *tail))(db, subst.env)
 
     @db.tell
     @predicate(call(G))
     def _(db: Database, subst: Subst) -> Step[Database, Environment]:
-        return resolve(subst[G])(db, subst.map)
+        return resolve(subst[G])(db, subst.env)
 
     @db.tell
     @predicate(throw(E))
@@ -316,25 +316,25 @@ def _bootstrap_database() -> Callable[[], Database]:
             resolve(subst[T]),
             resolve(subst[Y]),
             resolve(subst[N]),
-        )(db, subst.map)
+        )(db, subst.env)
 
     @db.tell
     @predicate(smaller(A, B))
     def _(db: Database, subst: Subst) -> Step[Database, Environment]:
         match subst[A], subst[B]:
             case int() | float() as a, int() | float() as b if a < b:
-                return _unit(db, subst.map)
+                return _unit(db, subst.env)
             case _:
-                return _fail(db, subst.map)
+                return _fail(db, subst.env)
 
     @db.tell
     @predicate(greater(A, B))
     def _(db: Database, subst: Subst) -> Step[Database, Environment]:
         match subst[A], subst[B]:
             case int() | float() as a, int() | float() as b if a > b:
-                return _unit(db, subst.map)
+                return _unit(db, subst.env)
             case _:
-                return _fail(db, subst.map)
+                return _fail(db, subst.env)
 
     @db.tell
     @predicate(length(L, N))
@@ -345,7 +345,7 @@ def _bootstrap_database() -> Callable[[], Database]:
         while True:
             match tail:
                 case Empty():
-                    return _unify(count, length)(db, subst.map)
+                    return _unify(count, length)(db, subst.env)
                 case Cons(tail=tail):
                     count += 1
                 case _:
@@ -358,7 +358,7 @@ def _bootstrap_database() -> Callable[[], Database]:
         assert isinstance(items, Cons | Empty)
         result = to_python_list(items)
         assert all(isinstance(each, str) for each in result)
-        return _unify(subst[S], ''.join(map(str, result)))(db, subst.map)
+        return _unify(subst[S], ''.join(map(str, result)))(db, subst.env)
 
     @db.tell
     @predicate(findall(O, G, L))
@@ -368,20 +368,20 @@ def _bootstrap_database() -> Callable[[], Database]:
         goal = subst[G]
         assert isinstance(goal, NonVariable)
         items = promote([s[obj] for s in db.ask(goal, subst=subst)])
-        return _unify(subst[L], items)(db, subst.map)
+        return _unify(subst[L], items)(db, subst.env)
 
     # Printing predicates
     @db.tell
     @predicate(write(V))
     def _(db: Database, subst: Subst) -> Step[Database, Environment]:
         print(subst[V], end='')
-        return _unit(db, subst.map)
+        return _unit(db, subst.env)
 
     @db.tell
     @predicate(writeln(V))
     def _(db: Database, subst: Subst) -> Step[Database, Environment]:
         print(subst[V])
-        return _unit(db, subst.map)
+        return _unit(db, subst.env)
 
     db.tell(
         #

@@ -172,18 +172,18 @@ def _unify(this: Term, that: Term) -> Goal[Database, Environment]:
 
 @dataclass(frozen=True, slots=True)
 class Subst(Mapping[Variable, Term]):
-    map: Environment
     env: Environment
+    renaming: Environment
 
     def __len__(self) -> int:
-        return len(self.map)
+        return len(self.env)
 
     def __iter__(self) -> Iterator[Variable]:
-        yield from self.map.keys()
+        yield from self.env.keys()
 
     def __getitem__(self, variable: Term) -> Term:
         if isinstance(variable, Variable):
-            return self.actualize(self.env.get(variable, variable))
+            return self.actualize(self.renaming.get(variable, variable))
         return self.actualize(variable)
 
     def actualize(self, obj: Term) -> Term:
@@ -197,16 +197,16 @@ class Subst(Mapping[Variable, Term]):
 
     def deref(self, obj: Term) -> Term:
         visited: set[Variable] = set()
-        while isinstance(obj, Variable) and obj in self.map:
+        while isinstance(obj, Variable) and obj in self.env:
             if obj in visited:
                 raise RuntimeError(f'Cyclic variable binding detected: {obj}')
             visited.add(obj)
-            obj = self.map[obj]
+            obj = self.env[obj]
         return obj
 
 
 def fresh(clause: Clause) -> Clause:
-    memo: Memo = {id(var): fresh_variable() for var in clause.env.values()}
+    memo: Memo = {id(var): fresh_variable() for var in clause.renaming.values()}
     memo.update(clause.ground)
     return deepcopy(clause, memo)
 
@@ -242,7 +242,7 @@ def resolve(query: Term) -> Goal[Database, Environment]:
 
 @dataclass(frozen=True, slots=True)
 class Clause(ABC):
-    env: Environment
+    renaming: Environment
     ground: Memo
 
     @abstractmethod
@@ -285,7 +285,7 @@ class AtomicPythonRule(Clause):
     body: PythonBody
 
     def __call__(self, query: NonVariable) -> Goal[Database, Environment]:
-        return self.body(self.env)
+        return self.body(self.renaming)
 
 
 @dataclass(frozen=True, slots=True)
@@ -294,7 +294,7 @@ class CompoundPythonRule(Clause):
     body: PythonBody
 
     def __call__(self, query: NonVariable) -> Goal[Database, Environment]:
-        return then(unify(query, self.head), self.body(self.env))
+        return then(unify(query, self.head), self.body(self.renaming))
 
 
 class Database(ChainMap[Indicator, list[Clause]]):
@@ -307,12 +307,12 @@ class Database(ChainMap[Indicator, list[Clause]]):
             self.setdefault(indicator, []).append(clause)
 
     def ask(self, *conjuncts: NonVariable, subst: Subst | None = None) -> Iterable[Subst]:
-        query, env = make_term(AllOf(*conjuncts))
+        query, renaming = make_term(AllOf(*conjuncts))
         goal = resolve(query)
-        step = goal(self, Map() if subst is None else subst.map)
+        step = goal(self, Map() if subst is None else subst.env)
         _failure: Next[Environment] = cast(Next[Environment], failure)
         for new_subst in trampoline(lambda: step(success, _failure, _failure)):
-            yield Subst(new_subst, env)
+            yield Subst(new_subst, renaming)
 
 
 def ground_children(term: Term) -> Iterator[Term]:
@@ -338,18 +338,18 @@ def get_var(var: Variable) -> State[FreshState, Variable | None]:
 
 def add_var(canonical: Variable, renamed: Variable) -> State[FreshState, FreshState]:
     def setter(state: FreshState) -> FreshState:
-        env, memo = state
-        env[canonical] = renamed
-        return env, memo
+        renaming, memo = state
+        renaming[canonical] = renamed
+        return renaming, memo
 
     return set_state(setter)
 
 
 def add_ground(term: Term) -> State[FreshState, FreshState]:
     def setter(state: FreshState) -> FreshState:
-        env, memo = state
+        renaming, memo = state
         memo[id(term)] = term
-        return env, memo
+        return renaming, memo
 
     return set_state(setter)
 
@@ -439,40 +439,40 @@ def new_clause(term: Term) -> StateOp[FreshState, tuple[Clause, Indicator]]:
     match term:
         case Atom(name=name) as head:
             head, _ = yield new_term(head)
-            env, memo = yield get_state()
+            renaming, memo = yield get_state()
             memo = prune_ground_map(memo)
-            return AtomicFact(env, memo), (name, 0)
+            return AtomicFact(renaming, memo), (name, 0)
 
         case Compound(name=name, args=args) as head:
             head, _ = yield new_term(head)
-            env, memo = yield get_state()
+            renaming, memo = yield get_state()
             memo = prune_ground_map(memo)
-            return CompoundFact(env, memo, head), (name, len(args))
+            return CompoundFact(renaming, memo, head), (name, len(args))
 
         case HornetRule(head=Atom(name=name) as head, body=body):
             body, _ = yield new_term(body)
-            env, memo = yield get_state()
+            renaming, memo = yield get_state()
             memo = prune_ground_map(memo)
-            return AtomicRule(env, memo, body), (name, 0)
+            return AtomicRule(renaming, memo, body), (name, 0)
 
         case HornetRule(head=Functor(name=name, args=args) as head, body=body):
             head, _ = yield new_term(head)
             body, _ = yield new_term(body)
-            env, memo = yield get_state()
+            renaming, memo = yield get_state()
             memo = prune_ground_map(memo)
-            return CompoundRule(env, memo, head, body), (name, len(args))
+            return CompoundRule(renaming, memo, head, body), (name, len(args))
 
         case PythonRule(head=Atom(name=name) as head, body=body):
             head, _ = yield new_term(head)
-            env, memo = yield get_state()
+            renaming, memo = yield get_state()
             memo = prune_ground_map(memo)
-            return AtomicPythonRule(env, memo, body), (name, 0)
+            return AtomicPythonRule(renaming, memo, body), (name, 0)
 
         case PythonRule(head=Functor(name=name, args=args) as head, body=body):
             head, _ = yield new_term(head)
-            env, memo = yield get_state()
+            renaming, memo = yield get_state()
             memo = prune_ground_map(memo)
-            return CompoundPythonRule(env, memo, head, body), (name, len(args))
+            return CompoundPythonRule(renaming, memo, head, body), (name, len(args))
 
         case _:
             raise TypeError(f'Unsupported Term node: {term}')
