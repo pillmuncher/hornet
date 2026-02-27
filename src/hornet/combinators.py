@@ -29,11 +29,11 @@ type Step[Ctx, Env] = Callable[[Emit[Ctx, Env], Next[Env], Next[Env]], Frame[Env
 type Goal[Ctx, Env] = Callable[[Ctx, Env], Step[Ctx, Env]]
 
 
-def success[Env](ctx: Any, subst: Env, no: Next[Env]) -> Frame[Env]:
+def success[Env](ctx: Any, env: Env, no: Next[Env]) -> Frame[Env]:
     """
     The primitive success handler that returns the current substitution.
     """
-    return subst, no
+    return env, no
 
 
 def failure[Env]() -> Frame[Env]:
@@ -57,29 +57,29 @@ def bind[Ctx, Env](bind_step: Step[Ctx, Env], goal: Goal[Ctx, Env]) -> Step[Ctx,
         goal: Goal[Ctx, Env] = goal,
     ) -> Frame[Env]:
         @tailcall
-        def bound(ctx: Ctx, subst: Env, then_no: Next[Env]) -> Frame[Env]:
-            return goal(ctx, subst)(yes, then_no, prune)
+        def bound(ctx: Ctx, env: Env, then_no: Next[Env]) -> Frame[Env]:
+            return goal(ctx, env)(yes, then_no, prune)
 
         return bind_step(bound, no, prune)
 
     return step
 
 
-def unit[Ctx, Env](ctx: Ctx, subst: Env) -> Step[Ctx, Env]:
+def unit[Ctx, Env](ctx: Ctx, env: Env) -> Step[Ctx, Env]:
     """
     A goal that always succeeds once with the current substitution.
     """
 
     @tailcall
     def step(
-        yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env], ctx: Ctx = ctx, subst: Env = subst
+        yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env], ctx: Ctx = ctx, env: Env = env
     ) -> Frame[Env]:
-        return yes(ctx, subst, no)
+        return yes(ctx, env, no)
 
     return step
 
 
-def cut[Ctx, Env](ctx: Ctx, subst: Env) -> Step[Ctx, Env]:
+def cut[Ctx, Env](ctx: Ctx, env: Env) -> Step[Ctx, Env]:
     """
     A goal that succeeds once but prunes all other choices in its scope.
 
@@ -89,21 +89,21 @@ def cut[Ctx, Env](ctx: Ctx, subst: Env) -> Step[Ctx, Env]:
 
     @tailcall
     def step(
-        yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env], ctx: Ctx = ctx, subst: Env = subst
+        yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env], ctx: Ctx = ctx, env: Env = env
     ) -> Frame[Env]:
-        return yes(ctx, subst, prune)
+        return yes(ctx, env, prune)
 
     return step
 
 
-def fail[Ctx, Env](ctx: Ctx, subst: Env) -> Step[Ctx, Env]:
+def fail[Ctx, Env](ctx: Ctx, env: Env) -> Step[Ctx, Env]:
     """
     A goal that always fails immediately.
     """
 
     @tailcall
     def step(
-        yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env], ctx: Ctx = ctx, subst: Env = subst
+        yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env], ctx: Ctx = ctx, env: Env = env
     ) -> Frame[Env]:
         return no()
 
@@ -116,9 +116,9 @@ def then[Ctx, Env](goal1: Goal[Ctx, Env], goal2: Goal[Ctx, Env]) -> Goal[Ctx, En
     """
 
     def goal(
-        ctx: Ctx, subst: Env, goal1: Goal[Ctx, Env] = goal1, goal2: Goal[Ctx, Env] = goal2
+        ctx: Ctx, env: Env, goal1: Goal[Ctx, Env] = goal1, goal2: Goal[Ctx, Env] = goal2
     ) -> Step[Ctx, Env]:
-        return bind(goal1(ctx, subst), goal2)
+        return bind(goal1(ctx, env), goal2)
 
     return goal
 
@@ -144,7 +144,7 @@ def choice[Ctx, Env](goal1: Goal[Ctx, Env], goal2: Goal[Ctx, Env]) -> Goal[Ctx, 
     """
 
     def goal(
-        ctx: Ctx, subst: Env, goal1: Goal[Ctx, Env] = goal1, goal2: Goal[Ctx, Env] = goal2
+        ctx: Ctx, env: Env, goal1: Goal[Ctx, Env] = goal1, goal2: Goal[Ctx, Env] = goal2
     ) -> Step[Ctx, Env]:
         @tailcall
         def step(
@@ -154,9 +154,9 @@ def choice[Ctx, Env](goal1: Goal[Ctx, Env], goal2: Goal[Ctx, Env]) -> Goal[Ctx, 
             goal1: Goal[Ctx, Env] = goal1,
             goal2: Goal[Ctx, Env] = goal2,
         ) -> Frame[Env]:
-            return goal1(ctx, subst)(
+            return goal1(ctx, env)(
                 yes,
-                tailcall(lambda: goal2(ctx, subst)(yes, no, prune)),
+                tailcall(lambda: goal2(ctx, env)(yes, no, prune)),
                 prune,
             )
 
@@ -170,18 +170,18 @@ def amb_from_iterable[Ctx, Env](goals: Iterable[Goal[Ctx, Env]]) -> Goal[Ctx, En
     Ambiguous choice; tries each goal in order via backtracking.
     """
 
-    def goal(ctx: Ctx, subst: Env) -> Step[Ctx, Env]:
+    def goal(ctx: Ctx, env: Env) -> Step[Ctx, Env]:
         @tailcall
         def step(
             yes: Emit[Ctx, Env],
             no: Next[Env],
             prune: Next[Env],
             ctx: Ctx = ctx,
-            subst: Env = subst,
+            env: Env = env,
             goals: Iterable[Goal[Ctx, Env]] = goals,
         ) -> Frame[Env]:
             amb_goal: Goal[Ctx, Env] = reduce(flip(choice), reversed(tuple(goals)), fail)  # pyright: ignore
-            return amb_goal(ctx, subst)(yes, no, prune)
+            return amb_goal(ctx, env)(yes, no, prune)
 
         return step
 
@@ -205,17 +205,17 @@ def prunable[Ctx, Env](goals: Iterable[Goal[Ctx, Env]]) -> Goal[Ctx, Env]:
     by previous goals in the parent sequence.
     """
 
-    def goal(ctx: Ctx, subst: Env, goals: Iterable[Goal[Ctx, Env]] = goals) -> Step[Ctx, Env]:
+    def goal(ctx: Ctx, env: Env, goals: Iterable[Goal[Ctx, Env]] = goals) -> Step[Ctx, Env]:
         @tailcall
         def step(
             yes: Emit[Ctx, Env],
             no: Next[Env],
             prune: Next[Env],
             ctx: Ctx = ctx,
-            subst: Env = subst,
+            env: Env = env,
             goals: Iterable[Goal[Ctx, Env]] = goals,
         ) -> Frame[Env]:
-            return amb_from_iterable(goals)(ctx, subst)(yes, no, no)
+            return amb_from_iterable(goals)(ctx, env)(yes, no, no)
 
         return step
 
@@ -236,16 +236,16 @@ def if_then_else[Ctx, Env](
     Soft-cut conditional. If `cond` succeeds, commit to `then`; otherwise `else_`.
     """
 
-    def goal(ctx: Ctx, subst: Env) -> Step[Ctx, Env]:
-        cond_step = cond(ctx, subst)
+    def goal(ctx: Ctx, env: Env) -> Step[Ctx, Env]:
+        cond_step = cond(ctx, env)
 
         @tailcall
         def step(yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env]) -> Frame[Env]:
-            def yes_branch(ctx: Ctx, subst: Env, _: Next[Env]):
-                return then(ctx, subst)(yes, no, prune)
+            def yes_branch(ctx: Ctx, env: Env, _: Next[Env]):
+                return then(ctx, env)(yes, no, prune)
 
             def no_branch():
-                return else_(ctx, subst)(yes, no, prune)
+                return else_(ctx, env)(yes, no, prune)
 
             return cond_step(yes_branch, no_branch, prune)
 
@@ -273,7 +273,7 @@ def call_ec[Ctx, Env](
 
     def goal(
         ctx: Ctx,
-        subst: Env,
+        env: Env,
         fn: Callable[[Callable[[Goal[Ctx, Env]], Goal[Ctx, Env]]], Goal[Ctx, Env]] = fn,
     ) -> Step[Ctx, Env]:
         @tailcall
@@ -300,7 +300,7 @@ def call_ec[Ctx, Env](
                 return escaped_goal
 
             # call user-supplied fn with our escape and run the resulting goal
-            return fn(escape)(ctx, subst)(yes, no, prune)
+            return fn(escape)(ctx, env)(yes, no, prune)
 
         return step
 

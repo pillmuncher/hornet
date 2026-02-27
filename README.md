@@ -159,7 +159,7 @@ def _(db: Database, subst: Subst) -> Step[Database, Environment]:
         resolve(subst[T]),
         resolve(subst[Y]),
         resolve(subst[N]),
-    )(db, subst.map)
+    )(db, subst.env)
 ```
 
 ---
