@@ -145,7 +145,7 @@ Register native Python predicates using the `@predicate` decorator. This is how 
 
 ```python
 from hornet import database, predicate
-from hornet.clauses import Database, Subst
+from hornet.clauses import Database, Environment, Subst
 from hornet.combinators import Step, if_then_else
 from hornet.clauses import resolve
 from hornet.symbols import T, Y, N
@@ -154,7 +154,7 @@ db = database()
 
 @db.tell
 @predicate(ifelse(T, Y, N))
-def _(db: Database, subst: Subst) -> Step[Database]:
+def _(db: Database, subst: Subst) -> Step[Database, Environment]:
     return if_then_else(
         resolve(subst[T]),
         resolve(subst[Y]),

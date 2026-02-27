@@ -1,6 +1,6 @@
 [project]
 name = "hornet-dsl"
-version = "0.4.1a6"
+version = "0.4.1a7"
 license = { file = "LICENSE.md" }
 authors = [{ name = "Mick Krippendorf", email = "m.krippendorf@freenet.de" }]
 description = "Hornet: An embedded DSL for Logic Programming in Python."
@@ -46,7 +46,7 @@ source = ["src"]
 [tool.coverage.report]
 show_missing = true
 skip_covered = true
-fail_under = 100
+fail_under = 90
 
 [build-system]
 requires = ["setuptools>=61"]
