@@ -8,8 +8,15 @@ from hypothesis import given
 from hypothesis import strategies as st
 from immutables import Map
 
+from hornet.clauses import (
+    Environment,
+    deref_and_compress,
+    unify,
+    unify_any,
+    unify_pairs,
+    unify_variable,
+)
 from hornet.combinators import (
-    Env,
     amb,
     amb_from_iterable,
     bind,
@@ -17,7 +24,6 @@ from hornet.combinators import (
     call_ec,
     choice,
     cut,
-    deref_and_compress,
     fail,
     failure,
     if_then_else,
@@ -27,29 +33,25 @@ from hornet.combinators import (
     seq_from_iterable,
     success,
     then,
-    unify,
-    unify_any,
-    unify_pairs,
-    unify_variable,
     unit,
 )
 from hornet.tailcalls import trampoline
-from hornet.terms import Atom, Cons, Empty, Functor, Variable, Wildcard
+from hornet.terms import Atom, Functor, Variable, Wildcard
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-EMPTY_ENV: Env = Map()
+EMPTY_ENV: Environment = Map()
 
 
-def run(goal, subst: Env = EMPTY_ENV) -> list[Env]:
+def run(goal, subst: Environment = EMPTY_ENV) -> list[Environment]:
     """Run a goal against a substitution and collect all results."""
     step = goal(None, subst)
     return list(trampoline(lambda: step(success, failure, failure)))
 
 
-def ctx_run(goal, ctx=None, subst: Env = EMPTY_ENV) -> list[Env]:
+def ctx_run(goal, ctx=None, subst: Environment = EMPTY_ENV) -> list[Environment]:
     step = goal(ctx, subst)
     return list(trampoline(lambda: step(success, failure, failure)))
 
@@ -225,7 +227,6 @@ def test_neg_does_not_bind():
     assert results == []
 
     # neg(unify(x, 42)) succeeds when x is already bound to something else
-    from immutables import Map
     subst = Map().set(x, Atom('other'))
     results = run(neg(unify(x, 42)), subst)
     assert len(results) == 1
@@ -462,12 +463,12 @@ def test_choice_depth(n: int):
 
 
 # ---------------------------------------------------------------------------
-# Additional coverage: line 342 — unify_variable already-bound recursive case
+# Additional coverage: unify_variable already-bound recursive case
 # ---------------------------------------------------------------------------
 
 
 def test_unify_variable_bound_to_variable():
-    # line 342: variable is bound to another variable, triggers recursive unify
+    # variable is bound to another variable, triggers recursive unify
     x, y = Variable('X'), Variable('Y')
     subst = Map().set(x, y)  # X -> Y, Y unbound
     results = run(unify(x, Atom('a')), subst)

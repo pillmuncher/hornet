@@ -249,9 +249,9 @@ class UnaryOperator(Operator, ABC):
         if not isinstance(self.operand, (UnaryOperator, BinaryOperator)):
             return f'{self.name}{str(self.operand)}'
         elif rank(self.operand) < rank(self):
-            return f'{self.name}{str(self.operand)}'
-        else:
             return f'{self.name}({str(self.operand)})'
+        else:
+            return f'{self.name}{str(self.operand)}'
 
 
 @dataclass(frozen=True, slots=True, init=False)

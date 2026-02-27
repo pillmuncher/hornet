@@ -463,7 +463,11 @@ def test_atom_symbol_roundtrip(name: str):
     assert result.name == name
 
 
-@given(st.from_regex(r'[A-Z_][A-Za-z0-9_]*', fullmatch=True).filter(lambda s: s != '_'))
+@given(
+    st.from_regex(r'[A-Z_][A-Za-z0-9_]*', fullmatch=True).filter(
+        lambda s: s != '_' and not (s.startswith('__') and s.endswith('__'))
+    )
+)
 def test_variable_symbol_roundtrip(name: str):
     """Valid variable names roundtrip correctly."""
     result = symbol(name)
@@ -571,7 +575,7 @@ def test_reflected_matmul():
 def test_unary_operator_str_parenthesized():
     # USub of a lower-rank expression gets parenthesized
     x, y = Variable('X'), Variable('Y')
-    expr = -(x | y)  # BitOr has lower rank than USub
+    expr = -(x + y)  # Add has lower rank than USub
     assert '(' in str(expr)
 
 

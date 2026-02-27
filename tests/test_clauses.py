@@ -4,27 +4,20 @@
 """Tests for hornet.clauses and the bootstrapped database (hornet.__init__)."""
 
 import pytest
-from hypothesis import given, settings
+from hypothesis import given
 from hypothesis import strategies as st
 
 from hornet import database
-from hornet.clauses import Database, Subst, make_clause, make_term, predicate, resolve
-from hornet.combinators import unit
+from hornet.clauses import Database, Environment, Subst, make_clause, make_term, predicate, resolve
+from hornet.combinators import Step, unit
 from hornet.symbols import (
     A,
     B,
-    C,
-    G,
-    H,
     L,
     N,
     R,
     S,
-    T,
-    V,
     X,
-    Y,
-    Z,
     append,
     arithmetic_equal,
     call,
@@ -62,10 +55,8 @@ from hornet.symbols import (
     true,
     unequal,
     univ,
-    write,
-    writeln,
 )
-from hornet.terms import Atom, Cons, DCGs, Empty, Functor, HornetRule, Variable, promote
+from hornet.terms import Atom, DCGs, Empty, Functor, HornetRule, Variable, promote
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -92,7 +83,7 @@ def first(db: Database, *goals) -> Subst:
 def test_make_term_atom():
     term, env = make_term(Atom('foo'))
     assert term == Atom('foo')
-    assert env == {}
+    assert len(env) == 0
 
 
 def test_make_term_variable_renamed():
@@ -672,7 +663,7 @@ def test_predicate_decorator():
 
     @d.tell
     @predicate(Atom('ping')(X))
-    def _(db: Database, subst: Subst):
+    def _(db: Database, subst: Subst) -> Step[Database, Environment]:
         return unit(db, subst.map)
 
     results = solutions(d, Atom('ping')(Atom('hello')))
@@ -685,7 +676,7 @@ def test_predicate_can_read_subst():
 
     @d.tell
     @predicate(Atom('spy')(X))
-    def _(db: Database, subst: Subst):
+    def _(db: Database, subst: Subst) -> Step[Database, Environment]:
         seen.append(subst[X])
         return unit(db, subst.map)
 
@@ -707,14 +698,14 @@ def test_member_count(n: int):
 
 
 @given(st.lists(st.integers(), min_size=0, max_size=10))
-def test_length_matches_python_len(items: list):
+def test_length_matches_python_len(items: list[int]):
     d = db()
     results = solutions(d, length(items, N))
     assert results[0][N] == len(items)
 
 
 @given(st.lists(st.integers(), min_size=0, max_size=8))
-def test_reverse_involution(items: list):
+def test_reverse_involution(items: list[int]):
     d = db()
     results = solutions(d, reverse(items, R))
     assert len(results) == 1
@@ -743,7 +734,7 @@ def test_arithmetic_equal_reflexive(a: int, b: int):
     st.lists(st.integers(), min_size=0, max_size=5),
     st.lists(st.integers(), min_size=0, max_size=5),
 )
-def test_append_length_sum(xs: list, ys: list):
+def test_append_length_sum(xs: list[int], ys: list[int]):
     d = db()
     results = solutions(d, append(xs, ys, L))
     assert len(results) == 1
@@ -759,30 +750,21 @@ def test_append_length_sum(xs: list, ys: list):
 def test_subst_len():
     from immutables import Map
 
-    from hornet.clauses import Subst
-    from hornet.terms import Variable
-
     x = Variable('X')
-    subst = Subst(Map().set(x, 42), {})
+    subst = Subst(Map().set(x, 42), Map())
     assert len(subst) == 1
 
 
 def test_subst_cyclic_raises():
     from immutables import Map
 
-    from hornet.clauses import Subst
-    from hornet.terms import Variable
-
     x = Variable('X')
-    subst = Subst(Map().set(x, x), {x: x})
+    subst = Subst(Map().set(x, x), Map().set(x, x))
     with pytest.raises(RuntimeError, match='Cyclic'):
         subst[x]
 
 
 def test_resolve_unsupported_type_raises():
-    from hornet.clauses import resolve
-    from hornet.terms import Variable
-
     with pytest.raises(TypeError):
         resolve(Variable('X'))
 
@@ -797,14 +779,11 @@ def test_atomic_fact_via_atom_head_rule():
 
 def test_python_rule_atom_head():
     # Covers AtomicPythonRule branch in new_clause
-    from hornet.clauses import Database, Subst, predicate
-    from hornet.combinators import Step, unit
-
     d = db()
 
     @d.tell
     @predicate(Atom('beep'))
-    def _(db: Database, subst: Subst) -> Step[Database]:
+    def _(db: Database, subst: Subst) -> Step[Database, Environment]:
         return unit(db, subst.map)
 
     results = solutions(d, Atom('beep'))
@@ -812,7 +791,6 @@ def test_python_rule_atom_head():
 
 
 def test_make_term_wildcard():
-    from hornet.clauses import make_term
     from hornet.terms import WILDCARD
 
     term, env = make_term(WILDCARD)
@@ -820,7 +798,6 @@ def test_make_term_wildcard():
 
 
 def test_make_term_allof_ground():
-    from hornet.clauses import make_term
     from hornet.terms import AllOf
 
     term, env = make_term(AllOf(Atom('a'), Atom('b')))
@@ -828,34 +805,26 @@ def test_make_term_allof_ground():
 
 
 def test_make_term_cons_ground():
-    from hornet.clauses import make_term
-
-    term, env = make_term(promote([Atom('a'), Atom('b')]))
     from hornet.terms import Cons
 
+    term, env = make_term(promote([Atom('a'), Atom('b')]))
     assert isinstance(term, Cons)
 
 
 def test_make_term_unary_operator():
-    from hornet.clauses import make_term
-    from hornet.terms import USub, Variable
+    from hornet.terms import USub
 
     x = Variable('X')
     term, env = make_term(USub(x))
-    from hornet.terms import USub as U
-
-    assert isinstance(term, U)
+    assert isinstance(term, USub)
 
 
 def test_make_term_binary_operator():
-    from hornet.clauses import make_term
-    from hornet.terms import Add, Variable
+    from hornet.terms import Add
 
     x, y = Variable('X'), Variable('Y')
     term, env = make_term(x + y)
-    from hornet.terms import Add as A
-
-    assert isinstance(term, A)
+    assert isinstance(term, Add)
 
 
 # ---------------------------------------------------------------------------
@@ -864,7 +833,6 @@ def test_make_term_binary_operator():
 
 
 def test_atomic_fact_no_args():
-    # line 337: bare Atom told as a fact (no args, no body)
     d = db()
     d.tell(Atom('ping'))
     results = solutions(d, Atom('ping'))
@@ -872,58 +840,42 @@ def test_atomic_fact_no_args():
 
 
 def test_python_rule_indicator():
-    # line 71: PythonRule.indicator accessed during database lookup
-    from hornet.clauses import Database, PythonRule, Subst, predicate
-    from hornet.combinators import Step, unit
+    from hornet.clauses import PythonRule
 
     d = db()
 
     @d.tell
     @predicate(Atom('boop'))
-    def _(db: Database, subst: Subst) -> Step[Database]:
+    def _(db: Database, subst: Subst) -> Step[Database, Environment]:
         return unit(db, subst.map)
-
-    # indicator is accessed when resolving — confirm it matches
-    from hornet.clauses import make_clause
-    from hornet.terms import HornetRule
 
     clause, indicator = make_clause(Atom('boop'))
     assert indicator == ('boop', 0)
 
 
 def test_subst_deref_cyclic_direct():
-    # line 146: cyclic detection inside deref itself
     from immutables import Map
-
-    from hornet.clauses import Subst
-    from hornet.terms import Variable
 
     x, y = Variable('X'), Variable('Y')
     # X -> Y -> X cycle
-    subst = Subst(Map().set(x, y).set(y, x), {x: x, y: y})
+    subst = Subst(Map().set(x, y).set(y, x), Map().set(x, x).set(y, y))
     with pytest.raises(RuntimeError, match='Cyclic'):
         subst[x]
 
 
 def test_resolve_non_callable_raises():
-    # line 238: resolve called with a term that isn't Atom/Functor/AllOf/AnyOf/Invert
-    from hornet.clauses import resolve
-    from hornet.terms import EMPTY, Atom, Cons
+    from hornet.terms import EMPTY, Cons
 
     with pytest.raises(TypeError):
         resolve(Cons(Atom('a'), EMPTY))
 
 
 def test_make_clause_atomic_python_rule():
-    # lines 346, 349-350: AtomicPythonRule path in new_clause
-    # This requires a PythonRule with Atom (arity-0) head to be processed
-    # by make_clause directly, not via db.tell
-    from hornet.clauses import PythonRule, make_clause
-    from hornet.combinators import Step, unit
+    from hornet.clauses import PythonRule
 
-    def body(env):
-        def goal(db, subst):
-            return unit(db, subst)
+    def body(env: Environment):
+        def goal(db: Database, env: Environment) -> Step[Database, Environment]:
+            return unit(db, env)
 
         return goal
 
@@ -933,8 +885,5 @@ def test_make_clause_atomic_python_rule():
 
 
 def test_make_clause_returns_tuple():
-    # lines 393-394: make_clause return path
-    from hornet.clauses import make_clause
-
     clause, indicator = make_clause(Functor('foo', Atom('a')))
     assert indicator == ('foo', 1)
