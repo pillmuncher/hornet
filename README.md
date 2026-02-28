@@ -180,7 +180,7 @@ Hornet is built on two main layers:
 
 The `examples/` directory includes:
 
-- `append.py` — list splitting via backtracking
+- `append.py` — list concatenation (forward) and splitting (backward) via backtracking
 - `queens.py` — N-queens constraint solver
 - `fizzbuzz.py` — FizzBuzz via DCGs
 - `symdiff.py` — symbolic differentiation and simplification
