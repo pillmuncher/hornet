@@ -103,13 +103,15 @@ Hornet ships a standard library of predicates pre-loaded in every database:
 Arithmetic expressions are built using Python's operators on symbolic terms and evaluated lazily by `let`:
 
 ```python
-from hornet.symbols import X, Y, R, let, arithmetic_equal
-
-# R is X * Y + 1
-db.ask(let(R, X * Y + 1))
-
-# supported: + - * / // % ** ~ & | ^ << >>
+>>> from hornet.symbols import X, Y, R, let, equal
+>>> from hornet import database
+>>> db = database()
+>>> for subst in db.ask(equal(X, 2), equal(Y, 3), let(R, X * Y + 1)):
+...     print(subst[R])  # R is X * Y + 1
+...
+7
 ```
+Supported arithmetic operators: + - * / // % ** ~ & | ^ << >>
 
 ---
 
