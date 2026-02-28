@@ -170,7 +170,7 @@ def _(db: Database, subst: Subst) -> Step[Database, Environment]:
 
 Hornet is built on two main layers:
 
-**Term algebra** (`hornet.terms`): Python expressions construct expression trees rather than computing values. Operator overloading (`+`, `*`, `|`, `**`, …) and `__call__` produce nested `Symbolic` structures — `Functor`, `Atom`, `Variable`, `Cons`, `Operator` subclasses — which represent both data and goals. `promote()` lifts Python primitives (integers, strings, lists) into this algebra transparently.
+**Term algebra** (`hornet.terms`): Python expressions construct expression trees rather than computing values. Operator overloading (`+`, `*`, `|`, `**`, …) and `__call__` produce nested `Symbolic` structures — `Functor`, `Atom`, `Variable`, `Cons`, `Operator` subclasses — which represent both data and goals. `promote()` lifts Python primitives (integers, strings, lists) into this algebra transparently. Technically the term algebra is free over a set of variables.
 
 **Resolution engine** (`hornet.combinators`): A *triple-barrelled continuation monad* drives search. Every goal is a function `(ctx, subst) → Step`, where a `Step` takes three continuations — *success* (emit a substitution and continue), *failure* (backtrack), and *prune* (implement cut). The combinators `then`, `choice`, `prunable`, `neg`, and `if_then_else` compose goals; `trampoline()` drives the whole thing iteratively to avoid stack overflow.
 
