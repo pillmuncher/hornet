@@ -52,7 +52,7 @@ db.tell(
 
 ```python
 from hornet import database
-from hornet.symbols import X, mortal
+from hornet.symbols import X, mortal, human
 
 db = database()
 db.tell(human('socrates'))
