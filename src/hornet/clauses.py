@@ -52,11 +52,11 @@ from .terms import (
     fresh_variable,
 )
 
-type Environment = Map[Variable, Term]
 type Memo = dict[int, Term]
 type FreshState = tuple[dict[Variable, Variable], Memo]
 type Arguments = tuple[Term, ...]
 
+type Environment = Map[Variable, Term]
 type PythonBody = Callable[[Environment], Goal[Database, Environment]]
 type PythonGoal = Callable[[Database, Subst], Step[Database, Environment]]
 
