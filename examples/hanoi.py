@@ -79,7 +79,7 @@ def hanoi(db: Database):
         to = cast(int, subst[To])
         fro = cast(int, subst[From])
         towers[to].push(towers[fro].pop())
-        return unit(db, subst.map)
+        return unit(db, subst.env)
 
     for s in db.ask(play_hanoi(6, 0, 1, 2)):  # type: ignore[reportUnusedVariable]
         break
