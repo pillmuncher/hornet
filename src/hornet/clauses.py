@@ -71,8 +71,7 @@ class PythonRule(NonVariable):
         return self.head.indicator
 
 
-def predicate(head: Term) -> Callable[[PythonGoal], PythonRule]:
-    assert isinstance(head, NonVariable)
+def predicate(head: NonVariable) -> Callable[[PythonGoal], PythonRule]:
 
     def decorator(python_goal: PythonGoal) -> PythonRule:
         @wraps(python_goal)

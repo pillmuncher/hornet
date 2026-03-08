@@ -144,7 +144,7 @@ def _bootstrap_database() -> Callable[[], Database]:
     )
 
     from . import symbols
-    from .symbols import G0, G1, L0, L1, A, B, C, D, E, F, G, H, L, N, O, P, Q, R, S, T, V, X, Y
+    from .symbols import G0, G1, L0, L1, A, B, C, D, E, F, G, H, L, N, O, P, Q, R, S, T, X, Y
 
     def to_python_list(tail: Term) -> list[Term]:
         assert isinstance(tail, Cons | Empty)
@@ -257,8 +257,8 @@ def _bootstrap_database() -> Callable[[], Database]:
     # Type checking predicates
     def check(
         db: Database,
-        term: Term,
-        var: NonVariable,
+        term: NonVariable,
+        var: Variable,
         match: Callable[[Term], bool],
     ) -> None:
         @db.tell
@@ -269,6 +269,7 @@ def _bootstrap_database() -> Callable[[], Database]:
             else:
                 return _fail(db, subst.env)
 
+    V = Variable('V')
     check(db, is_var(V), V, lambda term: isinstance(term, Variable))
     check(db, nonvar(V), V, lambda term: not isinstance(term, Variable))
     check(db, is_atom(V), V, lambda term: isinstance(term, Atom))
