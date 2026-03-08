@@ -45,7 +45,7 @@ Facts and rules are built with `.when()`:
 ```python
 db.tell(
     parent('socrates', 'sophroniscus'),   # fact
-    human('socrates'),                     # fact
+    human('socrates'),                    # fact
     mortal(X).when(human(X)),             # rule: mortal(X) :- human(X).
 )
 ```
