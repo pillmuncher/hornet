@@ -2,8 +2,6 @@
 
 **Horn clauses via Expression Trees** — a Prolog-like embedded DSL for Python ≥ 3.13.
 
-It's called Hornet because it's an anagram of **Horn** clauses via **E**xpression **T**rees.
-
 Hornet lets you write logic programs directly in Python. Instead of parsing Prolog strings, it hijacks Python's operator overloading and `__call__` syntax to build expression trees, which a resolution engine then solves via unification and backtracking.
 
 ---
