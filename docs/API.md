@@ -1,161 +1,5 @@
 # API Documentation
 
-## Term Types
-
-```python
-from hornet.terms import Variable
-Variable(name: str)
-```
-
-* Represents a named logical variable. Names beginning with an uppercase letter
-  or `_` are automatically created as `Variable`s when accessed via
-  `hornet.symbols`. The anonymous wildcard `_` matches anything and is never
-  bound.
-
----
-
-```python
-from hornet.terms import Atom
-Atom(name: str)
-```
-
-* Represents a symbolic constant or zero-arity predicate head. Lowercase names
-  accessed via `hornet.symbols` are automatically `Atom`s. Calling an `Atom`
-  with arguments produces a `Functor`.
-
----
-
-```python
-from hornet.terms import Functor
-Functor(name: str, *args: Term)
-```
-
-* Represents a compound term — a named relation applied to one or more
-  arguments. Produced by calling an `Atom`: `parent(X, Y)` yields
-  `Functor('parent', Variable('X'), Variable('Y'))`.
-
----
-
-```python
-from hornet.terms import Cons, Empty
-```
-
-* `Cons(head, tail)` is the list cell. `Empty` is the nil terminator `[]`.
-  Python lists are automatically promoted to `Cons` chains by `promote()`.
-  The `|` operator on a symbolic term creates a `Cons` with a variable tail:
-  `[H | T]`.
-
----
-
-```python
-from hornet.terms import promote
-promote(obj: Any) -> Term
-```
-
-* Lifts Python values into the term algebra. Integers, floats, strings, bools,
-  bytes, and complex numbers pass through unchanged. Python lists become `Cons`
-  chains. Tuples are promoted element-wise. `Functor` and `Operator` arguments
-  are promoted recursively.
-
----
-
-```python
-from hornet.terms import HornetRule
-term.when(*goals: Term | list) -> HornetRule
-```
-
-* Constructs a Horn clause. The receiver is the head; the arguments are the
-  body goals, interpreted as conjunction. A bare list in the body is treated
-  as a DCG terminal sequence (inside `DCGs()`).
-
----
-
-```python
-from hornet.terms import DCG, DCGs
-DCG(rule: HornetRule | Atom | Functor) -> HornetRule | Functor
-DCGs(*rules) -> tuple[HornetRule | Functor, ...]
-```
-
-* Expands DCG notation to ordinary Horn clauses by threading difference-list
-  state variables through each goal. Use `DCGs()` to expand multiple rules at
-  once and splat the result into `db.tell()`. The `inline(goal)` escape hatch
-  embeds a regular goal inside a DCG body without threading state through it.
-
----
-
-## Database
-
-```python
-from hornet import database
-database() -> Database
-```
-
-* Returns a new `Database` that inherits all built-in predicates. Each call
-  produces an independent child; asserting facts into it does not affect the
-  parent.
-
----
-
-```python
-db.new_child() -> Database
-```
-
-* Returns a new `Database` layered on top of `db`. Facts asserted into the
-  child are visible there but not in the parent, enabling scoped or temporary
-  extensions of a knowledge base.
-
----
-
-```python
-db.tell(*terms: NonVariable) -> None
-```
-
-* Asserts one or more facts or rules into the database. Terms are processed in
-  order; each is compiled to an internal `Clause` and indexed by its predicate
-  indicator `(name, arity)`. Can also be used as a decorator (see
-  `@predicate`).
-
----
-
-```python
-db.ask(*goals: NonVariable, subst: Subst | None = None) -> Iterable[Subst]
-```
-
-* Runs a conjunctive query and returns a lazy iterable of substitutions, one
-  per solution. Variables in the goals are renamed before resolution so
-  repeated calls are independent. An optional initial `subst` seeds the
-  environment.
-
----
-
-```python
-from hornet.clauses import Subst
-subst[variable] -> Term
-```
-
-* Dereferences a variable in a substitution returned by `db.ask()`. Chains of
-  variable bindings are followed to their ground value.
-
----
-
-## Extending with Python
-
-```python
-from hornet.clauses import predicate
-@db.tell
-@predicate(head_term)
-def _(db: Database, subst: Subst) -> Step[Database, Environment]:
-    ...
-```
-
-* Registers a native Python function as the body of a Horn clause whose head
-  is `head_term`. The function receives the current database and substitution
-  and must return a `Step` — typically `unit(db, subst.env)` to succeed,
-  `fail(db, subst.env)` to fail, or a combinator expression. Variables in
-  `head_term` are accessible in `subst` after unification.
-
----
-
 ## Built-in Predicates
 
 ### Logic and Control
@@ -425,3 +269,159 @@ otherwise. None bind any variables.
 | `is_str(V)`    | `isinstance(V, str)`          |
 | `is_bytes(V)`  | `isinstance(V, bytes)`        |
 | `is_complex(V)`| `isinstance(V, complex)`      |
+
+---
+
+## Database
+
+```python
+from hornet import database
+database() -> Database
+```
+
+* Returns a new `Database` that inherits all built-in predicates. Each call
+  produces an independent child; asserting facts into it does not affect the
+  parent.
+
+---
+
+```python
+db.new_child() -> Database
+```
+
+* Returns a new `Database` layered on top of `db`. Facts asserted into the
+  child are visible there but not in the parent, enabling scoped or temporary
+  extensions of a knowledge base.
+
+---
+
+```python
+db.tell(*terms: NonVariable) -> None
+```
+
+* Asserts one or more facts or rules into the database. Terms are processed in
+  order; each is compiled to an internal `Clause` and indexed by its predicate
+  indicator `(name, arity)`. Can also be used as a decorator (see
+  `@predicate`).
+
+---
+
+```python
+db.ask(*goals: NonVariable, subst: Subst | None = None) -> Iterable[Subst]
+```
+
+* Runs a conjunctive query and returns a lazy iterable of substitutions, one
+  per solution. Variables in the goals are renamed before resolution so
+  repeated calls are independent. An optional initial `subst` seeds the
+  environment.
+
+---
+
+```python
+from hornet.clauses import Subst
+subst[variable] -> Term
+```
+
+* Dereferences a variable in a substitution returned by `db.ask()`. Chains of
+  variable bindings are followed to their ground value.
+
+---
+
+## Extending with Python
+
+```python
+from hornet.clauses import predicate
+@db.tell
+@predicate(head_term)
+def _(db: Database, subst: Subst) -> Step[Database, Environment]:
+    ...
+```
+
+* Registers a native Python function as the body of a Horn clause whose head
+  is `head_term`. The function receives the current database and substitution
+  and must return a `Step` — typically `unit(db, subst.env)` to succeed,
+  `fail(db, subst.env)` to fail, or a combinator expression. Variables in
+  `head_term` are accessible in `subst` after unification.
+
+---
+
+## Term Types
+
+```python
+from hornet.terms import Variable
+Variable(name: str)
+```
+
+* Represents a named logical variable. Names beginning with an uppercase letter
+  or `_` are automatically created as `Variable`s when accessed via
+  `hornet.symbols`. The anonymous wildcard `_` matches anything and is never
+  bound.
+
+---
+
+```python
+from hornet.terms import Atom
+Atom(name: str)
+```
+
+* Represents a symbolic constant or zero-arity predicate head. Lowercase names
+  accessed via `hornet.symbols` are automatically `Atom`s. Calling an `Atom`
+  with arguments produces a `Functor`.
+
+---
+
+```python
+from hornet.terms import Functor
+Functor(name: str, *args: Term)
+```
+
+* Represents a compound term — a named relation applied to one or more
+  arguments. Produced by calling an `Atom`: `parent(X, Y)` yields
+  `Functor('parent', Variable('X'), Variable('Y'))`.
+
+---
+
+```python
+from hornet.terms import Cons, Empty
+```
+
+* `Cons(head, tail)` is the list cell. `Empty` is the nil terminator `[]`.
+  Python lists are automatically promoted to `Cons` chains by `promote()`.
+  The `|` operator on a symbolic term creates a `Cons` with a variable tail:
+  `[H | T]`.
+
+---
+
+```python
+from hornet.terms import promote
+promote(obj: Any) -> Term
+```
+
+* Lifts Python values into the term algebra. Integers, floats, strings, bools,
+  bytes, and complex numbers pass through unchanged. Python lists become `Cons`
+  chains. Tuples are promoted element-wise. `Functor` and `Operator` arguments
+  are promoted recursively.
+
+---
+
+```python
+from hornet.terms import HornetRule
+term.when(*goals: Term | list) -> HornetRule
+```
+
+* Constructs a Horn clause. The receiver is the head; the arguments are the
+  body goals, interpreted as conjunction. A bare list in the body is treated
+  as a DCG terminal sequence (inside `DCGs()`).
+
+---
+
+```python
+from hornet.terms import DCG, DCGs
+DCG(rule: HornetRule | Atom | Functor) -> HornetRule | Functor
+DCGs(*rules) -> tuple[HornetRule | Functor, ...]
+```
+
+* Expands DCG notation to ordinary Horn clauses by threading difference-list
+  state variables through each goal. Use `DCGs()` to expand multiple rules at
+  once and splat the result into `db.tell()`. The `inline(goal)` escape hatch
+  embeds a regular goal inside a DCG body without threading state through it.
