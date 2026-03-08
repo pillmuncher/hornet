@@ -68,38 +68,6 @@ for subst in db.ask(mortal(X)):
 
 ---
 
-## Built-in Predicates
-
-Hornet ships a standard library of predicates pre-loaded in every database:
-
-| Predicate | Description |
-|---|---|
-| `equal(X, Y)` | Unification (`X = Y`) |
-| `unequal(X, Y)` | Negation of unification |
-| `let(R, Expr)` | Arithmetic evaluation (`R is Expr`) |
-| `arithmetic_equal(X, Y)` | Arithmetic equality |
-| `smaller(A, B)` / `greater(A, B)` | Numeric comparison |
-| `call(G)` | Call a goal term |
-| `once(G)` | Call G, commit to first solution |
-| `findall(O, G, L)` | Collect all solutions |
-| `member(X, L)` | List membership |
-| `append(A, B, C)` | List concatenation |
-| `reverse(L, R)` | List reversal |
-| `select(X, L, R)` | Select element from list |
-| `length(L, N)` | List length |
-| `maplist(G, L)` | Apply goal to each list element |
-| `is_var`, `nonvar`, `is_atom`, `is_int`, … | Type checks |
-| `write`, `writeln`, `nl` | I/O |
-| `cut` | Prolog cut (`!`) |
-| `fail` | Always fails |
-| `true` | Always succeeds |
-| `repeat` | Succeeds infinitely |
-| `throw(E)` | Raise an exception |
-| `ifelse(T, Y, N)` | Soft-cut conditional |
-| `phrase(G, L)` | DCG query |
-
----
-
 ## Arithmetic
 
 Arithmetic expressions are built using Python's operators on symbolic terms and evaluated lazily by `let`:
@@ -143,6 +111,7 @@ for subst in db.ask(phrase(s, ['the', 'cat', 'sleeps'])):
 DCG rules are automatically expanded to difference lists. The `inline(goal)` escape hatch lets you embed regular goals inside a DCG body.
 
 ---
+
 
 ## Extending with Python
 
@@ -189,7 +158,7 @@ The `examples/` directory includes:
 - `symdiff.py` — symbolic differentiation and simplification
 - `parsing.py` — natural language parsing with a German grammar
 - `turing.py` — a Turing machine interpreter
-- `hanoi.py` — Towers of Hanoi with Turtle graphics
+- `hanoi.py` — Towers of Hanoi with Turtle graphics (requires `tkinter`)
 
 ### FizzBuzz via DCGs
 
@@ -251,8 +220,8 @@ if __name__ == '__main__':
 
 ## Documentation
 
-* [API Documentation](API.md)
-* [Glossary](Glossary.md)
+* [API Documentation](docs/API.md)
+* [Glossary](docs/Glossary.md)
 
 ---
 
@@ -301,4 +270,4 @@ https://eli.thegreenplace.net/2017/on-recursion-continuations-and-trampolines/
 
 ## License
 
-MIT. See `LICENSE.md`.
+MIT.
