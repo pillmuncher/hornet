@@ -74,7 +74,7 @@
   atomic literals. The body is a conjunction of zero or more literals; the head
   holds at most one. There are three forms:
 
-    *FactÜ: a clause with a non-empty head and an empty body (φ). Asserts that φ
+    *Fact*: a clause with a non-empty head and an empty body (φ). Asserts that φ
     is unconditionally true. In Hornet:
     `db.tell(φ)`.
 
