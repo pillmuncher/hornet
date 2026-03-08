@@ -74,16 +74,16 @@
   atomic literals. The body is a conjunction of zero or more literals; the head
   holds at most one. There are three degenerate cases:
 
-  *Fact*: a clause with a non-empty head and an empty body (B). Asserts that B is
-    unconditionally true. In Hornet: db.tell(B).
+  *Fact*: a clause with a non-empty head and an empty body (`B`). Asserts that `B` is
+    unconditionally true. In Hornet: `db.tell(B)`.
 
-  *Rule*: a clause with a non-empty head and a non-empty body (A₁ ∧ … ∧ Aₙ → B).
-    Asserts that B holds whenever all of A₁ … Aₙ hold. In Hornet:
-    db.tell(B.when(A₁, …, Aₙ)).
+  *Rule*: a clause with a non-empty head and a non-empty body `(A₁ ∧ … ∧ Aₙ → B)`.
+    Asserts that `B` holds whenever all of `A₁ … Aₙ` hold. In Hornet:
+    `db.tell(B.when(A₁, …, Aₙ))`.
 
   *Query* (or goal clause): a clause with an empty head and a non-empty body
-    (A₁ ∧ … ∧ Aₙ → ⊥). Asks whether A₁ ∧ … ∧ Aₙ can be derived. In Hornet:
-    db.ask(A₁, …, Aₙ).
+    `(A₁ ∧ … ∧ Aₙ → ⊥)`. Asks whether `A₁ ∧ … ∧ Aₙ` can be derived. In Hornet:
+    `db.ask(A₁, …, Aₙ)`.
 
   Horn clauses are the basis of [Logic Programming](#Logic-Programming). In Hornet,
   terms constructed with .when() are Horn clauses, and resolve() interprets them
