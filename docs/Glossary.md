@@ -86,7 +86,7 @@
     `db.ask(A₁, …, Aₙ)`.
 
   Horn clauses are the basis of [Logic Programming](#Logic-Programming). In Hornet,
-  terms constructed with .when() are Horn clauses, and resolve() interprets them
+  terms constructed with `.when()` are Horn clauses, and `resolve()` interprets them
   via unification and backtracking.
 
 ### **Indicator**:
