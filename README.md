@@ -71,13 +71,13 @@ for subst in db.ask(mortal(X)):
 Arithmetic expressions are built using Python's operators on symbolic terms and evaluated lazily by `let`:
 
 ```python
->>> from hornet.symbols import X, Y, R, let, equal
->>> from hornet import database
->>> db = database()
->>> for subst in db.ask(equal(X, 2), equal(Y, 3), let(R, X * Y + 1)):
-...     print(subst[R])  # R is X * Y + 1
-...
-7
+from hornet import database
+from hornet.symbols import X, Y, R, let, equal
+
+db = database()
+
+for subst in db.ask(equal(X, 2), equal(Y, 3), let(R, X * Y + 1)):
+    print(subst[R])  # → 7
 ```
 
 Supported arithmetic operators: `+ - * / // % ** ~ & | ^ << >>`
