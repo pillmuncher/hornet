@@ -72,7 +72,7 @@
 ### **Horn Clauses**:
 * A logical formula whose head and body consist entirely of positive (unnegated)
   atomic literals. The body is a conjunction of zero or more literals; the head
-  holds at most one. There are three degenerate cases:
+  holds at most one. There are three forms:
 
   *Fact*: a clause with a non-empty head and an empty body `(B)`. Asserts that `B` is
     unconditionally true. In Hornet: `db.tell(B)`.
@@ -86,7 +86,7 @@
     `db.ask(A₁, …, Aₙ)`.
 
   Horn clauses are the basis of [Logic Programming](#Logic-Programming). In Hornet,
-  terms constructed with `.when()` are Horn clauses, and `resolve()` interprets them
+  terms constructed with `.when()` are Horn rules, and `resolve()` interprets them
   via unification and backtracking.
 
 ### **Indicator**:
