@@ -74,7 +74,7 @@
   atomic literals. The body is a conjunction of zero or more literals; the head
   holds at most one. There are three degenerate cases:
 
-  *Fact*: a clause with a non-empty head and an empty body (`B`). Asserts that `B` is
+  *Fact*: a clause with a non-empty head and an empty body `(B)`. Asserts that `B` is
     unconditionally true. In Hornet: `db.tell(B)`.
 
   *Rule*: a clause with a non-empty head and a non-empty body `(A₁ ∧ … ∧ Aₙ → B)`.
