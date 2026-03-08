@@ -2,6 +2,8 @@
 
 **Horn clauses via Expression Trees** — a Prolog-like embedded DSL for Python ≥ 3.13.
 
+It's called Hornet because it's an anagram of **Horn** clauses via **E**xpression **T**rees.
+
 Hornet lets you write logic programs directly in Python. Instead of parsing Prolog strings, it hijacks Python's operator overloading and `__call__` syntax to build expression trees, which a resolution engine then solves via unification and backtracking.
 
 ---
@@ -111,7 +113,8 @@ Arithmetic expressions are built using Python's operators on symbolic terms and 
 ...
 7
 ```
-Supported arithmetic operators: + - * / // % ** ~ & | ^ << >>
+
+Supported arithmetic operators: `+ - * / // % ** ~ & | ^ << >>`
 
 ---
 
@@ -137,7 +140,7 @@ for subst in db.ask(phrase(s, ['the', 'cat', 'sleeps'])):
     print('parsed!')
 ```
 
-DCG rules are automatically expanded to difference lists. The `inline(goal)` escape hatch lets you embed regular Prolog goals inside a DCG body.
+DCG rules are automatically expanded to difference lists. The `inline(goal)` escape hatch lets you embed regular goals inside a DCG body.
 
 ---
 
@@ -187,6 +190,112 @@ The `examples/` directory includes:
 - `parsing.py` — natural language parsing with a German grammar
 - `turing.py` — a Turing machine interpreter
 - `hanoi.py` — Towers of Hanoi with Turtle graphics
+
+### FizzBuzz via DCGs
+
+A concise demonstration of DCG notation, arithmetic, and backtracking working together:
+
+```python
+from toolz import take
+
+from hornet import DCGs, database
+from hornet.clauses import Database
+from hornet.symbols import (
+    M, N, R, S, V, Ws, _,
+    cut, equal, fb, fizzbuzz, ifelse, inline,
+    join, let, phrase, word, words,
+)
+
+
+def main(db: Database):
+    db.tell(
+        fizzbuzz(R).when(
+            fb(1, R),
+        ),
+        fb(N, R).when(
+            phrase(words(N), Ws),
+            join(Ws, S),
+            ifelse(
+                equal(S, ''),
+                equal(N, R),
+                equal(S, R),
+            ),
+        ),
+        fb(N, R).when(
+            let(M, N + 1),
+            fb(M, R),
+        ),
+        *DCGs(
+            words(N).when(
+                word(3, N),
+                word(5, N),
+                word(7, N),
+                inline(cut),
+            ),
+            word(3, N).when(inline(let(M, N % 3), equal(M, 0)), ['fizz']),
+            word(5, N).when(inline(let(M, N % 5), equal(M, 0)), ['buzz']),
+            word(7, N).when(inline(let(M, N % 7), equal(M, 0)), ['quux']),
+            word(_, _),
+        ),
+    )
+
+    for s in take(1111, db.ask(fizzbuzz(V))):
+        print(s[V])
+
+
+if __name__ == '__main__':
+    main(database())
+```
+
+---
+
+## Documentation
+
+* [API Documentation](API.md)
+* [Glossary](Glossary.md)
+
+---
+
+## Links
+
+### Horn Clauses
+https://en.wikipedia.org/wiki/Horn_clause
+
+### Logical Resolution
+http://web.cse.ohio-state.edu/~stiff.4/cse3521/logical-resolution.html
+
+### Unification
+https://eli.thegreenplace.net/2018/unification/
+
+### Backtracking
+https://en.wikipedia.org/wiki/Backtracking
+
+### Monoids
+https://en.wikipedia.org/wiki/Monoid
+
+### Folding on Monoids
+https://bartoszmilewski.com/2020/06/15/monoidal-catamorphisms/
+
+### Distributive Lattices
+https://en.wikipedia.org/wiki/Distributive_lattice
+
+### Monads
+https://en.wikipedia.org/wiki/Monad_(functional_programming)
+
+### Continuations
+https://en.wikipedia.org/wiki/Continuation
+
+### Continuations Made Simple and Illustrated
+https://www.ps.uni-saarland.de/~duchier/python/continuations.html
+
+### The Discovery of Continuations
+https://www.cs.ru.nl/~freek/courses/tt-2011/papers/cps/histcont.pdf
+
+### Tail Calls
+https://en.wikipedia.org/wiki/Tail_call
+
+### On Recursion, Continuations and Trampolines
+https://eli.thegreenplace.net/2017/on-recursion-continuations-and-trampolines/
 
 ---
 
