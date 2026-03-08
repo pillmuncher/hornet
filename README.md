@@ -151,12 +151,12 @@ Hornet is built on two main layers:
 The `examples/` directory includes:
 
 - `append.py` — list concatenation (forward) and splitting (backward) via backtracking
-- `queens.py` — N-queens constraint solver
 - `fizzbuzz.py` — FizzBuzz via DCGs
-- `symdiff.py` — symbolic differentiation and simplification
-- `parsing.py` — natural language parsing with a German grammar
-- `turing.py` — a Turing machine interpreter
 - `hanoi.py` — Towers of Hanoi with Turtle graphics (requires `tkinter`)
+- `parsing.py` — natural language parsing with a German grammar
+- `queens.py` — N-queens constraint solver
+- `symdiff.py` — symbolic differentiation and simplification
+- `turing.py` — a Turing machine interpreter
 
 ### FizzBuzz via DCGs
 
