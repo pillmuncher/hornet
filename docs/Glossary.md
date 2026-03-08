@@ -49,6 +49,13 @@
   [Backtracking](#Backtracking), and [Branch Pruning with the
   Cut](#Branch-Pruning-with-the-Cut).
 
+### **Database**:
+
+* A collection of [Horn Clauses](#Horn-Clauses) — facts and rules — that
+  constitutes the knowledge base against which [Goals](#Goal) are
+  [resolved](#Resolution). In Hornet, a `Database` is the central structure
+  to which clauses are added and from which queries are run.
+
 ### **Distributive Lattice**:
 
 * A mathematical structure where two binary operations — *meet* (infimum) and
@@ -68,6 +75,11 @@
   implication (⇒) is non-negated. Horn clauses are the basis of
   [Logic Programming](#Logic-Programming); in Hornet,
   [Combinator](#Combinators) functions are interpreted as Horn Clauses.
+
+### **Indicator**:
+
+* A `(name, arity)` pair that uniquely identifies a [predicate](#Predicate).
+  For example, a predicate `parent/2` has indicator `("parent", 2)`.
 
 ### **Logic Programming**:
 
@@ -99,6 +111,13 @@
 
 * A technique in [Logic Programming](#Logic-Programming) where the absence of
   a proof for a statement is treated as evidence of its negation.
+
+### **Predicate**:
+
+* A named relation of fixed arity defined by one or more [Horn
+  Clauses](#Horn-Clauses) in the [Database](#Database). A predicate succeeds
+  or fails when called with concrete arguments during
+  [Resolution](#Resolution).
 
 ### **Resolution**:
 
@@ -140,3 +159,10 @@
 * The process of finding [substitutions](#Substitution-Environment) for
   [Logical Variables](#Logical-Variables) such that two terms become equal —
   the fundamental operation of [Logic Programming](#Logic-Programming).
+
+### **Wildcard**:
+
+* An anonymous [Logical Variable](#Logical-Variables), written `_`, that
+  matches any term without creating a binding in the [Substitution
+  Environment](#Substitution-Environment). Each occurrence of `_` is
+  independent — no two wildcards are ever unified with each other.
