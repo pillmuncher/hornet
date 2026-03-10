@@ -6,9 +6,9 @@
 This module implements the core resolution logic for a Prolog-style system.
 It uses a "Triple-Barrelled Continuation Monad" to manage search,
 backtracking, and pruning:
-1.  **Success (Emit)**: Propagates the current substitution forward.
+1.  **Success (Emit[Ctx, Env])**: Propagates the current substitution forward.
 2.  **Failure (Next[Env])**: Backtracks to the last available choice point.
-3.  **Prune**: Defines the jump-target for the 'cut' (!) operator.
+3.  **Prune** (Next[Env]): Defines the jump-target for the 'cut' (!) operator.
 
 The engine is context-agnostic; `Ctx` (typically the clause database) is
 passed through without direct access to maintain a clean separation of
@@ -47,7 +47,7 @@ failure = Failure()
 
 
 @dataclass(frozen=True, slots=True)
-class on_success[Ctx, Env]:
+class bind_step[Ctx, Env]:
     goal: Goal[Ctx, Env]
     yes: Emit[Ctx, Env]
     prune: Next[Env]
@@ -58,27 +58,13 @@ class on_success[Ctx, Env]:
 
 
 @dataclass(frozen=True, slots=True)
-class on_failure[Ctx, Env]:
-    goal: Goal[Ctx, Env]
-    ctx: Ctx
-    env: Env
-    yes: Emit[Ctx, Env]
-    no: Next[Env]
-    prune: Next[Env]
-
-    @tailcall
-    def __call__(self) -> Frame[Env]:
-        return self.goal(self.ctx, self.env)(self.yes, self.no, self.prune)
-
-
-@dataclass(frozen=True, slots=True)
 class bind[Ctx, Env]:
     step: Step[Ctx, Env]
     goal: Goal[Ctx, Env]
 
     @tailcall
     def __call__(self, yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env]) -> Frame[Env]:
-        return self.step(on_success(self.goal, yes, prune), no, prune)
+        return self.step(bind_step(self.goal, yes, prune), no, prune)
 
 
 @dataclass(frozen=True, slots=True)
