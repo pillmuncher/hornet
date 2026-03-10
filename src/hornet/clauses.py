@@ -325,8 +325,6 @@ class Database(ChainMap[Indicator, list[Clause]]):
         query, renaming = make_term(AllOf(*conjuncts))
         goal = resolve(query)
         step = goal(self, Map() if subst is None else subst.env)
-        # _failure: Next[Environment] = cast(Next[Environment], failure)
-        # _success: Emit[Database, Environment] = cast(Emit[Database, Environment], success)
         for new_subst in trampoline(lambda: step(success, failure, failure)):
             yield Subst(new_subst, renaming)
 
