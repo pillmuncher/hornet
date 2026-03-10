@@ -37,7 +37,7 @@ from hornet.symbols import (
 )
 
 
-def grammar(db: Database):
+def main(db: Database):
     db.tell(
         *DCGs(
             s.when(
@@ -230,4 +230,5 @@ def grammar(db: Database):
         print('No.')
 
 
-grammar(database())
+if __name__ == '__main__':
+    main(database())

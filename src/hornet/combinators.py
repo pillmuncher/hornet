@@ -17,11 +17,12 @@ concerns. All operations are tail-call optimized to support deep recursion.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any, Callable, Iterable
 
 from toolz import flip, reduce
 
-from .tailcalls import Frame, tailcall
+from .tailcalls import Frame, Thunked, tailcall
 
 type Next[Env] = Callable[[], Frame[Env]]
 type Emit[Ctx, Env] = Callable[[Ctx, Env, Next[Env]], Frame[Env]]
@@ -29,98 +30,94 @@ type Step[Ctx, Env] = Callable[[Emit[Ctx, Env], Next[Env], Next[Env]], Frame[Env
 type Goal[Ctx, Env] = Callable[[Ctx, Env], Step[Ctx, Env]]
 
 
-def success[Env](ctx: Any, env: Env, no: Next[Env]) -> Frame[Env]:
-    """
-    The primitive success handler that returns the current substitution.
-    """
-    return env, no
+@dataclass(frozen=True, slots=True)
+class Success[Env]:
+    def __call__(self, ctx: Any, env: Env, no: Next[Env]) -> Frame[Env]:
+        return env, no
 
 
-def failure[Env]() -> Frame[Env]:
-    """
-    The primitive failure handler that returns None.
-    """
-    return None
+@dataclass(frozen=True, slots=True)
+class Failure[Env]:
+    def __call__(self) -> Frame[Env]:
+        return None
 
 
-def bind[Ctx, Env](bind_step: Step[Ctx, Env], goal: Goal[Ctx, Env]) -> Step[Ctx, Env]:
-    """
-    Monadic bind for goals. Chains a computation step to a subsequent goal.
-    """
-
-    @tailcall
-    def step(
-        yes: Emit[Ctx, Env],
-        no: Next[Env],
-        prune: Next[Env],
-        bind_step: Step[Ctx, Env] = bind_step,
-        goal: Goal[Ctx, Env] = goal,
-    ) -> Frame[Env]:
-        @tailcall
-        def bound(ctx: Ctx, env: Env, then_no: Next[Env]) -> Frame[Env]:
-            return goal(ctx, env)(yes, then_no, prune)
-
-        return bind_step(bound, no, prune)
-
-    return step
+success = Success()
+failure = Failure()
 
 
-def unit[Ctx, Env](ctx: Ctx, env: Env) -> Step[Ctx, Env]:
-    """
-    A goal that always succeeds once with the current substitution.
-    """
+@dataclass(frozen=True, slots=True)
+class on_success[Ctx, Env]:
+    goal: Goal[Ctx, Env]
+    yes: Emit[Ctx, Env]
+    prune: Next[Env]
 
     @tailcall
-    def step(
-        yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env], ctx: Ctx = ctx, env: Env = env
-    ) -> Frame[Env]:
-        return yes(ctx, env, no)
-
-    return step
+    def __call__(self, ctx: Ctx, env: Env, no: Next[Env]) -> Frame[Env]:
+        return self.goal(ctx, env)(self.yes, no, self.prune)
 
 
-def cut[Ctx, Env](ctx: Ctx, env: Env) -> Step[Ctx, Env]:
-    """
-    A goal that succeeds once but prunes all other choices in its scope.
-
-    Effectively implements the Prolog '!' operator by setting the backtrack
-    continuation to the 'prune' continuation.
-    """
+@dataclass(frozen=True, slots=True)
+class on_failure[Ctx, Env]:
+    goal: Goal[Ctx, Env]
+    ctx: Ctx
+    env: Env
+    yes: Emit[Ctx, Env]
+    no: Next[Env]
+    prune: Next[Env]
 
     @tailcall
-    def step(
-        yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env], ctx: Ctx = ctx, env: Env = env
-    ) -> Frame[Env]:
-        return yes(ctx, env, prune)
-
-    return step
+    def __call__(self) -> Frame[Env]:
+        return self.goal(self.ctx, self.env)(self.yes, self.no, self.prune)
 
 
-def fail[Ctx, Env](ctx: Ctx, env: Env) -> Step[Ctx, Env]:
-    """
-    A goal that always fails immediately.
-    """
+@dataclass(frozen=True, slots=True)
+class bind[Ctx, Env]:
+    step: Step[Ctx, Env]
+    goal: Goal[Ctx, Env]
 
     @tailcall
-    def step(
-        yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env], ctx: Ctx = ctx, env: Env = env
-    ) -> Frame[Env]:
+    def __call__(self, yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env]) -> Frame[Env]:
+        return self.step(on_success(self.goal, yes, prune), no, prune)
+
+
+@dataclass(frozen=True, slots=True)
+class unit[Ctx, Env]:
+    ctx: Ctx
+    env: Env
+
+    @tailcall
+    def __call__(self, yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env]) -> Frame[Env]:
+        return yes(self.ctx, self.env, no)
+
+
+@dataclass(frozen=True, slots=True)
+class cut[Ctx, Env]:
+    ctx: Ctx
+    env: Env
+
+    @tailcall
+    def __call__(self, yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env]) -> Frame[Env]:
+        return yes(self.ctx, self.env, prune)
+
+
+@dataclass(frozen=True, slots=True)
+class fail[Ctx, Env]:
+    ctx: Ctx
+    env: Env
+
+    @tailcall
+    def __call__(self, yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env]) -> Frame[Env]:
         return no()
 
-    return step
 
+@dataclass(frozen=True, slots=True)
+class then[Ctx, Env]:
+    goal1: Goal[Ctx, Env]
+    goal2: Goal[Ctx, Env]
 
-def then[Ctx, Env](goal1: Goal[Ctx, Env], goal2: Goal[Ctx, Env]) -> Goal[Ctx, Env]:
-    """
-    Logical conjunction (AND) of two goals.
-    """
-
-    def goal(
-        ctx: Ctx, env: Env, goal1: Goal[Ctx, Env] = goal1, goal2: Goal[Ctx, Env] = goal2
-    ) -> Step[Ctx, Env]:
-        return bind(goal1(ctx, env), goal2)
-
-    return goal
+    def __call__(self, ctx: Ctx, env: Env) -> Step[Ctx, Env]:
+        return bind(self.goal1(ctx, env), self.goal2)
 
 
 def seq_from_iterable[Ctx, Env](goals: Iterable[Goal[Ctx, Env]]) -> Goal[Ctx, Env]:
@@ -138,54 +135,67 @@ def seq[Ctx, Env](*goals: Goal[Ctx, Env]) -> Goal[Ctx, Env]:
     return seq_from_iterable(goals)
 
 
-def choice[Ctx, Env](goal1: Goal[Ctx, Env], goal2: Goal[Ctx, Env]) -> Goal[Ctx, Env]:
-    """
-    Logical disjunction (OR) of two goals. Backtracks to goal2 if goal1 fails.
-    """
+@dataclass(frozen=True, slots=True)
+class choice_step[Ctx, Env]:
+    goal1: Goal[Ctx, Env]
+    goal2: Goal[Ctx, Env]
+    ctx: Ctx
+    env: Env
 
-    def goal(
-        ctx: Ctx, env: Env, goal1: Goal[Ctx, Env] = goal1, goal2: Goal[Ctx, Env] = goal2
-    ) -> Step[Ctx, Env]:
-        @tailcall
-        def step(
-            yes: Emit[Ctx, Env],
-            no: Next[Env],
-            prune: Next[Env],
-            goal1: Goal[Ctx, Env] = goal1,
-            goal2: Goal[Ctx, Env] = goal2,
-        ) -> Frame[Env]:
-            return goal1(ctx, env)(
-                yes,
-                tailcall(lambda: goal2(ctx, env)(yes, no, prune)),
-                prune,
-            )
-
-        return step
-
-    return goal
+    @tailcall
+    def __call__(self, yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env]) -> Frame[Env]:
+        return self.goal1(self.ctx, self.env)(
+            yes,
+            Thunked(self.goal2(self.ctx, self.env), (yes, no, prune), {}),
+            prune,
+        )
 
 
-def amb_from_iterable[Ctx, Env](goals: Iterable[Goal[Ctx, Env]]) -> Goal[Ctx, Env]:
-    """
-    Ambiguous choice; tries each goal in order via backtracking.
-    """
+# @dataclass(frozen=True, slots=True)
+# class choice_step[Ctx, Env]:
+#     goal1: Goal[Ctx, Env]
+#     goal2: Goal[Ctx, Env]
+#     ctx: Ctx
+#     env: Env
+#
+#     @tailcall
+#     def __call__(self, yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env]) -> Frame[Env]:
+#         return self.goal1(self.ctx, self.env)(
+#             yes,
+#             tailcall(lambda: self.goal2(self.ctx, self.env)(yes, no, prune)),
+#             prune,
+#         )
 
-    def goal(ctx: Ctx, env: Env) -> Step[Ctx, Env]:
-        @tailcall
-        def step(
-            yes: Emit[Ctx, Env],
-            no: Next[Env],
-            prune: Next[Env],
-            ctx: Ctx = ctx,
-            env: Env = env,
-            goals: Iterable[Goal[Ctx, Env]] = goals,
-        ) -> Frame[Env]:
-            amb_goal: Goal[Ctx, Env] = reduce(flip(choice), reversed(tuple(goals)), fail)  # pyright: ignore
-            return amb_goal(ctx, env)(yes, no, prune)
 
-        return step
+@dataclass(frozen=True, slots=True)
+class choice[Ctx, Env]:
+    goal1: Goal[Ctx, Env]
+    goal2: Goal[Ctx, Env]
 
-    return goal
+    def __call__(self, ctx: Ctx, env: Env) -> Step[Ctx, Env]:
+        return choice_step(self.goal1, self.goal2, ctx, env)
+
+
+@dataclass(frozen=True, slots=True)
+class amb_step[Ctx, Env]:
+    goal: Goal[Ctx, Env]
+    ctx: Ctx
+    env: Env
+
+    @tailcall
+    def __call__(self, yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env]) -> Frame[Env]:
+        return self.goal(self.ctx, self.env)(yes, no, prune)
+
+
+@dataclass(frozen=True, slots=True)
+class amb_from_iterable[Ctx, Env]:
+    goals: tuple[Goal[Ctx, Env], ...]
+
+    def __post_init__(self):
+        object.__setattr__(self, 'goals', tuple(self.goals))
+
+    def __call__(self, ctx: Ctx, env: Env) -> Step[Ctx, Env]:
+        return amb_step(reduce(flip(choice), reversed(self.goals), fail), ctx, env)  # pyright: ignore
 
 
 def amb[Ctx, Env](*goals: Goal[Ctx, Env]) -> Goal[Ctx, Env]:
@@ -195,113 +205,156 @@ def amb[Ctx, Env](*goals: Goal[Ctx, Env]) -> Goal[Ctx, Env]:
     return amb_from_iterable(goals)
 
 
-def prunable[Ctx, Env](goals: Iterable[Goal[Ctx, Env]]) -> Goal[Ctx, Env]:
-    """
-    Establishes a pruning boundary for a collection of goals.
+@dataclass(frozen=True, slots=True)
+class prunable_step[Ctx, Env]:
+    goal: Goal[Ctx, Env]
+    ctx: Ctx
+    env: Env
 
-    This combinator creates a choice-point scope. Any `cut` (!) invoked within
-    the nested `goals` will only discard backtrack points back to the
-    start of this block, preventing the cut from affecting choices made
-    by previous goals in the parent sequence.
-    """
+    @tailcall
+    def __call__(self, yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env]) -> Frame[Env]:
+        return self.goal(self.ctx, self.env)(yes, no, no)
 
-    def goal(ctx: Ctx, env: Env, goals: Iterable[Goal[Ctx, Env]] = goals) -> Step[Ctx, Env]:
-        @tailcall
-        def step(
-            yes: Emit[Ctx, Env],
-            no: Next[Env],
-            prune: Next[Env],
-            ctx: Ctx = ctx,
-            env: Env = env,
-            goals: Iterable[Goal[Ctx, Env]] = goals,
-        ) -> Frame[Env]:
-            return amb_from_iterable(goals)(ctx, env)(yes, no, no)
 
-        return step
+@dataclass(frozen=True, slots=True)
+class prunable[Ctx, Env]:
+    goals: tuple[Goal[Ctx, Env], ...]
 
-    return goal
+    def __post_init__(self):
+        object.__setattr__(self, 'goals', tuple(self.goals))
+
+    def __call__(self, ctx: Ctx, env: Env) -> Step[Ctx, Env]:
+        return prunable_step(amb_from_iterable(self.goals), ctx, env)
 
 
 def neg[Ctx, Env](goal: Goal[Ctx, Env]) -> Goal[Ctx, Env]:
-    """
-    Negation by failure. Succeeds only if the provided goal fails.
-    """
-    return prunable([amb(seq(goal, cut, fail), unit)])
+    return prunable((amb(seq(goal, cut, fail), unit),))
 
 
-def if_then_else[Ctx, Env](
-    cond: Goal[Ctx, Env], then: Goal[Ctx, Env], else_: Goal[Ctx, Env]
-) -> Goal[Ctx, Env]:
-    """
-    Soft-cut conditional. If `cond` succeeds, commit to `then`; otherwise `else_`.
-    """
+@dataclass(frozen=True, slots=True)
+class ite_yes_branch[Ctx, Env]:
+    then_: Goal[Ctx, Env]
+    ctx: Ctx
+    env: Env
+    yes: Emit[Ctx, Env]
+    no: Next[Env]
+    prune: Next[Env]
 
-    def goal(ctx: Ctx, env: Env) -> Step[Ctx, Env]:
-        cond_step = cond(ctx, env)
-
-        @tailcall
-        def step(yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env]) -> Frame[Env]:
-            def yes_branch(ctx: Ctx, env: Env, _: Next[Env]):
-                return then(ctx, env)(yes, no, prune)
-
-            def no_branch():
-                return else_(ctx, env)(yes, no, prune)
-
-            return cond_step(yes_branch, no_branch, prune)
-
-        return step
-
-    return goal
+    def __call__(self, ctx: Ctx, env: Env, _: Next[Env]) -> Frame[Env]:
+        return self.then_(ctx, env)(self.yes, self.no, self.prune)
 
 
-def call_cc[Ctx, Env](
-    f: Callable[[Emit[Ctx, Env], Next[Env], Next[Env]], Step[Ctx, Env]],
-) -> Step[Ctx, Env]:
-    """Call with Current Continuations"""
+@dataclass(frozen=True, slots=True)
+class ite_no_branch[Ctx, Env]:
+    else_: Goal[Ctx, Env]
+    ctx: Ctx
+    env: Env
+    yes: Emit[Ctx, Env]
+    no: Next[Env]
+    prune: Next[Env]
+
+    def __call__(self) -> Frame[Env]:
+        return self.else_(self.ctx, self.env)(self.yes, self.no, self.prune)
+
+
+@dataclass(frozen=True, slots=True)
+class ite_step[Ctx, Env]:
+    cond_step: Step[Ctx, Env]
+    then_: Goal[Ctx, Env]
+    else_: Goal[Ctx, Env]
+    ctx: Ctx
+    env: Env
 
     @tailcall
-    def step(yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env]) -> Frame[Env]:
-        return f(yes, no, prune)(yes, no, prune)
+    def __call__(self, yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env]) -> Frame[Env]:
+        return self.cond_step(
+            ite_yes_branch(self.then_, self.ctx, self.env, yes, no, prune),
+            ite_no_branch(self.else_, self.ctx, self.env, yes, no, prune),
+            prune,
+        )
 
-    return step
+
+@dataclass(frozen=True, slots=True)
+class if_then_else[Ctx, Env]:
+    cond: Goal[Ctx, Env]
+    then_: Goal[Ctx, Env]
+    else_: Goal[Ctx, Env]
+
+    def __call__(self, ctx: Ctx, env: Env) -> Step[Ctx, Env]:
+        return ite_step(self.cond(ctx, env), self.then_, self.else_, ctx, env)
 
 
-def call_ec[Ctx, Env](
-    fn: Callable[[Callable[[Goal[Ctx, Env]], Goal[Ctx, Env]]], Goal[Ctx, Env]],
-) -> Goal[Ctx, Env]:
-    """Call with Escape Continuation"""
+@dataclass(frozen=True, slots=True)
+class call_cc[Ctx, Env]:
+    f: Callable[[Emit[Ctx, Env], Next[Env], Next[Env]], Step[Ctx, Env]]
 
-    def goal(
-        ctx: Ctx,
-        env: Env,
-        fn: Callable[[Callable[[Goal[Ctx, Env]], Goal[Ctx, Env]]], Goal[Ctx, Env]] = fn,
-    ) -> Step[Ctx, Env]:
-        @tailcall
-        def step(yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env]) -> Frame[Env]:
-            # escape: given a goal g, return a goal that, when run,
-            # forwards any success to the captured `yes` and uses the
-            # captured `prune` as the next continuation (thus pruning).
-            def escape(g: Goal[Ctx, Env]) -> Goal[Ctx, Env]:
-                def escaped_goal(inner_ctx: Ctx, inner_subst: Env) -> Step[Ctx, Env]:
-                    @tailcall
-                    def inner_step(
-                        _yes: Emit[Ctx, Env], _no: Next[Env], _prune: Next[Env]
-                    ) -> Frame[Env]:
-                        # when g emits success, forward it to the captured yes
-                        def forward_emit(_ctx: Ctx, _subst: Env, _next: Next[Env]) -> Frame[Env]:
-                            return yes(_ctx, _subst, prune)
+    @tailcall
+    def __call__(self, yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env]) -> Frame[Env]:
+        return self.f(yes, no, prune)(yes, no, prune)
 
-                        # run g; on success forward to captured yes, on failure fall back to
-                        # the current `no`, and preserve `prune` for deeper pruning behavior.
-                        return g(inner_ctx, inner_subst)(forward_emit, no, prune)
 
-                    return inner_step
+@dataclass(frozen=True, slots=True)
+class ec_forward_emit[Ctx, Env]:
+    yes: Emit[Ctx, Env]
+    prune: Next[Env]
 
-                return escaped_goal
+    def __call__(self, ctx: Ctx, env: Env, _: Next[Env]) -> Frame[Env]:
+        return self.yes(ctx, env, self.prune)
 
-            # call user-supplied fn with our escape and run the resulting goal
-            return fn(escape)(ctx, env)(yes, no, prune)
 
-        return step
+@dataclass(frozen=True, slots=True)
+class ec_inner_step[Ctx, Env]:
+    goal: Goal[Ctx, Env]
+    inner_ctx: Ctx
+    inner_env: Env
+    yes: Emit[Ctx, Env]
+    no: Next[Env]
+    prune: Next[Env]
 
-    return goal
+    @tailcall
+    def __call__(self, _yes: Emit[Ctx, Env], _no: Next[Env], prune: Next[Env]) -> Frame[Env]:
+        return self.goal(self.inner_ctx, self.inner_env)(
+            ec_forward_emit(self.yes, self.prune),
+            self.no,
+            self.prune,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ec_escaped_goal[Ctx, Env]:
+    goal: Goal[Ctx, Env]
+    yes: Emit[Ctx, Env]
+    no: Next[Env]
+    prune: Next[Env]
+
+    def __call__(self, inner_ctx: Ctx, inner_env: Env) -> Step[Ctx, Env]:
+        return ec_inner_step(self.goal, inner_ctx, inner_env, self.yes, self.no, self.prune)
+
+
+@dataclass(frozen=True, slots=True)
+class ec_escape[Ctx, Env]:
+    yes: Emit[Ctx, Env]
+    no: Next[Env]
+    prune: Next[Env]
+
+    def __call__(self, goal: Goal[Ctx, Env]) -> Goal[Ctx, Env]:
+        return ec_escaped_goal(goal, self.yes, self.no, self.prune)
+
+
+@dataclass(frozen=True, slots=True)
+class ec_step[Ctx, Env]:
+    fn: Callable[[Callable[[Goal[Ctx, Env]], Goal[Ctx, Env]]], Goal[Ctx, Env]]
+    ctx: Ctx
+    env: Env
+
+    @tailcall
+    def __call__(self, yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env]) -> Frame[Env]:
+        return self.fn(ec_escape(yes, no, prune))(self.ctx, self.env)(yes, no, prune)
+
+
+@dataclass(frozen=True, slots=True)
+class call_ec[Ctx, Env]:
+    fn: Callable[[Callable[[Goal[Ctx, Env]], Goal[Ctx, Env]]], Goal[Ctx, Env]]
+
+    def __call__(self, ctx: Ctx, env: Env) -> Step[Ctx, Env]:
+        return ec_step(self.fn, ctx, env)

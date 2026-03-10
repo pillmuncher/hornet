@@ -14,6 +14,7 @@ from typing import Callable, Iterable, Iterator, cast
 from immutables import Map
 
 from .combinators import (
+    Emit,
     Goal,
     Next,
     Step,
@@ -29,7 +30,7 @@ from .combinators import (
     unit,
 )
 from .states import State, StateOp, get_state, set_state, with_state
-from .tailcalls import tailcall, trampoline
+from .tailcalls import trampoline
 from .terms import (
     AllOf,
     AnyOf,
@@ -106,43 +107,45 @@ def deref_and_compress(env: Environment, term: Term) -> tuple[Environment, Term]
     return mm.finish(), term
 
 
-def unify(this: Term, that: Term) -> Goal[Database, Environment]:
-    """
-    Attempt to unify two terms.
+@dataclass(frozen=True, slots=True)
+class unify:
+    this: Term
+    that: Term
 
-    Returns a goal that succeeds if the terms can be matched under the
-    current substitution, potentially extending it.
-    """
-
-    def goal(
-        db: Database, env: Environment, this: Term = this, that: Term = that
-    ) -> Step[Database, Environment]:
-        env, this = deref_and_compress(env, this)
-        env, that = deref_and_compress(env, that)
+    def __call__(self, db: Database, env: Environment) -> Step[Database, Environment]:
+        env, this = deref_and_compress(env, self.this)
+        env, that = deref_and_compress(env, self.that)
         return _unify(this, that)(db, env)
 
-    return goal
+
+@dataclass(frozen=True, slots=True)
+class unify_variable:
+    variable: Variable
+    term: Term
+
+    def __call__(self, db: Database, env: Environment) -> Step[Database, Environment]:
+        env, value = deref_and_compress(env, self.variable)
+        assert value is self.variable
+        return unit(db, env.set(self.variable, self.term))
 
 
-def unify_variable(variable: Variable, term: Term) -> Goal[Database, Environment]:
-    def goal(
-        db: Database, env: Environment, variable: Variable = variable, term: Term = term
-    ) -> Step[Database, Environment]:
-        env, value = deref_and_compress(env, variable)
-        assert value is variable
-        return unit(db, env.set(variable, term))
+@dataclass(frozen=True, slots=True)
+class _unify_pairs:
+    pairs: tuple[tuple[Term, Term], ...]
 
-    return goal
+    def __post_init__(self):
+        object.__setattr__(self, 'pairs', tuple(self.pairs))
+
+    def __call__(self, db: Database, env: Environment) -> Step[Database, Environment]:
+        return seq_from_iterable(unify(this, that) for this, that in self.pairs)(db, env)
 
 
 def unify_pairs(*pairs: tuple[Term, Term]) -> Goal[Database, Environment]:
-    return lambda ctx, subst, pairs=pairs: tailcall(
-        seq_from_iterable(unify(this, that) for this, that in pairs)(ctx, subst)
-    )
+    return _unify_pairs(pairs)
 
 
 def unify_any(variable: Variable, *values: Term) -> Goal[Database, Environment]:
-    return amb_from_iterable(unify(variable, value) for value in values)
+    return amb_from_iterable(tuple(unify(variable, value) for value in values))
 
 
 def _unify(this: Term, that: Term) -> Goal[Database, Environment]:
@@ -222,17 +225,17 @@ def resolve(query: Term) -> Goal[Database, Environment]:
             return fail
 
         case AllOf():
-            return seq_from_iterable(resolve(a) for a in query.args)
+            return seq_from_iterable(tuple(resolve(a) for a in query.args))
 
         case AnyOf():
-            return amb_from_iterable(resolve(a) for a in query.args)
+            return amb_from_iterable(tuple(resolve(a) for a in query.args))
 
         case Invert():
             return neg(resolve(query.operand))
 
         case Atom() | Functor():
             return lambda db, subst: prunable(
-                fresh(clause)(query) for clause in db[query.indicator]
+                tuple(fresh(clause)(query) for clause in db[query.indicator])
             )(db, subst)
 
         case _:
@@ -310,7 +313,8 @@ class Database(ChainMap[Indicator, list[Clause]]):
         goal = resolve(query)
         step = goal(self, Map() if subst is None else subst.env)
         _failure: Next[Environment] = cast(Next[Environment], failure)
-        for new_subst in trampoline(lambda: step(success, _failure, _failure)):
+        _success: Emit[Database, Environment] = cast(Emit[Database, Environment], success)
+        for new_subst in trampoline(lambda: step(_success, _failure, _failure)):
             yield Subst(new_subst, renaming)
 
 

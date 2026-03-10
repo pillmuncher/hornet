@@ -15,11 +15,13 @@ flattening recursive logic into a linear loop.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any, Callable, Iterable
 
 __all__ = (
     'Cont',
     'Thunk',
+    'Thunked',
     'Frame',
     'tailcall',
     'trampoline',
@@ -30,22 +32,39 @@ type Thunk[R] = Callable[[], Frame[R]]
 type Frame[R] = tuple[R | None, Thunk[R]] | None
 
 
+@dataclass(frozen=True, slots=True)
+class Thunked[R]:
+    cont: Cont[R]
+    args: tuple[Any, ...]
+    kwargs: dict[str, Any]
+
+    def __call__(self) -> Frame[R]:
+        return self.cont(*self.args, **self.kwargs)
+
+
 def tailcall[R](cont: Cont[R]) -> Cont[R]:
-    """
-    Wraps a function to participate in tail-call elimination.
-
-    When a decorated function is called, it returns a 'Frame' containing
-    a thunk rather than executing the function body immediately. This
-    defers the actual call until the `trampoline` handles it.
-
-    Returns:
-        A callable that returns a `Frame[R]`.
-    """
-
     def decorated(*args: Any, **kwargs: Any) -> Frame[R]:
-        return None, lambda: cont(*args, **kwargs)
+        return None, Thunked(cont, args, kwargs)
 
     return decorated
+
+
+# def tailcall[R](cont: Cont[R]) -> Cont[R]:
+#     """
+#     Wraps a function to participate in tail-call elimination.
+#
+#     When a decorated function is called, it returns a 'Frame' containing
+#     a thunk rather than executing the function body immediately. This
+#     defers the actual call until the `trampoline` handles it.
+#
+#     Returns:
+#         A callable that returns a `Frame[R]`.
+#     """
+#
+#     def decorated(*args: Any, **kwargs: Any) -> Frame[R]:
+#         return None, lambda: cont(*args, **kwargs)
+#
+#     return decorated
 
 
 def trampoline[R](thunk: Thunk[R]) -> Iterable[R]:
