@@ -210,6 +210,16 @@ def fresh(clause: Clause) -> Clause:
     return deepcopy(clause, memo)
 
 
+@dataclass(frozen=True, slots=True)
+class resolve_atom_or_functor:
+    query: Atom | Functor
+
+    def __call__(self, db: Database, env: Environment) -> Step[Database, Environment]:
+        return prunable(tuple(fresh(clause)(self.query) for clause in db[self.query.indicator]))(
+            db, env
+        )
+
+
 def resolve(query: Term) -> Goal[Database, Environment]:
     match query:
         case Atom('true'):
@@ -231,9 +241,7 @@ def resolve(query: Term) -> Goal[Database, Environment]:
             return neg(resolve(query.operand))
 
         case Atom() | Functor():
-            return lambda db, subst: prunable(
-                tuple(fresh(clause)(query) for clause in db[query.indicator])
-            )(db, subst)
+            return resolve_atom_or_functor(query)
 
         case _:
             raise TypeError(f'Type error: "callable" expected, found {query!r}')

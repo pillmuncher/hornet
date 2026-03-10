@@ -145,9 +145,6 @@ class amb_step[Ctx, Env]:
 class amb_from_iterable[Ctx, Env]:
     goals: tuple[Goal[Ctx, Env], ...]
 
-    def __post_init__(self):
-        object.__setattr__(self, 'goals', tuple(self.goals))
-
     def __call__(self, ctx: Ctx, env: Env) -> Step[Ctx, Env]:
         return amb_step(reduce(flip(choice), reversed(self.goals), fail), ctx, env)  # pyright: ignore
 
@@ -173,9 +170,6 @@ class prunable_step[Ctx, Env]:
 @dataclass(frozen=True, slots=True)
 class prunable[Ctx, Env]:
     goals: tuple[Goal[Ctx, Env], ...]
-
-    def __post_init__(self):
-        object.__setattr__(self, 'goals', tuple(self.goals))
 
     def __call__(self, ctx: Ctx, env: Env) -> Step[Ctx, Env]:
         return prunable_step(amb_from_iterable(self.goals), ctx, env)
