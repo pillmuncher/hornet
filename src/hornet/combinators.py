@@ -151,6 +151,7 @@ class choice_step[Ctx, Env]:
         )
 
 
+<<<<<<< HEAD
 # @dataclass(frozen=True, slots=True)
 # class choice_step[Ctx, Env]:
 #     goal1: Goal[Ctx, Env]
@@ -176,6 +177,17 @@ class choice[Ctx, Env]:
         return choice_step(self.goal1, self.goal2, ctx, env)
 
 
+=======
+@dataclass(frozen=True, slots=True)
+class choice[Ctx, Env]:
+    goal1: Goal[Ctx, Env]
+    goal2: Goal[Ctx, Env]
+
+    def __call__(self, ctx: Ctx, env: Env) -> Step[Ctx, Env]:
+        return choice_step(self.goal1, self.goal2, ctx, env)
+
+
+>>>>>>> d13af33 (defunctionalized most of the combinators)
 @dataclass(frozen=True, slots=True)
 class amb_step[Ctx, Env]:
     goal: Goal[Ctx, Env]
