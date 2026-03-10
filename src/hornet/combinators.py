@@ -8,7 +8,7 @@ It uses a "Triple-Barrelled Continuation Monad" to manage search,
 backtracking, and pruning:
 1.  **Success (Emit[Ctx, Env])**: Propagates the current substitution forward.
 2.  **Failure (Next[Env])**: Backtracks to the last available choice point.
-3.  **Prune** (Next[Env]): Defines the jump-target for the 'cut' (!) operator.
+3.  **Prune (Next[Env])**: Defines the jump-target for the 'cut' (!) operator.
 
 The engine is context-agnostic; `Ctx` (typically the clause database) is
 passed through without direct access to maintain a clean separation of
