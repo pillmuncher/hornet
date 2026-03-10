@@ -9,28 +9,25 @@ from collections.abc import Mapping
 from copy import deepcopy
 from dataclasses import dataclass
 from functools import wraps
-from typing import Callable, Iterable, Iterator, cast
+from typing import Any, Callable, Iterable, Iterator
 
 from immutables import Map
 
 from .combinators import (
-    Emit,
     Goal,
     Next,
     Step,
     amb_from_iterable,
     cut,
     fail,
-    failure,
     neg,
     prunable,
     seq_from_iterable,
-    success,
     then,
     unit,
 )
 from .states import State, StateOp, get_state, set_state, with_state
-from .tailcalls import trampoline
+from .tailcalls import Frame, trampoline
 from .terms import (
     AllOf,
     AnyOf,
@@ -299,6 +296,22 @@ class CompoundPythonRule(Clause):
         return then(unify(query, self.head), self.body(self.renaming))
 
 
+@dataclass(frozen=True, slots=True)
+class Success:
+    def __call__(self, ctx: Any, env: Environment, no: Next[Environment]) -> Frame[Environment]:
+        return env, no
+
+
+@dataclass(frozen=True, slots=True)
+class Failure:
+    def __call__(self) -> Frame[Environment]:
+        return None
+
+
+success = Success()
+failure = Failure()
+
+
 class Database(ChainMap[Indicator, list[Clause]]):
     def tell(self, *terms: NonVariable) -> None:
         results: list[tuple[Clause, Indicator]] = []
@@ -312,9 +325,9 @@ class Database(ChainMap[Indicator, list[Clause]]):
         query, renaming = make_term(AllOf(*conjuncts))
         goal = resolve(query)
         step = goal(self, Map() if subst is None else subst.env)
-        _failure: Next[Environment] = cast(Next[Environment], failure)
-        _success: Emit[Database, Environment] = cast(Emit[Database, Environment], success)
-        for new_subst in trampoline(lambda: step(_success, _failure, _failure)):
+        # _failure: Next[Environment] = cast(Next[Environment], failure)
+        # _success: Emit[Database, Environment] = cast(Emit[Database, Environment], success)
+        for new_subst in trampoline(lambda: step(success, failure, failure)):
             yield Subst(new_subst, renaming)
 
 

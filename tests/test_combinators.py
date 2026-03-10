@@ -11,6 +11,8 @@ from immutables import Map
 from hornet.clauses import (
     Environment,
     deref_and_compress,
+    failure,
+    success,
     unify,
     unify_any,
     unify_pairs,
@@ -25,13 +27,11 @@ from hornet.combinators import (
     choice,
     cut,
     fail,
-    failure,
     if_then_else,
     neg,
     prunable,
     seq,
     seq_from_iterable,
-    success,
     then,
     unit,
 )
@@ -378,6 +378,7 @@ def test_call_cc_passes_continuations():
     # call_cc returns a Step directly, not a Goal — wrap it as a Goal to run it
     def f(yes, no, prune):
         return unit(None, EMPTY_ENV)  # Step
+
     step = call_cc(f)
     results = list(trampoline(lambda: step(success, failure, failure)))
     assert len(results) == 1
@@ -387,6 +388,7 @@ def test_call_ec_escape_short_circuits():
     # escape should commit to the first solution found
     def f(escape):
         return then(amb(unit, unit, unit), escape(unit))
+
     results = run(call_ec(f))
     assert len(results) == 1
 
@@ -394,6 +396,7 @@ def test_call_ec_escape_short_circuits():
 def test_call_ec_without_escape_gives_all():
     def f(escape):
         return amb(unit, unit)
+
     results = run(call_ec(f))
     assert len(results) == 2
 
@@ -435,8 +438,10 @@ def test_unify_atom_with_itself(name: str):
     assert len(results) == 1
 
 
-@given(st.text(min_size=1, max_size=5, alphabet='abcde'),
-       st.text(min_size=1, max_size=5, alphabet='fghij'))
+@given(
+    st.text(min_size=1, max_size=5, alphabet='abcde'),
+    st.text(min_size=1, max_size=5, alphabet='fghij'),
+)
 def test_unify_distinct_atoms_fails(name1: str, name2: str):
     results = run(unify(Atom(name1), Atom(name2)))
     assert results == []

@@ -18,7 +18,7 @@ concerns. All operations are tail-call optimized to support deep recursion.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Callable, Iterable
+from typing import Callable, Iterable
 
 from toolz import flip, reduce
 
@@ -28,22 +28,6 @@ type Next[Env] = Callable[[], Frame[Env]]
 type Emit[Ctx, Env] = Callable[[Ctx, Env, Next[Env]], Frame[Env]]
 type Step[Ctx, Env] = Callable[[Emit[Ctx, Env], Next[Env], Next[Env]], Frame[Env]]
 type Goal[Ctx, Env] = Callable[[Ctx, Env], Step[Ctx, Env]]
-
-
-@dataclass(frozen=True, slots=True)
-class Success[Env]:
-    def __call__(self, ctx: Any, env: Env, no: Next[Env]) -> Frame[Env]:
-        return env, no
-
-
-@dataclass(frozen=True, slots=True)
-class Failure[Env]:
-    def __call__(self) -> Frame[Env]:
-        return None
-
-
-success = Success()
-failure = Failure()
 
 
 @dataclass(frozen=True, slots=True)
@@ -137,23 +121,6 @@ class choice_step[Ctx, Env]:
         )
 
 
-<<<<<<< HEAD
-# @dataclass(frozen=True, slots=True)
-# class choice_step[Ctx, Env]:
-#     goal1: Goal[Ctx, Env]
-#     goal2: Goal[Ctx, Env]
-#     ctx: Ctx
-#     env: Env
-#
-#     @tailcall
-#     def __call__(self, yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env]) -> Frame[Env]:
-#         return self.goal1(self.ctx, self.env)(
-#             yes,
-#             tailcall(lambda: self.goal2(self.ctx, self.env)(yes, no, prune)),
-#             prune,
-#         )
-
-
 @dataclass(frozen=True, slots=True)
 class choice[Ctx, Env]:
     goal1: Goal[Ctx, Env]
@@ -163,17 +130,6 @@ class choice[Ctx, Env]:
         return choice_step(self.goal1, self.goal2, ctx, env)
 
 
-=======
-@dataclass(frozen=True, slots=True)
-class choice[Ctx, Env]:
-    goal1: Goal[Ctx, Env]
-    goal2: Goal[Ctx, Env]
-
-    def __call__(self, ctx: Ctx, env: Env) -> Step[Ctx, Env]:
-        return choice_step(self.goal1, self.goal2, ctx, env)
-
-
->>>>>>> d13af33 (defunctionalized most of the combinators)
 @dataclass(frozen=True, slots=True)
 class amb_step[Ctx, Env]:
     goal: Goal[Ctx, Env]
