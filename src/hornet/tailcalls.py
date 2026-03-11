@@ -49,24 +49,6 @@ def tailcall[R](cont: Cont[R]) -> Cont[R]:
     return decorated
 
 
-# def tailcall[R](cont: Cont[R]) -> Cont[R]:
-#     """
-#     Wraps a function to participate in tail-call elimination.
-#
-#     When a decorated function is called, it returns a 'Frame' containing
-#     a thunk rather than executing the function body immediately. This
-#     defers the actual call until the `trampoline` handles it.
-#
-#     Returns:
-#         A callable that returns a `Frame[R]`.
-#     """
-#
-#     def decorated(*args: Any, **kwargs: Any) -> Frame[R]:
-#         return None, lambda: cont(*args, **kwargs)
-#
-#     return decorated
-
-
 def trampoline[R](thunk: Thunk[R]) -> Iterable[R]:
     """
     The iterative driver for tail-recursive functions.
