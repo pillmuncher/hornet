@@ -1,7 +1,7 @@
 # Copyright (c) 2026 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
 # SPDX-License-Identifier: MIT
 #
-# Minimal worked example: should the CFO have known about a violation?
+# Minimal worked example: should the CFO have known about a violation and is therefore culpable?
 #
 # Domain:
 #   - transaction tx17 by employee_e for 250,000 at t=1

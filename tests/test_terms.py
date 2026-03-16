@@ -1,4 +1,4 @@
-# Copyright (c) 2025 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
+# Copyright (c) 2026 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
 # SPDX-License-Identifier: MIT
 
 """Tests for the Hornet term algebra."""

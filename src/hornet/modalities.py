@@ -1,5 +1,6 @@
-# compliance_modal.py
-#
+# Copyright (c) 2026 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
+# SPDX-License-Identifier: MIT
+
 # Modal compliance reasoning on top of Hornet.
 #
 # Architecture
@@ -433,12 +434,14 @@ def epistemic_gen(
 
 
 def _evaluate(gen: WorldGen, world: Database, query: Any) -> list[bool]:
-    worlds = list(gen(world))
-    return [bool(list(w.ask(query))) for w in worlds]
+    return [bool(list(w.ask(query))) for w in gen(world)]
 
 
 def necessity(gen: WorldGen, world: Database, query: Any) -> bool:
     """□φ — query holds in all accessible worlds (and at least one exists)."""
+    # Non-empty requirement: necessity over an empty world set is False,
+    # not True. An agent with no obligations cannot have constructive
+    # knowledge attributed via compliance worlds.
     results = _evaluate(gen, world, query)
     return bool(results) and all(results)
 
