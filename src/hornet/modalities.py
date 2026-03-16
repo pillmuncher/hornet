@@ -250,11 +250,6 @@ def base_world(
     return db
 
 
-def dynamic(db: Database, *indicators: Indicator) -> None:
-    for indicator in indicators:
-        db.setdefault(indicator, [])
-
-
 def _assert_inference_rules(db: Database) -> None:
     """
     Core modal inference rules, domain-agnostic.
@@ -284,10 +279,6 @@ def _assert_inference_rules(db: Database) -> None:
         # Knowledge from recorded attributions.
         learned(Agent, Fact, T).when(notified(Agent, Fact, T)),
         learned(Agent, Fact, T).when(completed_training(Agent, Fact, T)),
-        # Obligation bridge: what must be performed to satisfy obligations.
-        required_event(Agent, Action, T).when(
-            obligation(Agent, Action, T),
-        ),
         # Legal attribution: actual or constructive knowledge.
         # Audit queries use treated_as_known/3 as their entry point.
         treated_as_known(Agent, Fact, T).when(
@@ -296,7 +287,16 @@ def _assert_inference_rules(db: Database) -> None:
         treated_as_known(Agent, Fact, T).when(
             should_have_known(Agent, Fact, T),
         ),
+        # Obligation bridge: what must be performed to satisfy obligations.
+        required_event(Agent, Action, T).when(
+            obligation(Agent, Action, T),
+        ),
     )
+
+
+def dynamic(db: Database, *indicators: Indicator) -> None:
+    for indicator in indicators:
+        db.setdefault(indicator, [])
 
 
 # ---------------------------------------------------------------------------

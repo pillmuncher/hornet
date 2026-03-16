@@ -98,12 +98,17 @@ def main() -> None:
     )
 
     # Bridge between the deontic and epistemic layers.
-    # performed/3 is asserted in compliance worlds by compliance_gen
-    # to record that an agent fulfilled their obligations; reviewed/3
-    # is the epistemic predicate that grounds learned/3 via report_contains.
-    # This rule is what makes constructive knowledge flow from obligation
-    # through action to attribution: the CFO is treated as having learned
-    # whatever a reviewed report contains, whether or not they actually read it.
+    #
+    # performed/3 is asserted in compliance worlds by compliance_gen to record
+    # that an agent fulfilled their obligations;
+    #
+    # reviewed/3 is the epistemic predicate that grounds
+    #
+    # learned/3 via report_contains. This rule is what makes constructive
+    # knowledge flow from obligation through action to attribution: the CFO is
+    # treated as having learned whatever a reviewed report contains, whether or
+    # not they actually read it because their role obliges them to know.
+
     store.append_rule(
         reviewed(Agent, Rpt, T).when(
             performed(Agent, review_report(Rpt), T),
