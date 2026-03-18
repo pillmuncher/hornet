@@ -22,10 +22,14 @@ stretched to rectangles by shapesize()
        To exit press STOP button
  ---------------------------------------
 
-Original work: Copyright (c) 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010,
-2011, 2012 Python Software Foundation; All Rights Reserved
+Original work:
+    Copyright (c) 2001-2012 Python Software Foundation.
+    All rights reserved.
+    Licensed under the Python Software Foundation License.
 
-Modifications: Copyright (c) 2013-2025 Mick Krippendorf
+Modifications:
+    Copyright (c) 2013–2026 Mick Krippendorf
+    Licensed under the MIT License.
 
 Original algorithm replaced to demonstrate how to interface Hornet with Python code.
 """
