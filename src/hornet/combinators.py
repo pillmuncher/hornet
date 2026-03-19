@@ -232,9 +232,14 @@ class if_then_else[Ctx, Env]:
         return ite_step(self.cond(ctx, env), self.then_, self.else_, ctx, env)
 
 
+type CC[Ctx, Env] = Callable[[Emit[Ctx, Env], Next[Env], Next[Env]], Step[Ctx, Env]]
+type Escape[Ctx, Env] = Callable[[Goal[Ctx, Env]], Goal[Ctx, Env]]
+type EC[Ctx, Env] = Callable[[Escape[Ctx, Env]], Goal[Ctx, Env]]
+
+
 @dataclass(frozen=True, slots=True)
 class call_cc[Ctx, Env]:
-    f: Callable[[Emit[Ctx, Env], Next[Env], Next[Env]], Step[Ctx, Env]]
+    f: CC[Ctx, Env]
 
     @tailcall
     def __call__(self, yes: Emit[Ctx, Env], no: Next[Env], prune: Next[Env]) -> Frame[Env]:
@@ -291,7 +296,7 @@ class ec_escape[Ctx, Env]:
 
 @dataclass(frozen=True, slots=True)
 class ec_step[Ctx, Env]:
-    fn: Callable[[Callable[[Goal[Ctx, Env]], Goal[Ctx, Env]]], Goal[Ctx, Env]]
+    fn: EC[Ctx, Env]
     ctx: Ctx
     env: Env
 
@@ -302,7 +307,7 @@ class ec_step[Ctx, Env]:
 
 @dataclass(frozen=True, slots=True)
 class call_ec[Ctx, Env]:
-    fn: Callable[[Callable[[Goal[Ctx, Env]], Goal[Ctx, Env]]], Goal[Ctx, Env]]
+    fn: EC[Ctx, Env]
 
     def __call__(self, ctx: Ctx, env: Env) -> Step[Ctx, Env]:
         return ec_step(self.fn, ctx, env)
