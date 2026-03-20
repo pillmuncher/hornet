@@ -3,12 +3,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from itertools import chain, combinations
 from typing import cast
 
 import hornet.combinators as combinators
-from hornet.clauses import Database, Environment, Subst, failure, predicate, resolve
+from hornet.clauses import Database, Environment, Subst, failure, predicate, resolve, success
 from hornet.combinators import Goal, Next, Step, amb_from_iterable, seq_from_iterable
 from hornet.symbols import (
     AccessPred,
@@ -33,7 +33,7 @@ from hornet.tailcalls import Frame, trampoline
 from hornet.terms import NonVariable
 
 
-def powerset[E](iterable: Iterable[E]) -> Iterable[tuple[E, ...]]:
+def powerset[E](iterable: Iterable[E]) -> Iterator[tuple[E, ...]]:
     s = list(iterable)
     return chain.from_iterable(combinations(s, r) for r in range(len(s) + 1))
 
@@ -61,13 +61,10 @@ def _switch(w: Database, e: Environment) -> Goal[Database, Environment]:
     return goal
 
 
-def _in_world(
-    w: Database, e: Environment, query: Goal[Database, Environment]
-) -> Goal[Database, Environment]:
-    def goal(db2: Database, env2: Environment) -> Step[Database, Environment]:
-        return query(w, e)
-
-    return goal
+def succeeds(step: Step[Database, Environment]) -> bool:
+    for _ in trampoline(lambda: step(success, failure, failure)):
+        return True
+    return False
 
 
 @predicate(necessarily(Query, AccessPred))
@@ -75,7 +72,16 @@ def _necessarily(db: Database, subst: Subst) -> Step[Database, Environment]:
     access = resolve(subst[AccessPred])
     query = resolve(subst[Query])
     worlds = collect_worlds(access, db, subst.env)
-    return seq_from_iterable(_in_world(w, e, query) for w, e in worlds)(db, subst.env)
+
+    def check_world(w: Database, e: Environment) -> Goal[Database, Environment]:
+        def goal(db2: Database, env2: Environment) -> Step[Database, Environment]:
+            if succeeds(query(w, e)):
+                return combinators.unit(db2, env2)
+            return combinators.fail(db2, env2)
+
+        return goal
+
+    return seq_from_iterable(check_world(w, e) for w, e in worlds)(db, subst.env)
 
 
 @predicate(possibly(Query, AccessPred))
@@ -83,7 +89,10 @@ def _possibly(db: Database, subst: Subst) -> Step[Database, Environment]:
     access = resolve(subst[AccessPred])
     query = resolve(subst[Query])
     worlds = collect_worlds(access, db, subst.env)
-    return amb_from_iterable(tuple(_in_world(w, e, query) for w, e in worlds))(db, subst.env)
+
+    if any(succeeds(query(w, e)) for w, e in worlds):
+        return combinators.unit(db, subst.env)
+    return combinators.fail(db, subst.env)
 
 
 @predicate(epistemic_world(UncertainFacts, Agent, T))
@@ -100,7 +109,7 @@ def _epistemic_world(db: Database, subst: Subst) -> Step[Database, Environment]:
 @predicate(compliance_world(Obligations, Agent, T))
 def _compliance_world(db: Database, subst: Subst) -> Step[Database, Environment]:
     return combinators.unit(
-        db.overlay(performed(Agent, Action, T).when(cast(NonVariable, subst[Obligations]))),
+        db.overlay(performed(Agent, Action, T).when(subst[Obligations])),
         subst.env,
     )
 
