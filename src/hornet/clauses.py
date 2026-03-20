@@ -329,6 +329,18 @@ class Database(ChainMap[Indicator, list[Clause]]):
         for clause, indicator in results:
             self.setdefault(indicator, []).append(clause)
 
+    def overlay(self: Database, *terms: NonVariable) -> Database:
+        child = self.new_child()
+        for term in terms:
+            child.setdefault(term.indicator, list(self.get(term.indicator, [])))
+            child.tell(term)
+        return child
+
+    def shadow(self: Database, *terms: NonVariable) -> Database:
+        child = self.new_child()
+        child.tell(*terms)
+        return child
+
     def ask(self, *conjuncts: NonVariable, subst: Subst | None = None) -> Iterable[Subst]:
         query, renaming = make_term(AllOf(*conjuncts))
         goal = resolve(query)
