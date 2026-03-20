@@ -13,6 +13,9 @@ backtracking, and pruning:
 The engine is context-agnostic; `Ctx` (typically the clause database) is
 passed through without direct access to maintain a clean separation of
 concerns. All operations are tail-call optimized to support deep recursion.
+
+Implmentation note: All combinator functions have been defunctionalized and reified as callable
+dataclasses to allow serialization of resolution state.
 """
 
 from __future__ import annotations
