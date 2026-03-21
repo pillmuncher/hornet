@@ -220,6 +220,20 @@ class resolve_atom_or_functor:
         )
 
 
+type EndoFunction[T] = Callable[[T], T]
+type Wrapper = EndoFunction[Goal[Database, Environment]]
+
+
+def wrapped(
+    f: Callable[[Term], Goal[Database, Environment]],
+) -> Callable[[Term], Goal[Database, Environment]]:
+    def wrapper(term: Term) -> Goal[Database, Environment]:
+        return f(term)
+
+    return wrapper
+
+
+@wrapped
 def resolve(query: Term) -> Goal[Database, Environment]:
     match query:
         case Atom('true'):
