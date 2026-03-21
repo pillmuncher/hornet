@@ -9,6 +9,7 @@ from hypothesis import strategies as st
 from immutables import Map
 
 from hornet.clauses import (
+    Database,
     Environment,
     deref_and_compress,
     failure,
@@ -16,9 +17,12 @@ from hornet.clauses import (
     unify,
     unify_any,
     unify_pairs,
-    unify_variable,
 )
 from hornet.combinators import (
+    Emit,
+    Escape,
+    Goal,
+    Next,
     amb,
     amb_from_iterable,
     bind,
@@ -37,6 +41,7 @@ from hornet.combinators import (
 )
 from hornet.tailcalls import trampoline
 from hornet.terms import Atom, Functor, Variable, Wildcard
+from tests.test_clauses import database
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -45,14 +50,9 @@ from hornet.terms import Atom, Functor, Variable, Wildcard
 EMPTY_ENV: Environment = Map()
 
 
-def run(goal, subst: Environment = EMPTY_ENV) -> list[Environment]:
+def run(goal: Goal[Database, Environment], env: Environment = EMPTY_ENV) -> list[Environment]:
     """Run a goal against a substitution and collect all results."""
-    step = goal(None, subst)
-    return list(trampoline(lambda: step(success, failure, failure)))
-
-
-def ctx_run(goal, ctx=None, subst: Environment = EMPTY_ENV) -> list[Environment]:
-    step = goal(ctx, subst)
+    step = goal(database(), env)
     return list(trampoline(lambda: step(success, failure, failure)))
 
 
@@ -77,9 +77,9 @@ def test_cut_succeeds_once():
 
 
 def test_success_returns_subst():
-    subst = Map().set(Variable('X'), 42)
-    result, _ = success(None, subst, failure)
-    assert result == subst
+    env: Environment = Map().set(Variable('X'), 42)
+    result = success(database(), env, failure)
+    assert isinstance(result, tuple) and len(result) == 2 and result[0] == env
 
 
 def test_failure_returns_none():
@@ -178,7 +178,8 @@ def test_amb_with_fail():
 
 
 def test_amb_from_iterable():
-    results = run(amb_from_iterable([unit, unit]))
+    goal: Goal[Database, Environment] = amb_from_iterable((unit, unit))
+    results = run(goal)
     assert len(results) == 2
 
 
@@ -190,18 +191,21 @@ def test_amb_from_iterable():
 def test_prunable_cut_stops_search():
     # prunable sets prune=no, so cut inside just triggers backtracking.
     # All three branches still produce results.
-    results = run(prunable([unit, cut, unit]))
+    goal: Goal[Database, Environment] = prunable((unit, cut, unit))
+    results = run(goal)
     assert len(results) == 2
 
 
 def test_prunable_without_cut_gives_all():
-    results = run(prunable([unit, unit, unit]))
+    goal: Goal[Database, Environment] = prunable((unit, unit, unit))
+    results = run(goal)
     assert len(results) == 3
 
 
 def test_cut_in_seq_prunes_outer_choice():
     # choice(seq(cut, unit), unit) — cut should prune the second branch
-    results = run(prunable([choice(seq(cut, unit), unit)]))
+    goal: Goal[Database, Environment] = prunable(tuple([choice(seq(cut, unit), unit)]))
+    results = run(goal)
     assert len(results) == 1
 
 
@@ -227,8 +231,8 @@ def test_neg_does_not_bind():
     assert results == []
 
     # neg(unify(x, 42)) succeeds when x is already bound to something else
-    subst = Map().set(x, Atom('other'))
-    results = run(neg(unify(x, 42)), subst)
+    env: Environment = Map().set(x, Atom('other'))
+    results = run(neg(unify(x, 42)), env)
     assert len(results) == 1
 
 
@@ -329,44 +333,44 @@ def test_unify_any():
 
 def test_unify_variable_already_bound():
     x = Variable('X')
-    subst = Map().set(x, Atom('a'))
-    results = run(unify(x, Atom('a')), subst)
+    env: Environment = Map().set(x, Atom('a'))
+    results = run(unify(x, Atom('a')), env)
     assert len(results) == 1
 
 
 def test_unify_variable_bound_conflict_fails():
     x = Variable('X')
-    subst = Map().set(x, Atom('a'))
-    results = run(unify(x, Atom('b')), subst)
+    env: Environment = Map().set(x, Atom('a'))
+    results = run(unify(x, Atom('b')), env)
     assert results == []
 
 
 def test_deref_and_compress_unbound():
     x = Variable('X')
-    subst, term = deref_and_compress(EMPTY_ENV, x)
+    _, term = deref_and_compress(EMPTY_ENV, x)
     assert term is x
 
 
 def test_deref_and_compress_follows_chain():
     x, y = Variable('X'), Variable('Y')
-    subst = Map().set(x, y).set(y, Atom('end'))
-    _, term = deref_and_compress(subst, x)
+    env: Environment = Map().set(x, y).set(y, Atom('end'))
+    _, term = deref_and_compress(env, x)
     assert term == Atom('end')
 
 
 def test_deref_and_compress_path_compression():
     x, y = Variable('X'), Variable('Y')
-    subst = Map().set(x, y).set(y, Atom('end'))
-    new_subst, _ = deref_and_compress(subst, x)
+    env: Environment = Map().set(x, y).set(y, Atom('end'))
+    new_env, _ = deref_and_compress(env, x)
     # After compression, X should point directly to Atom('end')
-    assert new_subst[x] == Atom('end')
+    assert new_env[x] == Atom('end')
 
 
 def test_deref_cyclic_raises():
     x = Variable('X')
-    subst = Map().set(x, x)
+    env: Environment = Map().set(x, x)
     with pytest.raises(RuntimeError, match='Cyclic'):
-        deref_and_compress(subst, x)
+        deref_and_compress(env, x)
 
 
 # ---------------------------------------------------------------------------
@@ -376,7 +380,7 @@ def test_deref_cyclic_raises():
 
 def test_call_cc_passes_continuations():
     # call_cc returns a Step directly, not a Goal — wrap it as a Goal to run it
-    def f(yes, no, prune):
+    def f(yes: Emit[Database, Environment], no: Next[Environment], prune: Next[Environment]):
         return unit(None, EMPTY_ENV)  # Step
 
     step = call_cc(f)
@@ -386,7 +390,7 @@ def test_call_cc_passes_continuations():
 
 def test_call_ec_escape_short_circuits():
     # escape should commit to the first solution found
-    def f(escape):
+    def f(escape: Escape[Database, Environment]):
         return then(amb(unit, unit, unit), escape(unit))
 
     results = run(call_ec(f))
@@ -394,7 +398,7 @@ def test_call_ec_escape_short_circuits():
 
 
 def test_call_ec_without_escape_gives_all():
-    def f(escape):
+    def f(_: Escape[Database, Environment]):
         return amb(unit, unit)
 
     results = run(call_ec(f))
@@ -421,7 +425,8 @@ def test_unify_different_integers_fails(a: int, b: int):
 
 @given(st.integers(min_value=1, max_value=10))
 def test_amb_n_units_gives_n_results(n: int):
-    results = run(amb_from_iterable([unit] * n))
+    goal: Goal[Database, Environment] = amb_from_iterable(tuple([unit] * n))
+    results = run(goal)
     assert len(results) == n
 
 
@@ -450,16 +455,16 @@ def test_unify_distinct_atoms_fails(name1: str, name2: str):
 @given(st.integers())
 def test_neg_of_specific_unification(n: int):
     x = Variable('X')
-    subst = Map().set(x, n)
+    env: Environment = Map().set(x, n)
     # neg(unify(x, n)) should fail because x is already n
-    results = run(neg(unify(x, n)), subst)
+    results = run(neg(unify(x, n)), env)
     assert results == []
 
 
 @given(st.integers(min_value=2, max_value=5))
 def test_choice_depth(n: int):
     # chain of choices all succeeding gives n results
-    goals = [unit] * n
+    goals: list[Goal[Database, Environment]] = [unit] * n
     combined = goals[0]
     for g in goals[1:]:
         combined = choice(combined, g)
@@ -475,7 +480,7 @@ def test_choice_depth(n: int):
 def test_unify_variable_bound_to_variable():
     # variable is bound to another variable, triggers recursive unify
     x, y = Variable('X'), Variable('Y')
-    subst = Map().set(x, y)  # X -> Y, Y unbound
-    results = run(unify(x, Atom('a')), subst)
+    env: Environment = Map().set(x, y)  # X -> Y, Y unbound
+    results = run(unify(x, Atom('a')), env)
     assert len(results) == 1
     assert results[0][y] == Atom('a')

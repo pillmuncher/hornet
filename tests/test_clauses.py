@@ -3,6 +3,8 @@
 
 """Tests for hornet.clauses and the bootstrapped database (hornet.__init__)."""
 
+from typing import Any, List
+
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
@@ -56,7 +58,17 @@ from hornet.symbols import (
     unequal,
     univ,
 )
-from hornet.terms import Atom, DCGs, Empty, Functor, HornetRule, Variable, promote
+from hornet.terms import (
+    Atom,
+    DCGs,
+    Empty,
+    Functor,
+    HornetRule,
+    NonVariable,
+    Term,
+    Variable,
+    promote,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -67,11 +79,11 @@ def db() -> Database:
     return database()
 
 
-def solutions(db: Database, *goals) -> list[Subst]:
+def solutions(db: Database, *goals: NonVariable) -> list[Subst]:
     return list(db.ask(*goals))
 
 
-def first(db: Database, *goals) -> Subst:
+def first(db: Database, *goals: NonVariable) -> Subst:
     return solutions(db, *goals)[0]
 
 
@@ -96,19 +108,19 @@ def test_make_term_variable_renamed():
 
 def test_make_term_functor():
     f = Functor('f', Variable('X'), Atom('a'))
-    term, env = make_term(f)
+    term, _ = make_term(f)
     assert isinstance(term, Functor)
     assert term.name == 'f'
     assert term.args[1] == Atom('a')
 
 
 def test_make_clause_atomic_fact():
-    clause, indicator = make_clause(Atom('foo'))
+    _, indicator = make_clause(Atom('foo'))
     assert indicator == ('foo', 0)
 
 
 def test_make_clause_compound_fact():
-    clause, indicator = make_clause(Functor('foo', Atom('a'), Atom('b')))
+    _, indicator = make_clause(Functor('foo', Atom('a'), Atom('b')))
     assert indicator == ('foo', 2)
 
 
@@ -116,7 +128,7 @@ def test_make_clause_rule():
     head = Functor('foo', Variable('X'))
     body = Functor('bar', Variable('X'))
     rule = HornetRule(head, body)
-    clause, indicator = make_clause(rule)
+    _, indicator = make_clause(rule)
     assert indicator == ('foo', 1)
 
 
@@ -499,7 +511,7 @@ def test_throw_raises():
 def test_repeat_is_infinite():
     d = db()
     # take first 5 solutions
-    results = []
+    results: List[Any] = []
     for s in d.ask(repeat):
         results.append(s)
         if len(results) >= 5:
@@ -635,10 +647,10 @@ def test_phrase_simple_grammar():
     d = db()
     d.tell(
         *DCGs(
-            Atom('ab').when([Atom('a'), Atom('b')]),
+            Atom('ab').when(['a', 'b']),
         )
     )
-    results = solutions(d, phrase(Atom('ab'), [Atom('a'), Atom('b')]))
+    results = solutions(d, phrase(Atom('ab'), ['a', 'b']))
     assert len(results) == 1
 
 
@@ -646,10 +658,10 @@ def test_phrase_fails_on_mismatch():
     d = db()
     d.tell(
         *DCGs(
-            Atom('ab').when([Atom('a'), Atom('b')]),
+            Atom('ab').when(['a', 'b']),
         )
     )
-    results = solutions(d, phrase(Atom('ab'), [Atom('a'), Atom('c')]))
+    results = solutions(d, phrase(Atom('ab'), ['a', 'c']))
     assert results == []
 
 
@@ -751,7 +763,7 @@ def test_subst_len():
     from immutables import Map
 
     x = Variable('X')
-    subst = Subst(Map().set(x, 42), Map())
+    subst = Subst(Map[Variable, Term]().set(x, 42), Map[Variable, Term]())
     assert len(subst) == 1
 
 
@@ -759,7 +771,7 @@ def test_subst_cyclic_raises():
     from immutables import Map
 
     x = Variable('X')
-    subst = Subst(Map().set(x, x), Map().set(x, x))
+    subst = Subst(Map[Variable, Term]().set(x, x), Map[Variable, Term]().set(x, x))
     with pytest.raises(RuntimeError, match='Cyclic'):
         subst[x]
 
@@ -793,21 +805,21 @@ def test_python_rule_atom_head():
 def test_make_term_wildcard():
     from hornet.terms import WILDCARD
 
-    term, env = make_term(WILDCARD)
+    term, _ = make_term(WILDCARD)
     assert term is WILDCARD
 
 
 def test_make_term_allof_ground():
     from hornet.terms import AllOf
 
-    term, env = make_term(AllOf(Atom('a'), Atom('b')))
+    term, _ = make_term(AllOf(Atom('a'), Atom('b')))
     assert isinstance(term, AllOf)
 
 
 def test_make_term_cons_ground():
     from hornet.terms import Cons
 
-    term, env = make_term(promote([Atom('a'), Atom('b')]))
+    term, _ = make_term(promote([Atom('a'), Atom('b')]))
     assert isinstance(term, Cons)
 
 
@@ -815,7 +827,7 @@ def test_make_term_unary_operator():
     from hornet.terms import USub
 
     x = Variable('X')
-    term, env = make_term(USub(x))
+    term, _ = make_term(USub(x))
     assert isinstance(term, USub)
 
 
@@ -823,7 +835,7 @@ def test_make_term_binary_operator():
     from hornet.terms import Add
 
     x, y = Variable('X'), Variable('Y')
-    term, env = make_term(x + y)
+    term, _ = make_term(x + y)
     assert isinstance(term, Add)
 
 
@@ -840,8 +852,6 @@ def test_atomic_fact_no_args():
 
 
 def test_python_rule_indicator():
-    from hornet.clauses import PythonRule
-
     d = db()
 
     @d.tell
@@ -849,7 +859,7 @@ def test_python_rule_indicator():
     def _(db: Database, subst: Subst) -> Step[Database, Environment]:
         return unit(db, subst.env)
 
-    clause, indicator = make_clause(Atom('boop'))
+    __, indicator = make_clause(Atom('boop'))
     assert indicator == ('boop', 0)
 
 
@@ -858,7 +868,9 @@ def test_subst_deref_cyclic_direct():
 
     x, y = Variable('X'), Variable('Y')
     # X -> Y -> X cycle
-    subst = Subst(Map().set(x, y).set(y, x), Map().set(x, x).set(y, y))
+    subst = Subst(
+        Map[Variable, Term]().set(x, y).set(y, x), Map[Variable, Term]().set(x, x).set(y, y)
+    )
     with pytest.raises(RuntimeError, match='Cyclic'):
         subst[x]
 
@@ -873,17 +885,17 @@ def test_resolve_non_callable_raises():
 def test_make_clause_atomic_python_rule():
     from hornet.clauses import PythonRule
 
-    def body(env: Environment):
+    def body(_: Environment):
         def goal(db: Database, env: Environment) -> Step[Database, Environment]:
             return unit(db, env)
 
         return goal
 
     rule = PythonRule(Atom('zap'), body)
-    clause, indicator = make_clause(rule)
+    _, indicator = make_clause(rule)
     assert indicator == ('zap', 0)
 
 
 def test_make_clause_returns_tuple():
-    clause, indicator = make_clause(Functor('foo', Atom('a')))
+    _, indicator = make_clause(Functor('foo', Atom('a')))
     assert indicator == ('foo', 1)
