@@ -5,7 +5,7 @@
 Kripke-style epistemic and deontic modal operators for Hornet.
 
 SEMANTICS — Epistemic worlds (k / possibly_k):
-    Accessible worlds are all subsets of knowable facts the agent could have
+    Accessible worlds are all subsets of accessible facts the agent could have
     received (powerset of accessible information). This models *bounded/partial
     awareness* rather than standard S5: an agent may have observed only a
     subset of available evidence. k(φ) holds iff φ is true in every such world
@@ -31,7 +31,7 @@ IMPLEMENTATION — Box and diamond as combinator composition:
     so backtracking through `neg` correctly restores the pre-switch database.
     Query evaluation is fully integrated into the outer trampoline.
 
-    World *construction* (enumerating knowable facts / obligations) still
+    World *construction* (enumerating accessible facts / obligations) still
     requires a db.ask call inside _epistemic_world and _compliance_world, but
     that nesting is constant-depth regardless of modal nesting depth. With the
     old collect_worlds/succeeds approach, every level of o(k(o(...))) added
@@ -50,7 +50,7 @@ KNOWN LIMITATION — World construction is still eager:
     elements upfront.
 
 VACUOUS TRUTH — empty accessibility:
-    If no worlds are accessible (e.g. no obligations, no knowable facts),
+    If no worlds are accessible (e.g. no obligations, no accessible facts),
     box vacuously succeeds and diamond fails. This follows from the standard
     Kripke definition: all-w-in-empty.phi is trivially true; exists-w-in-empty
     is false. With the powerset construction the empty subset is always
@@ -60,54 +60,34 @@ VACUOUS TRUTH — empty accessibility:
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from itertools import chain, combinations
-from typing import cast
+from typing import Iterable, Iterator, cast
 
 from hornet.clauses import Database, Environment, Subst, predicate, resolve
 from hornet.combinators import Step, amb_from_iterable, neg, then, unit
 from hornet.symbols import (
-    E2,
-    L2,
-    T1,
-    T2,
     Action,
     Agent,
-    Event,
-    Init,
     KnownFact,
-    L,
     Query,
     T,
     _,
-    append,
-    call,
+    accessible,
     compliance_world,
-    currently,
     epistemic_world,
     fail,
-    greater,
     k,
-    knowable,
-    no_later_than,
     o,
     obligation,
     performed,
     possibly_k,
     possibly_o,
-    superseding,
-    univ,
 )
 from hornet.terms import NonVariable
 
 
 def powerset[E](iterable: Iterable[E]) -> Iterator[tuple[E, ...]]:
-    """Generate all subsets of `iterable`.
-    Note: the input is eagerly converted to a list, so the function is not
-    fully lazy in terms of memory consumption. Subsets themselves are
-    generated lazily.
-    """
     s = list(iterable)
     return chain.from_iterable(combinations(s, r) for r in range(len(s) + 1))
 
@@ -117,102 +97,85 @@ class switch:
     target_db: Database
 
     def __call__(self, _current_db: Database, env: Environment) -> Step[Database, Environment]:
-        # We discard the current_db and yield the target_db, preserving the environment.
-
         return unit(self.target_db, env)
-
-
-@predicate(epistemic_world(Agent, KnownFact, T))
-def _epistemic_world(db: Database, subst: Subst) -> Step[Database, Environment]:
-    agent = subst[Agent]
-    t = subst[T]
-
-    facts: list[NonVariable] = [
-        cast(NonVariable, s[KnownFact]) for s in db.ask(knowable(agent, KnownFact, t))
-    ]
-
-    # Each accessible world hides a different subset of knowable facts.
-    # Powerset ranges from "agent saw everything" (no facts hidden)
-    # to "agent saw nothing" (all facts hidden).
-    # Inlined generator to avoid unnecessary function indirection.
-    return amb_from_iterable(
-        tuple(switch(db.shadow(*[f.when(fail) for f in hidden])) for hidden in powerset(facts))
-    )(db, subst.env)
-
-
-@predicate(compliance_world(Agent, Action, T))
-def _compliance_world(db: Database, subst: Subst) -> Step[Database, Environment]:
-    agent = subst[Agent]
-    t = subst[T]
-
-    obligations: list[NonVariable] = [
-        cast(NonVariable, s[Action]) for s in db.ask(obligation(agent, Action, t))
-    ]
-
-    # Each accessible compliance world overlays a different subset of obligations.
-    # o(φ) requires φ in all subsets (including the empty one);
-    # possibly_o(φ) requires φ in at least one.
-    # Inlined generator to avoid unnecessary function indirection.
-    return amb_from_iterable(
-        tuple(
-            switch(db.overlay(*[performed(agent, act, t) for act in subset]))
-            for subset in powerset(obligations)
-        )
-    )(db, subst.env)
-
-
-@predicate(k(Query, Agent, T))
-def _k(db: Database, subst: Subst) -> Step[Database, Environment]:
-    query = resolve(subst[Query])
-    access = resolve(epistemic_world(subst[Agent], _, subst[T]))
-    return neg(then(access, neg(query)))(db, subst.env)
-
-
-@predicate(o(Query, Agent, T))
-def _o(db: Database, subst: Subst) -> Step[Database, Environment]:
-    query = resolve(subst[Query])
-    access = resolve(compliance_world(subst[Agent], _, subst[T]))
-    return neg(then(access, neg(query)))(db, subst.env)
-
-
-@predicate(possibly_k(Query, Agent, T))
-def _k_possibly(db: Database, subst: Subst) -> Step[Database, Environment]:
-    query = resolve(subst[Query])
-    access = resolve(epistemic_world(subst[Agent], _, subst[T]))
-    return then(access, query)(db, subst.env)
-
-
-@predicate(possibly_o(Query, Agent, T))
-def _o_possibly(db: Database, subst: Subst) -> Step[Database, Environment]:
-    query = resolve(subst[Query])
-    access = resolve(compliance_world(subst[Agent], _, subst[T]))
-    return then(access, query)(db, subst.env)
 
 
 def modal(db: Database) -> Database:
     child = db.new_child()
-    child.tell(
-        no_later_than(T1, T2).when(~greater(T1, T2)),
-        currently(Event, T).when(
-            call(Event),
-            univ(Event, L),
-            append(Init, [T1], L),
-            no_later_than(T1, T),
-            ~superseding(Event, Init, T1, T),
-        ),
-        superseding(_, Init, T1, T).when(
-            append(Init, [T2], L2),
-            univ(E2, L2),
-            call(E2),
-            greater(T2, T1),
-            no_later_than(T2, T),
-        ),
-        epistemic_world(Agent, KnownFact, T),
-        compliance_world(Agent, Action, T),
-        k(Query, Agent, T),
-        o(Query, Agent, T),
-        possibly_k(Query, Agent, T),
-        possibly_o(Query, Agent, T),
-    )
+
+    # Epistemic worlds: generate all accessible worlds for an agent at time T
+    # as powersets of accessible facts. Each world hides a different subset of
+    # facts to model bounded awareness.
+    @child.tell
+    @predicate(epistemic_world(Agent, KnownFact, T))
+    def _epistemic_world(db: Database, subst: Subst) -> Step[Database, Environment]:
+        agent = subst[Agent]
+        t = subst[T]
+
+        # Only consider facts that this agent could have known at time t
+        facts: list[NonVariable] = [
+            cast(NonVariable, s[KnownFact]) for s in db.ask(accessible(agent, KnownFact, t))
+        ]
+
+        # Construct all possible worlds: subsets of facts, modeling partial awareness
+        return amb_from_iterable(
+            tuple(switch(db.shadow(*[f.when(fail) for f in hidden])) for hidden in powerset(facts))
+        )(db, subst.env)
+
+    # Compliance worlds: generate all accessible worlds for an agent at time T
+    # as powersets of obligations. Each world represents a different pattern of
+    # performed obligations.
+    @child.tell
+    @predicate(compliance_world(Agent, Action, T))
+    def _compliance_world(db: Database, subst: Subst) -> Step[Database, Environment]:
+        agent = subst[Agent]
+        t = subst[T]
+        obligations: list[NonVariable] = [
+            cast(NonVariable, s[Action]) for s in db.ask(obligation(agent, Action, t))
+        ]
+        if not obligations:
+            return unit(db, subst.env)
+        return amb_from_iterable(
+            tuple(
+                switch(db.overlay(*[performed(agent, act, t) for act in subset]))
+                for subset in powerset(obligations)
+            )
+        )(db, subst.env)
+
+    # Box epistemic operator: k(Query, Agent, T) succeeds iff Query holds in
+    # all epistemic worlds accessible to the agent.
+    @child.tell
+    @predicate(k(Query, Agent, T))
+    def _k(db: Database, subst: Subst) -> Step[Database, Environment]:
+        query = resolve(subst[Query])
+        access = resolve(epistemic_world(subst[Agent], _, subst[T]))
+        return neg(then(access, neg(query)))(db, subst.env)
+
+    # Box deontic operator: o(Query, Agent, T) succeeds iff Query holds in all
+    # compliance worlds (all obligation fulfillment patterns).
+    @child.tell
+    @predicate(o(Query, Agent, T))
+    def _o(db: Database, subst: Subst) -> Step[Database, Environment]:
+        query = resolve(subst[Query])
+        access = resolve(compliance_world(subst[Agent], _, subst[T]))
+        return neg(then(access, neg(query)))(db, subst.env)
+
+    # Diamond epistemic operator: possibly_k(Query, Agent, T) succeeds if Query
+    # holds in at least one epistemic world.
+    @child.tell
+    @predicate(possibly_k(Query, Agent, T))
+    def _k_possibly(db: Database, subst: Subst) -> Step[Database, Environment]:
+        query = resolve(subst[Query])
+        access = resolve(epistemic_world(subst[Agent], _, subst[T]))
+        return then(access, query)(db, subst.env)
+
+    # Diamond deontic operator: possibly_o(Query, Agent, T) succeeds if Query
+    # holds in at least one compliance world.
+    @child.tell
+    @predicate(possibly_o(Query, Agent, T))
+    def _o_possibly(db: Database, subst: Subst) -> Step[Database, Environment]:
+        query = resolve(subst[Query])
+        access = resolve(compliance_world(subst[Agent], _, subst[T]))
+        return then(access, query)(db, subst.env)
 
     return child
