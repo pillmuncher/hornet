@@ -61,12 +61,12 @@ VACUOUS TRUTH — empty accessibility:
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
+from dataclasses import dataclass
 from itertools import chain, combinations
 from typing import cast
 
-import hornet.combinators as combinators
 from hornet.clauses import Database, Environment, Subst, predicate, resolve
-from hornet.combinators import Goal, Step, amb_from_iterable, neg, then
+from hornet.combinators import Step, amb_from_iterable, neg, then, unit
 from hornet.symbols import (
     E2,
     L2,
@@ -112,13 +112,14 @@ def powerset[E](iterable: Iterable[E]) -> Iterator[tuple[E, ...]]:
     return chain.from_iterable(combinations(s, r) for r in range(len(s) + 1))
 
 
-def switch(w: Database) -> Goal[Database, Environment]:
-    """Switch execution into world w, preserving the current substitution environment."""
+@dataclass(frozen=True, slots=True)
+class switch:
+    target_db: Database
 
-    def goal(_db: Database, env: Environment) -> Step[Database, Environment]:
-        return combinators.unit(w, env)
+    def __call__(self, _current_db: Database, env: Environment) -> Step[Database, Environment]:
+        # We discard the current_db and yield the target_db, preserving the environment.
 
-    return goal
+        return unit(self.target_db, env)
 
 
 @predicate(epistemic_world(Agent, KnownFact, T))
