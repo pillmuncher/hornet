@@ -35,9 +35,9 @@ from hornet.symbols import (
 
 
 def main() -> None:
-    db = database()
+    facts_db = database()
 
-    db.tell(
+    facts_db.tell(
         #
         # Transaction TX violated Regulation at time T if:
         # - Regulation was in force at time T,
@@ -83,9 +83,9 @@ def main() -> None:
         report_generated('rep42', 'tx17', 3),
     )
 
-    mdb = modal(db)
+    modal_db = modal(facts_db)
 
-    mdb.tell(
+    modal_db.tell(
         #
         # Agent is obligated to review Report by time Tmax if:
         # - Agent held the CFO role at Tmax,
@@ -122,7 +122,7 @@ def main() -> None:
 
     # Query
     t_query = 3
-    result = any(mdb.ask(deemed_known('alice', violation('tx17', 'r31'), t_query)))
+    result = any(modal_db.ask(deemed_known('alice', violation('tx17', 'r31'), t_query)))
     print(f"deemed_known('alice', violation('tx17', 'r31'), {t_query}): {result}")
 
 

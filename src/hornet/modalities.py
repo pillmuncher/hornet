@@ -161,20 +161,6 @@ def _compliance_world(db: Database, subst: Subst) -> Step[Database, Environment]
     )(db, subst.env)
 
 
-@predicate(possibly_k(Query, Agent, T))
-def _k_possibly(db: Database, subst: Subst) -> Step[Database, Environment]:
-    query = resolve(subst[Query])
-    access = resolve(epistemic_world(subst[Agent], _, subst[T]))
-    return then(access, query)(db, subst.env)
-
-
-@predicate(possibly_o(Query, Agent, T))
-def _o_possibly(db: Database, subst: Subst) -> Step[Database, Environment]:
-    query = resolve(subst[Query])
-    access = resolve(compliance_world(subst[Agent], _, subst[T]))
-    return then(access, query)(db, subst.env)
-
-
 @predicate(k(Query, Agent, T))
 def _k(db: Database, subst: Subst) -> Step[Database, Environment]:
     query = resolve(subst[Query])
@@ -187,6 +173,20 @@ def _o(db: Database, subst: Subst) -> Step[Database, Environment]:
     query = resolve(subst[Query])
     access = resolve(compliance_world(subst[Agent], _, subst[T]))
     return neg(then(access, neg(query)))(db, subst.env)
+
+
+@predicate(possibly_k(Query, Agent, T))
+def _k_possibly(db: Database, subst: Subst) -> Step[Database, Environment]:
+    query = resolve(subst[Query])
+    access = resolve(epistemic_world(subst[Agent], _, subst[T]))
+    return then(access, query)(db, subst.env)
+
+
+@predicate(possibly_o(Query, Agent, T))
+def _o_possibly(db: Database, subst: Subst) -> Step[Database, Environment]:
+    query = resolve(subst[Query])
+    access = resolve(compliance_world(subst[Agent], _, subst[T]))
+    return then(access, query)(db, subst.env)
 
 
 def modal(db: Database) -> Database:
@@ -209,10 +209,10 @@ def modal(db: Database) -> Database:
         ),
         epistemic_world(Agent, KnownFact, T),
         compliance_world(Agent, Action, T),
-        possibly_k(Query, Agent, T),
-        possibly_o(Query, Agent, T),
         k(Query, Agent, T),
         o(Query, Agent, T),
+        possibly_k(Query, Agent, T),
+        possibly_o(Query, Agent, T),
     )
 
     return child
