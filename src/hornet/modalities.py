@@ -61,7 +61,7 @@ from itertools import chain, combinations
 from typing import Callable, Iterable, Iterator, cast
 
 from hornet.clauses import Database, Environment, Subst, predicate, resolve
-from hornet.combinators import Goal, Step, amb_from_iterable, neg, then, unit
+from hornet.combinators import Goal, Step, amb_from_iterable, lift_ctx, neg, then
 from hornet.symbols import (
     Action,
     Agent,
@@ -80,7 +80,7 @@ from hornet.symbols import (
     possibly_k,
     possibly_o,
 )
-from hornet.terms import NonVariable, Term
+from hornet.terms import NonVariable, Term, const
 
 type AccessRelation = Callable[[Database], list[Database]]
 
@@ -90,12 +90,8 @@ def powerset[E](iterable: Iterable[E]) -> Iterator[tuple[E, ...]]:
     return chain.from_iterable(combinations(s, r) for r in range(len(s) + 1))
 
 
-@dataclass(frozen=True, slots=True)
-class switch:
-    target_db: Database
-
-    def __call__(self, _: Database, env: Environment) -> Step[Database, Environment]:
-        return unit(self.target_db, env)
+def switch[Ctx, Env](v: Ctx) -> Goal[Ctx, Env]:
+    return lift_ctx(const(v))
 
 
 @dataclass(frozen=True, slots=True)

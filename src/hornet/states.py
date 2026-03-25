@@ -6,6 +6,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Generator
 
+from toolz import identity
+
 type StateFunction[S, V] = Callable[[V], State[S, V]]
 type StateOp[S, R] = Generator[State[S, Any], Any, R]
 
@@ -39,17 +41,6 @@ def with_state[S, R](fn: Callable[..., StateOp[S, R]]) -> Callable[..., State[S,
         return step()  # start the trampoline
 
     return wrapper
-
-
-def identity[T](x: T) -> T:
-    return x
-
-
-def const[T](x: T) -> Callable[..., T]:
-    def constant(*_: Any) -> T:
-        return x
-
-    return constant
 
 
 def get_state[S, V](fn: Callable[[S], V] = identity) -> State[S, V]:

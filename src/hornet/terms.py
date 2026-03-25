@@ -27,12 +27,20 @@ from functools import cache
 from itertools import count
 from typing import Any, Callable, ClassVar, Iterator
 
-from .states import StateOp, const, get_state, set_state, with_state
+from .states import StateOp, get_state, set_state, with_state
 
 type PrimitiveType = str | int | float | bool | complex | bytes | tuple[Term, ...]
 type AtomicType = PrimitiveType | Atom | Empty
 type Term = Symbolic | PrimitiveType | Exception
 type Indicator = tuple[str, int]
+
+
+@dataclass(frozen=True, slots=True)
+class const[V]:
+    v: V
+
+    def __call__(self, *_: Any) -> V:
+        return self.v
 
 
 @dataclass(frozen=True, slots=True, init=False)

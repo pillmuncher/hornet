@@ -314,3 +314,11 @@ class call_ec[Ctx, Env]:
 
     def __call__(self, ctx: Ctx, env: Env) -> Step[Ctx, Env]:
         return ec_step(self.fn, ctx, env)
+
+
+@dataclass(frozen=True, slots=True)
+class lift_ctx[Ctx, Env]:
+    f: Callable[[Ctx], Ctx]
+
+    def __call__(self, ctx: Ctx, env: Env) -> Step[Ctx, Env]:
+        return unit(self.f(ctx), env)
