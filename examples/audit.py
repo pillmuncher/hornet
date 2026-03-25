@@ -26,11 +26,9 @@ from hornet.symbols import (
     deemed_known,
     enacted,
     greater,
-    k,
     knows,
     mentions,
     no_later_than,
-    o,
     obligation,
     performed,
     report_generated,
@@ -137,12 +135,6 @@ def main() -> None:
             accessible(Agent, Fact, Tmax),
             reviewed(Agent, Report, Tmax),
             mentions(Report, Fact),
-        ),
-        #
-        # An agent is deemed to have known a fact at Tmax if in all compliance
-        # and epistemic worlds they necessarily knew it.
-        deemed_known(Agent, Fact, Tmax).when(
-            o(k(knows(Agent, Fact, Tmax), Agent, Tmax), Agent, Tmax)
         ),
     )
 
