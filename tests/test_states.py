@@ -6,7 +6,8 @@
 from hypothesis import given
 from hypothesis import strategies as st
 
-from hornet.states import State, const, get_state, identity, set_state, with_state
+from hornet.states import State, get_state, identity, set_state, with_state
+from hornet.terms import const
 
 # Traditional tests
 
