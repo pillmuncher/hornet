@@ -87,21 +87,22 @@ from hornet.symbols import (
 )
 from hornet.terms import NonVariable, Term, const
 
-type Transformer[T] = Callable[[Database], tuple[T, ...]]
-
 
 @dataclass(frozen=True, slots=True)
-class KleisliComposition:
-    f: Transformer[Database]
-    g: Transformer[Database]
+class KleisliComposition[A, B, C]:
+    f: Callable[[A], tuple[B, ...]]
+    g: Callable[[B], tuple[C, ...]]
 
-    def __call__(self, db: Database) -> tuple[Database, ...]:
-        return tuple(w2 for w1 in self.f(db) for w2 in self.g(w1))
+    def __call__(self, a: A) -> tuple[C, ...]:
+        return tuple(y for x in self.f(a) for y in self.g(x))
+
+
+type Transformer = Callable[[Database], tuple[Database, ...]]
 
 
 @dataclass(frozen=True, slots=True)
 class Branch:
-    transform: Transformer[Database]
+    transform: Transformer
 
     def __call__(self, db: Database, env: Environment) -> Step[Database, Environment]:
         goals: tuple[Goal[Database, Environment], ...] = tuple(
@@ -111,13 +112,13 @@ class Branch:
 
 
 def exists(
-    transform: Transformer[Database], query: Goal[Database, Environment]
+    transform: Transformer, query: Goal[Database, Environment]
 ) -> Goal[Database, Environment]:
     return then(Branch(transform), query)
 
 
 def forall(
-    transform: Transformer[Database], query: Goal[Database, Environment]
+    transform: Transformer, query: Goal[Database, Environment]
 ) -> Goal[Database, Environment]:
     return neg(then(Branch(transform), neg(query)))
 
