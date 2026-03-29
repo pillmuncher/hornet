@@ -335,18 +335,21 @@ failure = Failure()
 
 
 class Database(ChainMap[Indicator, list[Clause]]):
+    def __missing__(self, key: Indicator) -> list[Clause]:
+        return []
+
     def tell(self, *terms: NonVariable) -> None:
         results: list[tuple[Clause, Indicator]] = []
         for term in terms:
             assert isinstance(term, NonVariable)
             results.append(make_clause(term))
         for clause, indicator in results:
-            self.setdefault(indicator, []).append(clause)
+            self.maps[0].setdefault(indicator, []).append(clause)
 
     def overlay(self: Database, *terms: NonVariable) -> Database:
         child = self.new_child()
         for term in terms:
-            child.setdefault(term.indicator, list(self.get(term.indicator, [])))
+            child.maps[0].setdefault(term.indicator, list(self.get(term.indicator, [])))
             child.tell(term)
         return child
 

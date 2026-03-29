@@ -43,7 +43,7 @@ from hornet.symbols import (
 
 
 def main() -> None:
-    db = modal(database())
+    db = database()
 
     db.tell(
         #
@@ -139,7 +139,7 @@ def main() -> None:
     )
 
     query = deemed_known('alice', violation('tx17', 'r31'), 3)
-    print(f'{query}: {any(db.ask(query))}')
+    print(f'{query}: {any(modal(db).ask(query))}')
 
 
 if __name__ == '__main__':

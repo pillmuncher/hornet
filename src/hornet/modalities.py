@@ -42,8 +42,8 @@ CONSTRUCTIVE VIEW:
       deontic branching.
 
 MODAL SEMANTICS — Persistence and Possibility:
-    □φ = forall(transform, φ)  → φ holds in all resulting worlds (persistent)
-    ◇φ = exists(transform, φ)  → φ holds in some resulting world (reachable)
+    □φ = forall(generator, φ)  → φ holds in all resulting worlds (persistent)
+    ◇φ = exists(generator, φ)  → φ holds in some resulting world (reachable)
 
 INTERFACE:
     The modal interface predicates:
@@ -97,30 +97,30 @@ class KleisliComposition[A, B, C]:
         return tuple(y for x in self.f(a) for y in self.g(x))
 
 
-type Transformer = Callable[[Database], tuple[Database, ...]]
+type WorldGenerator = Callable[[Database], tuple[Database, ...]]
 
 
 @dataclass(frozen=True, slots=True)
 class Branch:
-    transform: Transformer
+    generator: WorldGenerator
 
     def __call__(self, db: Database, env: Environment) -> Step[Database, Environment]:
         goals: tuple[Goal[Database, Environment], ...] = tuple(
-            cast(Goal[Database, Environment], lift_ctx(const(w))) for w in self.transform(db)
+            cast(Goal[Database, Environment], lift_ctx(const(w))) for w in self.generator(db)
         )
         return amb_from_iterable(goals)(db, env)
 
 
 def exists(
-    transform: Transformer, query: Goal[Database, Environment]
+    generator: WorldGenerator, query: Goal[Database, Environment]
 ) -> Goal[Database, Environment]:
-    return then(Branch(transform), query)
+    return then(Branch(generator), query)
 
 
 def forall(
-    transform: Transformer, query: Goal[Database, Environment]
+    generator: WorldGenerator, query: Goal[Database, Environment]
 ) -> Goal[Database, Environment]:
-    return neg(then(Branch(transform), neg(query)))
+    return neg(then(Branch(generator), neg(query)))
 
 
 def powerset[E](iterable: Iterable[E]) -> tuple[tuple[E, ...], ...]:
@@ -208,7 +208,7 @@ def modal(db: Database) -> Database:
     @child.tell
     @predicate(deemed_known(Agent, Fact, T))
     def _(db: Database, subst: Subst) -> Step[Database, Environment]:
-        return forall(
+        return exists(
             compliance_worlds(subst[Agent], subst[T]),
             resolve(knows(subst[Agent], subst[Fact], subst[T])),
         )(db, subst.env)
