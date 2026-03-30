@@ -1,4 +1,3 @@
-_version.py
 *.egg-info
 *.lock
 *.old
@@ -9,12 +8,15 @@ _version.py
 .*
 __pycache__
 __pypackages__
+_version.py
 build
+coverage.json
+coverage.xml
 dist
 env
 ez_setup.py
 hornet.egg-info
 htmlcov
+log.org
 setuptools-*
 tags
-log.org
