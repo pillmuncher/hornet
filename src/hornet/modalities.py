@@ -208,9 +208,13 @@ def modal(db: Database) -> Database:
     @child.tell
     @predicate(deemed_known(Agent, Fact, T))
     def _(db: Database, subst: Subst) -> Step[Database, Environment]:
-        return exists(
-            compliance_worlds(subst[Agent], subst[T]),
-            resolve(knows(subst[Agent], subst[Fact], subst[T])),
+        # ∀ₒ (∃ₖ knows(...))
+        return forall(
+            deontic_worlds(subst[Agent], subst[T]),
+            exists(
+                epistemic_worlds(subst[Agent], subst[T]),
+                resolve(knows(subst[Agent], subst[Fact], subst[T])),
+            ),
         )(db, subst.env)
 
     return child
