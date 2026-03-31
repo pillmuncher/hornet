@@ -5,7 +5,6 @@ from hornet import database
 from hornet.clauses import Database
 from hornet.modalities import (
     Branch,
-    KleisliComposition,
     deontic_worlds,
     epistemic_worlds,
     exists,
@@ -84,15 +83,6 @@ def _modal_db_with_obligation() -> Database:
         complied.when(performed('alice', act1, 1)),
     )
     return db
-
-
-def _make_compliance_base() -> Database:
-    """Return a database with one fact and one obligation."""
-    from hornet.symbols import act1, fact1
-
-    base = database()
-    base.tell(fact1, accessible('alice', fact1, 1), obligation('alice', act1, 1))
-    return base
 
 
 def _audit_db() -> Database:
@@ -264,89 +254,6 @@ def test_powerset_no_duplicates_within_subsets(items: list[int]):
     result = powerset(items)
     for subset in result:
         assert len(subset) == len(set(subset))
-
-
-# ------------------------------
-# KleisliComposition tests
-# ------------------------------
-
-
-def test_kleisli_composition_basic():
-    def f(x: int):
-        return (x + 1, x + 2)
-
-    def g(x: int):
-        return (x + 1, x + 2)
-
-    composed = KleisliComposition(f, g)
-    assert composed(0) == (2, 3, 3, 4)
-
-
-def test_kleisli_composition_identity():
-    """Composing with identity-like function preserves output."""
-
-    def f(x: int):
-        return (x,)
-
-    def g(x: int):
-        return (x,)
-
-    composed = KleisliComposition(f, g)
-    assert composed(42) == (42,)
-
-
-def test_kleisli_composition_fan_out():
-    """f returns multiple values, g fans them out."""
-
-    def f(x: int):
-        return (x, x + 1)
-
-    def g(x: int):
-        return (x, x * 2)
-
-    composed = KleisliComposition(f, g)
-    result = composed(1)
-    assert set(result) == {1, 2, 2, 4}
-
-
-def test_kleisli_composition_empty_f():
-    def f(_: int):
-        return ()
-
-    def g(x: int):
-        return (x,)
-
-    composed = KleisliComposition(f, g)
-    assert composed(5) == ()
-
-
-def test_kleisli_composition_empty_g():
-    def f(x: int):
-        return (x,)
-
-    def g(_: int):
-        return ()
-
-    composed = KleisliComposition(f, g)
-    assert composed(5) == ()
-
-
-@given(st.integers(min_value=0, max_value=5))
-def test_kleisli_composition_associativity_count(n: int):
-    """(f ∘ g) ∘ h and f ∘ (g ∘ h) produce same number of results."""
-
-    def f(x: int):
-        return tuple(range(x, x + 2))
-
-    def g(x: int):
-        return (x, x + 1)
-
-    def h(x: int):
-        return (x * 2,)
-
-    left = KleisliComposition(KleisliComposition(f, g), h)
-    right = KleisliComposition(f, KleisliComposition(g, h))
-    assert left(n) == right(n)
 
 
 # ------------------------------
@@ -606,77 +513,6 @@ def test_deontic_worlds_full_fulfillment_world_exists():
 
 
 # ------------------------------
-# Compliance worlds tests
-# ------------------------------
-
-
-# ------------------------------
-# Compliance worlds tests (rewritten)
-# ------------------------------
-
-
-def test_compliance_worlds_count_():
-    """1 epistemic fact × 1 obligation: 2 × 2 = 4 worlds via composition."""
-    base = _make_compliance_base()
-    worlds = KleisliComposition(
-        epistemic_worlds('alice', 1),
-        deontic_worlds('alice', 1),
-    )(base)
-    assert len(worlds) == 4
-
-
-def test_compliance_worlds_are_databases():
-    base = _make_compliance_base()
-    worlds = KleisliComposition(
-        epistemic_worlds('alice', 1),
-        deontic_worlds('alice', 1),
-    )(base)
-    assert all(isinstance(w, Database) for w in worlds)
-
-
-def test_compliance_worlds_kleisli_composition():
-    """compliance_worlds ≈ epistemic ∘ deontic (Kleisli)."""
-    base = _make_compliance_base()
-    composed = KleisliComposition(
-        epistemic_worlds('alice', 1),
-        deontic_worlds('alice', 1),
-    )
-    direct = composed  # we no longer have compliance_worlds class
-    assert len(composed(base)) == len(direct(base))
-
-
-def test_compliance_worlds_no_accessible_no_obligations():
-    """No accessible facts, no obligations → 1 world via composition."""
-    base = database()
-    _register_predicates(base, _ACCESSIBLE, _OBLIGATION)
-    worlds = KleisliComposition(
-        epistemic_worlds('nobody', 0),
-        deontic_worlds('nobody', 0),
-    )(base)
-    assert len(worlds) == 1
-
-
-@given(
-    st.integers(min_value=0, max_value=3),
-    st.integers(min_value=0, max_value=3),
-)
-def test_compliance_worlds_count_dynamic(n_facts: int, n_obligations: int):
-    """Compliance worlds count = 2^n_facts × 2^n_obligations via composition."""
-    base = database()
-    _register_predicates(base, _ACCESSIBLE, _OBLIGATION)
-    for i in range(n_facts):
-        fact = Atom(f'fact{i}')
-        base.tell(fact, accessible('alice', fact, 1))
-    for i in range(n_obligations):
-        base.tell(obligation('alice', Atom(f'act{i}'), 1))
-    worlds = KleisliComposition(
-        epistemic_worlds('alice', 1),
-        deontic_worlds('alice', 1),
-    )(base)
-    assert len(worlds) == (2**n_facts) * (2**n_obligations)
-
-
-# ------------------------------
 # Modal operator tests (k, possibly_k, o, possibly_o)
 # ------------------------------
 
@@ -851,21 +687,3 @@ def test_powerset_all_elements_covered(items: list[int]):
     result = powerset(items)
     for item in items:
         assert any(item in s for s in result if s)
-
-
-@given(st.integers(min_value=0, max_value=5))
-def test_kleisli_composition_with_powerset_transform(n: int):
-    """Composition of powerset-based transforms: f maps input to all subsets,
-    g wraps each subset as a list."""
-
-    def f(_: tuple[int, ...]) -> tuple[tuple[int, ...], ...]:
-        # Return each subset as a separate output (not the whole powerset as one item)
-        items = tuple(range(n))
-        return powerset(list(items))
-
-    def g(x: tuple[int, ...]) -> tuple[tuple[int, ...], ...]:
-        return (x,)  # wrap each subset in a 1-tuple
-
-    composed = KleisliComposition(f, g)
-    result = composed(())
-    assert len(result) == 2**n

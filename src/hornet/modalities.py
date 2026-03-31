@@ -111,16 +111,6 @@ from hornet.symbols import (
 )
 from hornet.terms import NonVariable, Term, const
 
-
-@dataclass(frozen=True, slots=True)
-class KleisliComposition[A, B, C]:
-    f: Callable[[A], tuple[B, ...]]
-    g: Callable[[B], tuple[C, ...]]
-
-    def __call__(self, a: A) -> tuple[C, ...]:
-        return tuple(y for x in self.f(a) for y in self.g(x))
-
-
 type WorldGenerator = Callable[[Database], tuple[Database, ...]]
 
 
@@ -136,19 +126,20 @@ class Branch:
 
 
 def exists(
-    generator: WorldGenerator, query: Goal[Database, Environment]
+    generator: WorldGenerator,
+    query: Goal[Database, Environment],
 ) -> Goal[Database, Environment]:
     return then(Branch(generator), query)
 
 
 def forall(
-    generator: WorldGenerator, query: Goal[Database, Environment]
+    generator: WorldGenerator,
+    query: Goal[Database, Environment],
 ) -> Goal[Database, Environment]:
     return neg(then(Branch(generator), neg(query)))
 
 
 def powerset[E](iterable: Iterable[E]) -> tuple[tuple[E, ...], ...]:
-
     s = list(iterable)
     return tuple(chain.from_iterable(combinations(s, r) for r in range(len(s) + 1)))
 
