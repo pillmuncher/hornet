@@ -6,7 +6,6 @@ from hornet.clauses import Database
 from hornet.modalities import (
     Branch,
     KleisliComposition,
-    compliance_worlds,
     deontic_worlds,
     epistemic_worlds,
     exists,
@@ -611,38 +610,70 @@ def test_deontic_worlds_full_fulfillment_world_exists():
 # ------------------------------
 
 
+# ------------------------------
+# Compliance worlds tests (rewritten)
+# ------------------------------
+
+
 def test_compliance_worlds_count_():
-    """1 epistemic fact × 1 obligation: 2 × 2 = 4 worlds."""
+    """1 epistemic fact × 1 obligation: 2 × 2 = 4 worlds via composition."""
     base = _make_compliance_base()
-    worlds = compliance_worlds('alice', 1)(base)
+    worlds = KleisliComposition(
+        epistemic_worlds('alice', 1),
+        deontic_worlds('alice', 1),
+    )(base)
     assert len(worlds) == 4
 
 
 def test_compliance_worlds_are_databases():
     base = _make_compliance_base()
-    worlds = compliance_worlds('alice', 1)(base)
+    worlds = KleisliComposition(
+        epistemic_worlds('alice', 1),
+        deontic_worlds('alice', 1),
+    )(base)
     assert all(isinstance(w, Database) for w in worlds)
 
 
 def test_compliance_worlds_kleisli_composition():
-    """compliance_worlds = epistemic ∘ deontic (Kleisli)."""
+    """compliance_worlds ≈ epistemic ∘ deontic (Kleisli)."""
     base = _make_compliance_base()
-    from hornet.modalities import KleisliComposition
-
     composed = KleisliComposition(
         epistemic_worlds('alice', 1),
         deontic_worlds('alice', 1),
     )
-    direct = compliance_worlds('alice', 1)
+    direct = composed  # we no longer have compliance_worlds class
     assert len(composed(base)) == len(direct(base))
 
 
 def test_compliance_worlds_no_accessible_no_obligations():
-    """No accessible facts, no obligations → 1 world."""
+    """No accessible facts, no obligations → 1 world via composition."""
     base = database()
     _register_predicates(base, _ACCESSIBLE, _OBLIGATION)
-    worlds = compliance_worlds('nobody', 0)(base)
+    worlds = KleisliComposition(
+        epistemic_worlds('nobody', 0),
+        deontic_worlds('nobody', 0),
+    )(base)
     assert len(worlds) == 1
+
+
+@given(
+    st.integers(min_value=0, max_value=3),
+    st.integers(min_value=0, max_value=3),
+)
+def test_compliance_worlds_count_dynamic(n_facts: int, n_obligations: int):
+    """Compliance worlds count = 2^n_facts × 2^n_obligations via composition."""
+    base = database()
+    _register_predicates(base, _ACCESSIBLE, _OBLIGATION)
+    for i in range(n_facts):
+        fact = Atom(f'fact{i}')
+        base.tell(fact, accessible('alice', fact, 1))
+    for i in range(n_obligations):
+        base.tell(obligation('alice', Atom(f'act{i}'), 1))
+    worlds = KleisliComposition(
+        epistemic_worlds('alice', 1),
+        deontic_worlds('alice', 1),
+    )(base)
+    assert len(worlds) == (2**n_facts) * (2**n_obligations)
 
 
 # ------------------------------
@@ -812,23 +843,6 @@ def test_deontic_worlds_count_with_n_obligations(n: int):
         base.tell(obligation('alice', Atom(f'act{i}'), 1))
     worlds = deontic_worlds('alice', 1)(base)
     assert len(worlds) == 2**n
-
-
-@given(
-    st.integers(min_value=0, max_value=3),
-    st.integers(min_value=0, max_value=3),
-)
-def test_compliance_worlds_count(n_facts: int, n_obligations: int):
-    """compliance_worlds count = 2^n_facts × 2^n_obligations."""
-    base = database()
-    _register_predicates(base, _ACCESSIBLE, _OBLIGATION)
-    for i in range(n_facts):
-        fact = Atom(f'fact{i}')
-        base.tell(fact, accessible('alice', fact, 1))
-    for i in range(n_obligations):
-        base.tell(obligation('alice', Atom(f'act{i}'), 1))
-    worlds = compliance_worlds('alice', 1)(base)
-    assert len(worlds) == (2**n_facts) * (2**n_obligations)
 
 
 @given(st.lists(st.integers(min_value=0, max_value=10), max_size=4, unique=True))

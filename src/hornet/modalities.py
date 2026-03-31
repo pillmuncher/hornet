@@ -2,48 +2,69 @@
 # SPDX-License-Identifier: MIT
 
 """
-Modal Logic by way of Constructive Refinement.
+Modal Logic by way of Constructive World Generation.
 
-STRUCTURE — Theory Transitions as Kleisli arrows:
-    Worlds are Database instances representing constructive proof states.
-    Transitions are Kleisli arrows `Database → tuple[Database, ...]`, composed via
-    composition over tuples.
+STRUCTURE:
+    Worlds are generated variants of a root Database that represent
+    constructive proof states.
+
+    Accessibility is not given as a relation but instead as generators
+    `Database → tuple[Database, ...]` that produce alternative worlds via
+    systematic transformations.
+
+    Modal structure arises from quantification over these generated worlds.
 
 LOGIC POSIT:
-    Modal logic is represented as a poset of information states, reflecting constructive
-    transformations:
-        epistemic (↓) ≼ deontic (↑) ≼ compliance
-        with
-            ↓ indicating refinement via information subtraction (subsets of known facts),
-            ↑ indicating extension via information addition (performed obligations).
+    Modal logic is represented as an algebra of information states under
+    constructive transformations:
+
+        epistemic (↓)   : information restriction (shadowing facts)
+        deontic   (↑)   : information extension (overlaying actions)
+
+    These transformations are asymmetric:
+        ↓ is generally non-monotone (information removal)
+        ↑ is monotone (information addition)
+
+    Modal interactions are expressed by *nesting quantifiers* over generators,
+    rather than composing transitions.
 
 TRANSITIONS:
 
     - epistemic_worlds:
         Produces sub-theories by shadowing subsets of accessible facts.
-        Models what remains provable under **bounded awareness** or information loss.
+        Models bounded awareness and information loss.
 
     - deontic_worlds:
         Produces super-theories by overlaying subsets of performed obligations.
         Models partial fulfillment and extension of duties.
 
-    - compliance_worlds:
-        Composition of epistemic and deontic transitions via `KleisliComposition`.
-        Models what knowledge persists when accounting for both restricted knowledge and
-        expanded obligations.
-
 CONSTRUCTIVE VIEW:
     - Truth = provability under CWA / NAF.
-    - Transitions always include the base database (identity) to satisfy **reflexivity
-      (Axiom T)**.
-    - All variations are generated as tuples, ensuring **serializability** and
-      defunctionalized combinators.
-    - `powerset` generates all subsets of facts or obligations to implement epistemic and
-      deontic branching.
+    - Worlds are *constructed*, not assumed; possibility = generability.
+    - Transitions include the base database (identity), ensuring reflexivity (Axiom T).
+    - `powerset` enumerates systematic variants for epistemic and deontic branching.
 
-MODAL SEMANTICS — Persistence and Possibility:
-    □φ = forall(generator, φ)  → φ holds in all resulting worlds (persistent)
-    ◇φ = exists(generator, φ)  → φ holds in some resulting world (reachable)
+MODAL SEMANTICS:
+    Modal operators are quantifiers over generated worlds:
+    - □φ = forall(generator, φ)  → φ holds in all generated worlds
+    - ◇φ = exists(generator, φ)  → φ holds in some generated world
+
+    Nested modalities retain constructive structure:
+        - ∀ₒ (∃ₖ φ) – φ could be known for every obligation.
+        - ∀ₖ (∃ₒ φ) – For every epistemic state, some obligation makes φ hold.
+        - ∃ₒ (∀ₖ φ) – Some duty guarantees φ in all epistemic states.
+        - ∃ₖ (∀ₒ φ) – Knowledge state ensures φ regardless of duties.
+        - ∀ₒ (∀ₖ φ) – Knowledge-invariant across all obligations.
+        - ∀ₖ (∀ₒ φ) – Knowledge-relative normative invariance.
+        - ∃ₒ (∃ₖ φ) – φ is possible in at least one knowledge-obligation scenario.
+        - ∃ₖ (∃ₒ φ) – There exists a knowledge-obligation pair making φ true.
+
+        Note:  ∀_ (∀ₒ _φ) and ∃_ (∃_ φ) are just Kleisli compositions, therefor
+        - ∀ₒ (∀ₖ φ) ≡ ∀ₖ (∀ₒ φ)
+        - ∃ₒ (∃ₖ φ) ≡ ∃ₖ (∃ₒ φ)
+
+    Each combination is realized constructively as a tuple of generated worlds,
+    preserving the algebraic structure of knowledge and obligation transitions.
 
 INTERFACE:
     The modal interface predicates:
@@ -54,9 +75,12 @@ INTERFACE:
         - deemed_known(Agent, Fact, T)
 
 NOTES:
-    - The design reflects a **Hornet control algebra perspective**:
-      epistemic and deontic transitions are first-class, composable, and fully
-      defunctionalized.
+    - Accessibility is *generative*, not relational: a world-transforming operation
+      rather than a predicate over pairs of worlds.
+    - The system is closer to an algebra of worldmaking (in the Goodmanian sense)
+      than to classical Kripke semantics.
+    - The design reflects a Hornet control algebra perspective: generators and
+      quantifiers are first-class, composable, and fully defunctionalized.
 """
 
 from __future__ import annotations
@@ -156,18 +180,6 @@ class deontic_worlds:
             db.overlay(*[performed(self.agent, act, self.t) for act in subset])
             for subset in powerset(obligations)
         )
-
-
-@dataclass(frozen=True, slots=True)
-class compliance_worlds:
-    agent: Term
-    t: Term
-
-    def __call__(self, db: Database) -> tuple[Database, ...]:
-        return KleisliComposition(
-            epistemic_worlds(self.agent, self.t),
-            deontic_worlds(self.agent, self.t),
-        )(db)
 
 
 def modal(db: Database) -> Database:
