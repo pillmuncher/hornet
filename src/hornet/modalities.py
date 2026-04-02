@@ -94,25 +94,17 @@ from hornet.combinators import Goal, Step, amb_from_iterable, lift_ctx, neg, the
 from hornet.symbols import (
     Action,
     Agent,
-    Fact,
     KnownFact,
     Query,
     T,
     accessible,
-    achievable_in_context,
-    conceivably,
-    deemed_known,
-    duty_guarantees,
     fail,
     k,
-    knowable_in_context,
-    knowledge_guarantees,
     o,
     obligation,
     performed,
     possibly_k,
     possibly_o,
-    robustly,
 )
 from hornet.terms import NonVariable, Term, const
 
@@ -134,6 +126,9 @@ def exists(
     generator: WorldGenerator,
     query: Goal[Database, Environment],
 ) -> Goal[Database, Environment]:
+    # Constructive existential quantification over worlds:
+    # holds iff at least one generated world provides an example for φ
+    # ∃w: w ⊨ φ
     return then(Branch(generator), query)
 
 
@@ -141,6 +136,9 @@ def forall(
     generator: WorldGenerator,
     query: Goal[Database, Environment],
 ) -> Goal[Database, Environment]:
+    # Constructive universal quantification over worlds via failure:
+    # holds iff no generated world provides a counterexample to φ
+    # ∀w: w ⊨ φ  ≡  ¬∃w: w ⊨ ¬φ
     return neg(then(Branch(generator), neg(query)))
 
 
