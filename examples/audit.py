@@ -23,11 +23,13 @@ from hornet.symbols import (
     greater,
     happens_at,
     holds_at,
+    in_force,
     initiates,
     mentions,
     obligation,
     published,
     review,
+    tenure,
     threshold,
     transaction,
     violated,
@@ -88,14 +90,14 @@ def main() -> None:
         # Report rep42 mentions transaction tx17.
         mentions('rep42', 'tx17'),
         # Enacting a regulation causes it to be in force.
-        initiates(enacted(Regulation), enacted(Regulation)),
+        initiates(enacted(Regulation), in_force(Regulation)),
         # Appointing an agent to a role causes them to hold that role.
-        initiates(appointed(Agent, Role), appointed(Agent, Role)),
+        initiates(appointed(Agent, Role), tenure(Agent, Role)),
         # A transaction violates a regulation if it exceeds the
         # threshold while the regulation is in force.
         violation(TX, Regulation).when(
             happens_at(transaction(TX, _, Amount), T),
-            holds_at(enacted(Regulation), T),
+            holds_at(in_force(Regulation), T),
             threshold(Regulation, Limit),
             greater(Amount, Limit),
         ),
@@ -111,13 +113,13 @@ def main() -> None:
             mentions(Report, TX),
             happens_at(published(Report), T_report),
             ~after(T_report, Tmax),
-            holds_at(appointed(Agent, 'cfo'), Tmax),
+            holds_at(tenure(Agent, 'cfo'), Tmax),
         ),
         # An agent is obligated to review a report if it was published
         # while they held the CFO role.
         obligation(Agent, review(Report), T_report).when(
             happens_at(published(Report), T_report),
-            holds_at(appointed(Agent, 'cfo'), T_report),
+            holds_at(tenure(Agent, 'cfo'), T_report),
         ),
     )
 
