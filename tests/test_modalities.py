@@ -1,7 +1,7 @@
 from hypothesis import given
 from hypothesis import strategies as st
 
-from hornet import database
+from hornet import database, symbols
 from hornet.clauses import Database
 from hornet.modalities import (
     Branch,
@@ -17,7 +17,6 @@ from hornet.symbols import (
     complied,
     deemed_known,
     k,
-    knows,
     o,
     obligation,
     performed,
@@ -88,91 +87,65 @@ def _modal_db_with_obligation() -> Database:
 def _audit_db() -> Database:
     """Minimal audit database mirroring examples/audit.py."""
     from hornet.symbols import (
-        E2,
-        L2,
-        T1,
-        T2,
         TX,
         Agent,
         Amount,
-        Event,
-        Fact,
-        Init,
-        L,
         Limit,
         Regulation,
         Report,
+        Role,
         T,
-        _,
-        append,
+        T_report,
+        Tmax,
+        accessible,
+        after,
         appointed,
-        call,
-        currently,
         enacted,
         greater,
+        happens_at,
+        holds_at,
+        initiates,
         mentions,
-        no_later_than,
-        report_generated,
-        review_report,
-        reviewed,
-        superseding,
+        obligation,
+        published,
+        review,
         threshold,
         transaction,
-        univ,
+        violated,
+        violation,
     )
 
     base = modal(database())
     base.tell(
-        appointed('alice', 'cfo', 0),
-        enacted('r31', 1),
-        threshold('r31', 100_000),
-        transaction('tx17', 'bob', 250_000, 2),
-        report_generated('rep42', 'tx17', 3),
-        performed('alice', review_report('rep42'), 3),
-        reviewed(Agent, Report, T).when(
-            performed(Agent, review_report(Report), T1),
-            no_later_than(T1, T),
-        ),
+        happens_at(enacted('reg31'), 0),
+        happens_at(appointed('alice', 'cfo'), 1),
+        happens_at(transaction('tx17', 'bob', 250_000), 2),
+        happens_at(published('rep42'), 3),
+        # Alice did not review report rep42.
+        # happens_at(performed('alice', review('rep42'), _))
+        threshold('reg31', 100_000),
+        mentions('rep42', 'tx17'),
+        initiates(enacted(Regulation), enacted(Regulation)),
+        initiates(appointed(Agent, Role), appointed(Agent, Role)),
         violation(TX, Regulation).when(
-            transaction(TX, _, Amount, T),
-            currently(enacted(Regulation, _), T),
+            happens_at(transaction(TX, symbols._, Amount), T),
+            holds_at(enacted(Regulation), T),
             threshold(Regulation, Limit),
             greater(Amount, Limit),
         ),
-        mentions(Report, violation(TX, Regulation)).when(
-            report_generated(Report, TX, T),
+        accessible(Agent, violated(TX, Regulation), Tmax).when(
+            accessible(Agent, transaction(TX, Amount), Tmax),
             violation(TX, Regulation),
         ),
-        no_later_than(T1, T2).when(~greater(T1, T2)),
-        currently(Event, T).when(
-            call(Event),
-            univ(Event, L),
-            append(Init, [T1], L),
-            no_later_than(T1, T),
-            ~superseding(Event, Init, T1, T),
+        accessible(Agent, transaction(TX, Amount), Tmax).when(
+            mentions(Report, TX),
+            happens_at(published(Report), T_report),
+            ~after(T_report, Tmax),
+            holds_at(appointed(Agent, 'cfo'), Tmax),
         ),
-        superseding(_, Init, T1, T).when(
-            append(Init, [T2], L2),
-            univ(E2, L2),
-            call(E2),
-            greater(T2, T1),
-            no_later_than(T2, T),
-        ),
-        obligation(Agent, review_report(Report), T).when(
-            currently(appointed(Agent, 'cfo', _), T),
-            report_generated(Report, _, T1),
-            no_later_than(T1, T),
-        ),
-        accessible(Agent, Fact, T).when(
-            report_generated(Report, _, T1),
-            mentions(Report, Fact),
-            currently(appointed(Agent, 'cfo', _), T1),
-            no_later_than(T1, T),
-        ),
-        knows(Agent, Fact, T).when(
-            accessible(Agent, Fact, T),
-            reviewed(Agent, Report, T),
-            mentions(Report, Fact),
+        obligation(Agent, review(Report), T_report).when(
+            happens_at(published(Report), T_report),
+            holds_at(appointed(Agent, 'cfo'), T_report),
         ),
     )
     return base
@@ -613,9 +586,9 @@ def test_possibly_o_fails_when_p_never_holds():
 
 
 def test_deemed_known_in_audit_scenario():
-    """Smoke test from audit.py: alice deemed_known violation(tx17, r31) at time 3."""
+    """Smoke test from audit.py: alice deemed_known violation(tx17, reg31) at time 3."""
     db = _audit_db()
-    query = deemed_known('alice', violation('tx17', 'r31'), 3)
+    query = deemed_known('alice', violation('tx17', 'reg31'), 3)
     result = has_solutions(db, query)
     assert isinstance(result, bool)
 

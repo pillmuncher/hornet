@@ -102,7 +102,6 @@ from hornet.symbols import (
     deemed_known,
     fail,
     k,
-    knows,
     o,
     obligation,
     performed,
@@ -151,7 +150,7 @@ class epistemic_worlds:
 
     def __call__(self, db: Database) -> tuple[Database, ...]:
         facts: list[NonVariable] = [
-            s[KnownFact]  # type: ignore
+            cast(NonVariable, s[KnownFact])
             for s in db.ask(accessible(self.agent, KnownFact, self.t))
         ]
         return tuple(db.shadow(*[f.when(fail) for f in hidden]) for hidden in powerset(facts))
@@ -164,8 +163,7 @@ class deontic_worlds:
 
     def __call__(self, db: Database) -> tuple[Database, ...]:
         obligations: list[NonVariable] = [
-            s[Action]  # type: ignore
-            for s in db.ask(obligation(self.agent, Action, self.t))
+            cast(NonVariable, s[Action]) for s in db.ask(obligation(self.agent, Action, self.t))
         ]
         return tuple(
             db.overlay(*[performed(self.agent, act, self.t) for act in subset])
@@ -211,12 +209,12 @@ def modal(db: Database) -> Database:
     @child.tell
     @predicate(deemed_known(Agent, Fact, T))
     def _(db: Database, subst: Subst) -> Step[Database, Environment]:
-        # ∀ₒ (∃ₖ knows(...))
+        # ∀ₒ (∃ₖ accessible(...))
         return forall(
             deontic_worlds(subst[Agent], subst[T]),
             exists(
                 epistemic_worlds(subst[Agent], subst[T]),
-                resolve(knows(subst[Agent], subst[Fact], subst[T])),
+                resolve(accessible(subst[Agent], subst[Fact], subst[T])),
             ),
         )(db, subst.env)
 
