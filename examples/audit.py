@@ -1,9 +1,12 @@
 from hornet import database
-from hornet.modalities import modal
+from hornet.clauses import Database, Environment, Subst, predicate, resolve
+from hornet.combinators import Step
+from hornet.modalities import deontic_worlds, epistemic_worlds, exists, forall, modal
 from hornet.symbols import (
     TX,
     Agent,
     Amount,
+    Fact,
     Limit,
     Regulation,
     Report,
@@ -32,8 +35,41 @@ from hornet.symbols import (
 )
 
 
+def compliance(db: Database) -> Database:
+    """
+    Attach the compliance modality to the database.
+
+    This modality encodes the legal notion of "deemed to know" under obligations:
+    - For each obligation (deontic world), it considers all possible epistemic
+      outcomes accessible to the agent.
+    - An agent is considered to "know" a fact if it is accessible in all
+      obligation-constrained epistemic worlds.
+
+    In short, it implements the ∀ₒ∃ₖ pattern: for all deontic branches, there
+    exists an epistemic branch where the fact is accessible.
+
+    Usage:
+        db = compliance(database())
+        result = any(db.ask(deemed_known(agent, fact, time)))
+    """
+    child = modal(db.new_child())
+
+    @child.tell
+    @predicate(deemed_known(Agent, Fact, T))
+    def _(db: Database, subst: Subst) -> Step[Database, Environment]:
+        return forall(
+            deontic_worlds(subst[Agent], subst[T]),
+            exists(
+                epistemic_worlds(subst[Agent], subst[T]),
+                resolve(accessible(subst[Agent], subst[Fact], subst[T])),
+            ),
+        )(db, subst.env)
+
+    return child
+
+
 def main() -> None:
-    db = database()
+    db = compliance(database())
 
     # using Robert Kowalski's Event Calculus here:
     db.tell(
@@ -89,7 +125,7 @@ def main() -> None:
     # Logic: In all worlds where she reviews the report (Deontic),
     # she gains access to the transaction data (Epistemic).
     query = deemed_known('alice', violated('tx17', 'reg31'), 3)
-    result = any(modal(db).ask(query))
+    result = any(db.ask(query))
     print(f'Liability Check: {query} -> {result}')
 
 

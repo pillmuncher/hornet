@@ -18,5 +18,6 @@ ez_setup.py
 hornet.egg-info
 htmlcov
 log.org
+pyrightconfig.json
 setuptools-*
 tags

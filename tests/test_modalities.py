@@ -2,7 +2,8 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from hornet import database, symbols
-from hornet.clauses import Database
+from hornet.clauses import Database, Environment, Subst, predicate, resolve
+from hornet.combinators import Step
 from hornet.modalities import (
     Branch,
     deontic_worlds,
@@ -90,6 +91,7 @@ def _audit_db() -> Database:
         TX,
         Agent,
         Amount,
+        Fact,
         Limit,
         Regulation,
         Report,
@@ -115,8 +117,21 @@ def _audit_db() -> Database:
         violation,
     )
 
-    base = modal(database())
-    base.tell(
+    db = modal(database())
+
+    @db.tell
+    @predicate(deemed_known(Agent, Fact, T))
+    def _(db: Database, subst: Subst) -> Step[Database, Environment]:
+        # ∀ₒ (∃ₖ accessible(...))
+        return forall(
+            deontic_worlds(subst[Agent], subst[T]),
+            exists(
+                epistemic_worlds(subst[Agent], subst[T]),
+                resolve(accessible(subst[Agent], subst[Fact], subst[T])),
+            ),
+        )(db, subst.env)
+
+    db.tell(
         happens_at(enacted('reg31'), 0),
         happens_at(appointed('alice', 'cfo'), 1),
         happens_at(transaction('tx17', 'bob', 250_000), 2),
@@ -148,7 +163,7 @@ def _audit_db() -> Database:
             holds_at(appointed(Agent, 'cfo'), T_report),
         ),
     )
-    return base
+    return db
 
 
 # ------------------------------

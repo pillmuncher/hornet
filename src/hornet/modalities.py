@@ -99,14 +99,20 @@ from hornet.symbols import (
     Query,
     T,
     accessible,
+    achievable_in_context,
+    conceivably,
     deemed_known,
+    duty_guarantees,
     fail,
     k,
+    knowable_in_context,
+    knowledge_guarantees,
     o,
     obligation,
     performed,
     possibly_k,
     possibly_o,
+    robustly,
 )
 from hornet.terms import NonVariable, Term, const
 
@@ -204,18 +210,6 @@ def modal(db: Database) -> Database:
         return exists(
             deontic_worlds(subst[Agent], subst[T]),
             resolve(subst[Query]),
-        )(db, subst.env)
-
-    @child.tell
-    @predicate(deemed_known(Agent, Fact, T))
-    def _(db: Database, subst: Subst) -> Step[Database, Environment]:
-        # ∀ₒ (∃ₖ accessible(...))
-        return forall(
-            deontic_worlds(subst[Agent], subst[T]),
-            exists(
-                epistemic_worlds(subst[Agent], subst[T]),
-                resolve(accessible(subst[Agent], subst[Fact], subst[T])),
-            ),
         )(db, subst.env)
 
     return child
