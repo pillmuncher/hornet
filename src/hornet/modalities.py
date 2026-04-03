@@ -155,7 +155,7 @@ class epistemic_worlds:
     def __call__(self, db: Database) -> tuple[Database, ...]:
         facts: list[NonVariable] = [
             cast(NonVariable, s[KnownFact])
-            for s in db.ask(accessible(self.agent, KnownFact, self.t))
+            for s in db.ask(accessible(KnownFact, self.agent, self.t))
         ]
         return tuple(db.shadow(*[f.when(fail) for f in hidden]) for hidden in powerset(facts))
 
@@ -167,10 +167,10 @@ class deontic_worlds:
 
     def __call__(self, db: Database) -> tuple[Database, ...]:
         obligations: list[NonVariable] = [
-            cast(NonVariable, s[Action]) for s in db.ask(obligation(self.agent, Action, self.t))
+            cast(NonVariable, s[Action]) for s in db.ask(obligation(Action, self.agent, self.t))
         ]
         return tuple(
-            db.overlay(*[performed(self.agent, act, self.t) for act in subset])
+            db.overlay(*[performed(act, self.agent, self.t) for act in subset])
             for subset in powerset(obligations)
         )
 

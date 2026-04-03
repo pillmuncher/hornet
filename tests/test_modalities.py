@@ -57,8 +57,8 @@ def _make_epistemic_base():
     from hornet.symbols import fact1, fact2
 
     db = database()
-    db.tell(accessible('alice', fact1, 1))
-    db.tell(accessible('alice', fact2, 1))
+    db.tell(accessible(fact1, 'alice', 1))
+    db.tell(accessible(fact2, 'alice', 1))
     return db
 
 
@@ -67,8 +67,8 @@ def _make_deontic_base():
     from hornet.symbols import act1, act2
 
     db = database()
-    db.tell(obligation('alice', act1, 1))
-    db.tell(obligation('alice', act2, 1))
+    db.tell(obligation(act1, 'alice', 1))
+    db.tell(obligation(act2, 'alice', 1))
     return db
 
 
@@ -78,9 +78,9 @@ def _modal_db_with_obligation() -> Database:
 
     db = modal(database())
     db.tell(
-        obligation('alice', act1, 1),
-        performed('alice', act2, 1),  # act2 is performed but not obligated
-        complied.when(performed('alice', act1, 1)),
+        obligation(act1, 'alice', 1),
+        performed(act2, 'alice', 1),  # act2 is performed but not obligated
+        complied.when(performed(act1, 'alice', 1)),
     )
     return db
 
@@ -137,7 +137,7 @@ def _audit_db() -> Database:
         happens_at(transaction('tx17', 'bob', 250_000), 2),
         happens_at(published('rep42'), 3),
         # Alice did not review report rep42.
-        # happens_at(performed('alice', review('rep42'), _))
+        # happens_at(performed(review('rep42'), 'alice', _))
         threshold('reg31', 100_000),
         mentions('rep42', 'tx17'),
         initiates(enacted(Regulation), enacted(Regulation)),
@@ -148,17 +148,17 @@ def _audit_db() -> Database:
             threshold(Regulation, Limit),
             greater(Amount, Limit),
         ),
-        accessible(Agent, violated(TX, Regulation), Tmax).when(
-            accessible(Agent, transaction(TX, Amount), Tmax),
+        accessible(violated(TX, Regulation), Agent, Tmax).when(
+            accessible(transaction(TX, Agent, Amount), Tmax),
             violation(TX, Regulation),
         ),
-        accessible(Agent, transaction(TX, Amount), Tmax).when(
+        accessible(transaction(TX, Amount), Agent, Tmax).when(
             mentions(Report, TX),
             happens_at(published(Report), T_report),
             ~after(T_report, Tmax),
             holds_at(appointed(Agent, 'cfo'), Tmax),
         ),
-        obligation(Agent, review(Report), T_report).when(
+        obligation(review(Report), Agent, T_report).when(
             happens_at(published(Report), T_report),
             holds_at(appointed(Agent, 'cfo'), T_report),
         ),
@@ -467,7 +467,7 @@ def test_deontic_worlds_reflexivity():
 
     base = _make_deontic_base()
     worlds = deontic_worlds('alice', 1)(base)
-    some_has_performed = any(bool(list(w.ask(performed('alice', act1, 1)))) for w in worlds)
+    some_has_performed = any(bool(list(w.ask(performed(act1, 'alice', 1)))) for w in worlds)
     assert some_has_performed
 
 
@@ -494,8 +494,8 @@ def test_deontic_worlds_full_fulfillment_world_exists():
     full_world = [
         w
         for w in worlds
-        if bool(list(w.ask(performed('alice', act1, 1))))
-        and bool(list(w.ask(performed('alice', act2, 1))))
+        if bool(list(w.ask(performed(act1, 'alice', 1))))
+        and bool(list(w.ask(performed(act2, 'alice', 1))))
     ]
     assert len(full_world) >= 1
 
@@ -590,7 +590,7 @@ def test_possibly_o_fails_when_p_never_holds():
 
     db = modal(database())
     _register_predicates(db, ('q', 0))
-    db.tell(obligation('alice', act1, 1))
+    db.tell(obligation(act1, 'alice', 1))
     result = has_solutions(db, possibly_o(q, 'alice', 1))
     assert not result
 
@@ -653,7 +653,7 @@ def test_epistemic_worlds_count_with_n_facts(n: int):
     facts = [Atom(f'fact{i}') for i in range(n)]
     for fact in facts:
         base.tell(fact)
-        base.tell(accessible('alice', fact, 1))
+        base.tell(accessible(fact, 'alice', 1))
     worlds = epistemic_worlds('alice', 1)(base)
     assert len(worlds) == 2**n
 
@@ -664,7 +664,7 @@ def test_deontic_worlds_count_with_n_obligations(n: int):
     base = database()
     _register_predicates(base, _OBLIGATION)
     for i in range(n):
-        base.tell(obligation('alice', Atom(f'act{i}'), 1))
+        base.tell(obligation(Atom(f'act{i}'), 'alice', 1))
     worlds = deontic_worlds('alice', 1)(base)
     assert len(worlds) == 2**n
 

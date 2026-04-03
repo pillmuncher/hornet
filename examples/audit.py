@@ -52,12 +52,12 @@ def compliance(db: Database) -> Database:
 
     Usage:
         db = compliance(database())
-        result = any(db.ask(deemed_known(agent, fact, time)))
+        result = any(db.ask(deemed_known(fact, agent, time)))
     """
     child = modal(db.new_child())
 
     @child.tell
-    @predicate(deemed_known(Agent, Fact, T))
+    @predicate(deemed_known(Fact, Agent, T))
     def _(db: Database, subst: Subst) -> Step[Database, Environment]:
         return forall(
             deontic_worlds(subst[Agent], subst[T]),
@@ -117,7 +117,7 @@ def main() -> None:
         ),
         # An agent is obligated to review a report if it was published
         # while they held the CFO role.
-        obligation(Agent, review(Report), T_report).when(
+        obligation(review(Report), Agent, T_report).when(
             happens_at(published(Report), T_report),
             holds_at(tenure(Agent, 'cfo'), T_report),
         ),
@@ -126,7 +126,7 @@ def main() -> None:
     # The Query: Is Alice legally "deemed to know" the violation?
     # Logic: In all worlds where she reviews the report (Deontic),
     # she gains access to the transaction data (Epistemic).
-    query = deemed_known('alice', violated('tx17', 'reg31'), 3)
+    query = deemed_known(violated('tx17', 'reg31'), 'alice', 3)
     result = any(db.ask(query))
     print(f'Liability Check: {query} -> {result}')
 

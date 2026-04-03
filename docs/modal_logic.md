@@ -204,7 +204,7 @@ that encodes a legal notion of constructive knowledge.
 
 ### Defining `deemed_known` — the `∀ₒ∃ₖ` pattern
 
-The predicate `deemed_known(Agent, Fact, T)` captures the legal idea that an agent
+The predicate `deemed_known(Fact, Agent, T)` captures the legal idea that an agent
 is *deemed to know* a fact if, in every possible world where they fulfil their
 obligations, there exists some epistemic state in which they have access to that
 fact. This is the `∀ₒ (∃ₖ accessible(...))` pattern.
@@ -221,7 +221,7 @@ def compliance(db: Database) -> Database:
     child = modal(db.new_child())
 
     @child.tell
-    @predicate(deemed_known(Agent, Fact, T))
+    @predicate(deemed_known(Fact, Agent, T))
     def _(db: Database, subst: Subst) -> Step[Database, Environment]:
         return forall(
             deontic_worlds(subst[Agent], subst[T]),
@@ -318,7 +318,7 @@ violation anyway.
 ### Querying
 
 ```python
-query = deemed_known('alice', violated('tx17', 'reg31'), 3)
+query = deemed_known(violated('tx17', 'reg31'), 'alice', 3)
 result = any(db.ask(query))
 print(f'Liability Check: {query} -> {result}')
 ```
