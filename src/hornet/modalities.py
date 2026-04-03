@@ -98,6 +98,7 @@ from hornet.symbols import (
     Query,
     T,
     accessible,
+    cut,
     fail,
     k,
     o,
@@ -157,7 +158,7 @@ class epistemic_worlds:
             cast(NonVariable, s[KnownFact])
             for s in db.ask(accessible(KnownFact, self.agent, self.t))
         ]
-        return tuple(db.shadow(*[f.when(fail) for f in hidden]) for hidden in powerset(facts))
+        return tuple(db.shadow(*[f.when(cut, fail) for f in hidden]) for hidden in powerset(facts))
 
 
 @dataclass(frozen=True, slots=True)
