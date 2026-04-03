@@ -72,7 +72,6 @@ INTERFACE:
         - o(Query, Agent, T)
         - possibly_k(Query, Agent, T)
         - possibly_o(Query, Agent, T)
-        - deemed_known(Agent, Fact, T)
 
 NOTES:
     - Accessibility is *generative*, not relational: a world-transforming operation
