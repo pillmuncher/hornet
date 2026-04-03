@@ -30,8 +30,7 @@ verify_ssl = true
 
 [tool.pytest.ini_options]
 flake8-show-source = true
-addopts = "--cov=src --cov-report=term-missing --cov-report=json"
-
+addopts = "--cov=src --cov-report=term-missing --cov-report=json --ignore=examples"
 [tool.ruff]
 line-length = 99
 
