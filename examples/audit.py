@@ -54,7 +54,7 @@ def compliance(db: Database) -> Database:
         db = compliance(database())
         result = any(db.ask(deemed_known(fact, agent, time)))
     """
-    child = modal(db.new_child())
+    child = modal(db)
 
     @child.tell
     @predicate(deemed_known(Fact, Agent, T))
