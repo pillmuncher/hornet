@@ -112,7 +112,7 @@ type WorldGenerator = Callable[[Database], tuple[Database, ...]]
 
 
 @dataclass(frozen=True, slots=True)
-class Branch:
+class branch:
     generator: WorldGenerator
 
     def __call__(self, db: Database, env: Environment) -> Step[Database, Environment]:
@@ -129,7 +129,7 @@ def exists(
     # Constructive existential quantification over worlds:
     # holds iff at least one generated world provides an example for φ
     # ∃w: w ⊨ φ
-    return then(Branch(generator), query)
+    return then(branch(generator), query)
 
 
 def forall(
@@ -139,7 +139,7 @@ def forall(
     # Constructive universal quantification over worlds via failure:
     # holds iff no generated world provides a counterexample to φ
     # ∀w: w ⊨ φ  ≡  ¬∃w: w ⊨ ¬φ
-    return neg(then(Branch(generator), neg(query)))
+    return neg(then(branch(generator), neg(query)))
 
 
 def powerset[E](iterable: Iterable[E]) -> tuple[tuple[E, ...], ...]:

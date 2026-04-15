@@ -5,7 +5,7 @@ from hornet import database, symbols
 from hornet.clauses import Database, Environment, Subst, predicate, resolve
 from hornet.combinators import Step
 from hornet.modalities import (
-    Branch,
+    branch,
     deontic_worlds,
     epistemic_worlds,
     exists,
@@ -245,12 +245,12 @@ def test_powerset_no_duplicates_within_subsets(items: list[int]):
 
 
 # ------------------------------
-# Branch, exists, forall tests
+# branch, exists, forall tests
 # ------------------------------
 
 
 def test_branch_single_world():
-    """Branch with identity transform yields one result per world."""
+    """branch with identity transform yields one result per world."""
     from immutables import Map
 
     from hornet.clauses import failure, success
@@ -260,8 +260,8 @@ def test_branch_single_world():
         return (db,)
 
     base = database()
-    branch = Branch(transform)
-    step = branch(base, Map())
+    worlds = branch(transform)
+    step = worlds(base, Map())
     results = list(trampoline(lambda: step(success, failure, failure)))
     assert len(results) == 1
 
@@ -278,8 +278,8 @@ def test_branch_two_worlds():
     def transform(db: Database):
         return (db, child)
 
-    branch = Branch(transform)
-    step = branch(base, Map())
+    worlds = branch(transform)
+    step = worlds(base, Map())
     results = list(trampoline(lambda: step(success, failure, failure)))
     assert len(results) == 2
 
@@ -295,8 +295,8 @@ def test_branch_empty_worlds():
     def transform(_: Database):
         return ()
 
-    branch = Branch(transform)
-    step = branch(base, Map())
+    worlds = branch(transform)
+    step = worlds(base, Map())
     results = list(trampoline(lambda: step(success, failure, failure)))
     assert not any(results)
 
