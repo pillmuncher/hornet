@@ -425,8 +425,6 @@ def _bootstrap_database() -> Callable[[], Database]:
             call(G),
             cut,
         ),
-        #
-        # always succeed:
         ignore(symbols._),
         #
         # test if two terms can be unified:
@@ -450,11 +448,11 @@ def _bootstrap_database() -> Callable[[], Database]:
         append([], A, A),
         #
         # reverse a list:
-        reverse([X | P], Q, Y).when(
-            reverse(P, [X | Q], Y),
-        ),
         reverse(X, Y).when(
             reverse(X, [], Y),
+        ),
+        reverse([X | P], Q, Y).when(
+            reverse(P, [X | Q], Y),
         ),
         reverse([], Y, Y),
         #
