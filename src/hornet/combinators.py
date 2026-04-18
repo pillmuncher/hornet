@@ -1,21 +1,32 @@
 # Copyright (c) 2025 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
 # SPDX-License-Identifier: MIT
 
-"""The Prolog Monad: A Triple-Barrelled Continuation-based Engine.
+"""Triple-Barrelled Continuation Engine for Backtracking Search.
 
-This module implements the core resolution logic for a Prolog-style system.
-It uses a "Triple-Barrelled Continuation Monad" to manage search,
-backtracking, and pruning:
-1.  **Success (Emit[Ctx, Env])**: Propagates the current substitution forward.
-2.  **Failure (Next[Env])**: Backtracks to the last available choice point.
-3.  **Prune (Next[Env])**: Defines the jump-target for the 'cut' (!) operator.
+This module implements the core combinators for a Prolog-style search engine
+using three continuations:
+
+1. **Success (Emit[Ctx, Env])**: Propagates the current state forward.
+2. **Failure (Next[Env])**: Backtracks to the last available choice point.
+3. **Prune (Next[Env])**: Jump target for the cut (!) operator.
+
+The control-free fragment — `unit`, `fail`, `then`, `seq`, `amb`, `choice`
+— forms a MonadPlus algebra satisfying left-distributivity and commutativity
+of alternatives. This is the algebraic core of SLD resolution; adding
+unification over a Herbrand universe (defined in a separate module) yields
+a model of pure Prolog.
+
+The control operators `cut`, `prunable`, `call_cc`, and `call_ec` extend
+this algebra beyond what any monad can express. They are delimited control
+operators: `prunable` acts as a prompt, `cut` as a delimited jump to it.
+Their presence breaks left-distributivity of `then` over `amb`, which is
+why they have no clean declarative reading — only an operational one.
 
 The engine is context-agnostic; `Ctx` (typically the clause database) is
-passed through without direct access to maintain a clean separation of
-concerns. All operations are tail-call optimized to support deep recursion.
-
-Implmentation note: All combinator functions have been defunctionalized and reified as callable
-dataclasses to allow serialization of resolution state.
+passed through without modification to maintain separation of concerns.
+All combinators are defunctionalized as callable dataclasses to support
+serialization of resolution state, and all calls are tail-call optimized
+to support deep recursion.
 """
 
 from __future__ import annotations
