@@ -32,6 +32,10 @@ type Emit[Ctx, Env] = Callable[[Ctx, Env, Next[Env]], Frame[Env]]
 type Step[Ctx, Env] = Callable[[Emit[Ctx, Env], Next[Env], Next[Env]], Frame[Env]]
 type Goal[Ctx, Env] = Callable[[Ctx, Env], Step[Ctx, Env]]
 
+type Escape[Ctx, Env] = Callable[[Goal[Ctx, Env]], Goal[Ctx, Env]]
+type EC[Ctx, Env] = Callable[[Escape[Ctx, Env]], Goal[Ctx, Env]]
+type CC[Ctx, Env] = Callable[[Emit[Ctx, Env], Next[Env], Next[Env]], Step[Ctx, Env]]
+
 
 @dataclass(frozen=True, slots=True)
 class bind_step[Ctx, Env]:
@@ -233,11 +237,6 @@ class if_then_else[Ctx, Env]:
 
     def __call__(self, ctx: Ctx, env: Env) -> Step[Ctx, Env]:
         return ite_step(self.cond(ctx, env), self.then_, self.else_, ctx, env)
-
-
-type CC[Ctx, Env] = Callable[[Emit[Ctx, Env], Next[Env], Next[Env]], Step[Ctx, Env]]
-type Escape[Ctx, Env] = Callable[[Goal[Ctx, Env]], Goal[Ctx, Env]]
-type EC[Ctx, Env] = Callable[[Escape[Ctx, Env]], Goal[Ctx, Env]]
 
 
 @dataclass(frozen=True, slots=True)
