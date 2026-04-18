@@ -201,12 +201,30 @@ choice(fail, A) = A
 
 ### 8. Algebraic Perspective
 
-The combinators induce a structured control algebra:
+The combinators induce a structured algebra with two layers.
+
+The **control-free fragment** — `unit`, `fail`, `then`, `seq`, `amb`, `choice` — forms a **MonadPlus algebra**:
 
 - `(then, unit)` forms a **monoid** (sequential composition)
-- `(choice, fail)` forms a **monoid** (non-deterministic choice)
+- `(amb, fail)` forms a **monoid** (non-deterministic choice)
 
-**This algebra is deliberately non-commutative and non-distributive.** `then` is not commutative because order of execution matters. Distributivity of sequencing over choice — `then(A, choice(B, C)) = choice(then(A, B), then(A, C))` — fails in the presence of cut, which can redirect control inside `B` or `C` in ways that break the equation. This is not a deficiency; it reflects the real semantics of sequential search with pruning. The non-commutativity and non-distributivity are load-bearing.
+This fragment satisfies **left-distributivity**:
+
+```
+then(amb(A, B), C) = amb(then(A, C), then(B, C))
+```
+
+and **commutativity of alternatives** at the level of solution sets:
+
+```
+amb(A, B) = amb(B, A)   -- same solutions, possibly different order
+```
+
+These are the laws of SLD resolution. Adding unification over a Herbrand universe to this fragment yields a model of pure Prolog.
+
+The **control operators** `cut`, `prunable`, `call_cc`, and `call_ec` extend this algebra beyond what any monad can express. Their presence breaks left-distributivity: `then(amb(A, cut), K)` is not equal to `amb(then(A, K), then(cut, K))`, because the two sides disagree on which choice point `cut` is scoped to. This is not a deficiency — it is the intended semantics. But it means the full algebra, including control operators, cannot be characterised as a monad or a MonadPlus. It sits at the level of a **delimited continuation algebra**.
+
+`then` is non-commutative throughout both layers, because order of execution matters. This non-commutativity is load-bearing.
 
 ---
 
@@ -222,12 +240,13 @@ Traditional Prolog treats cut as an operational hack that breaks the declarative
 - It commits to the current branch
 - It discards alternative choices up to a defined boundary
 
-**The boundary is explicit.** Cut only prunes within a `prunable` scope. A `prunable` context sets `prune = no` for its inner computation, so cut inside a `prunable` block jumps to the enclosing `no` rather than escaping globally. This is what prevents cut from being a global control hack and preserves composability: you can reason about cut locally.
+**The boundary is explicit.** Cut only prunes within a `prunable` scope. A `prunable` context sets `prune = no` for its inner computation, so cut inside a `prunable` block jumps to the enclosing `no` rather than escaping globally. This is what prevents cut from being a global control hack and preserves composability: you can reason about cut locally. In the language of delimited continuations, `prunable` acts as a **prompt** and `cut` acts as a **delimited jump** to it.
 
 **Conceptually:**
 
 - Cut is not outside the model
-- It is an algebraic operation over continuations
+- It is a **control operator** that extends the MonadPlus algebra into a delimited continuation algebra
+- Its non-algebraic character is invisible in the code — `cut` looks structurally identical to `unit` and `fail`, differing only in which continuation it passes forward
 - Its scope is governed by `prunable`, not by implicit call stack position
 
 ---
