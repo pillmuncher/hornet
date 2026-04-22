@@ -1,7 +1,8 @@
 from turtle import Turtle, clear, goto, ht, listen, mainloop, onkey, penup, write
 from typing import SupportsIndex, cast
 
-from hornet import Database, Step, Subst, database, predicate, unit
+from hornet import Database, Subst, database, predicate
+from hornet.combinators import Step, unit
 from hornet.symbols import From, M, N, To, With, _, cut, greater, let, move, play_hanoi, show
 
 """turtle-example-suite:

@@ -1,8 +1,7 @@
 # Copyright (c) 2013-2025 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
 # SPDX-License-Identifier: MIT
 
-from hornet import DCGs, database
-from hornet.clauses import Database
+from hornet import Database, DCGs, database
 from hornet.symbols import E  # type: ignore[reportUnusedImport]
 from hornet.symbols import S  # type: ignore[reportUnusedImport]
 from hornet.symbols import (

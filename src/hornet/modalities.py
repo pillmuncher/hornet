@@ -88,9 +88,9 @@ from dataclasses import dataclass
 from itertools import chain, combinations
 from typing import Callable, Iterable, cast
 
-from hornet.clauses import Database, Environment, Subst, predicate, resolve
-from hornet.combinators import Goal, Step, amb_from_iterable, lift_ctx, neg, then
-from hornet.symbols import (
+from .clauses import Database, Environment, Subst, predicate, resolve
+from .combinators import Goal, Step, amb_from_iterable, lift_ctx, neg, then
+from .symbols import (
     Action,
     Agent,
     KnownFact,
@@ -106,7 +106,7 @@ from hornet.symbols import (
     possibly_k,
     possibly_o,
 )
-from hornet.terms import NonVariable, Term, const
+from .terms import NonVariable, Term, const
 
 type WorldGenerator = Callable[[Database], tuple[Database, ...]]
 

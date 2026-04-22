@@ -1,8 +1,7 @@
 # Copyright (c) 2013-2025 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
 # SPDX-License-Identifier: MIT
 
-from hornet import database
-from hornet.clauses import Database
+from hornet import Database, database
 from hornet.symbols import (
     A1,
     B1,

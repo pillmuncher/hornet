@@ -1,5 +1,5 @@
-from hornet import database
-from hornet.clauses import Database, Environment, Subst, predicate, resolve
+from hornet import Database, Subst, database, predicate
+from hornet.clauses import Environment, resolve
 from hornet.combinators import Step
 from hornet.modalities import deontic_worlds, epistemic_worlds, exists, forall, modal
 from hornet.symbols import (

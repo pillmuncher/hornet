@@ -3,8 +3,7 @@
 
 from toolz import take
 
-from hornet import DCGs, database
-from hornet.clauses import Database
+from hornet import Database, DCGs, database
 from hornet.symbols import (
     M,
     N,
