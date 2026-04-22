@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Mick Krippendorf <m.krippendorf+hornet@posteo.de>
+# SPDX-License-Identifier: MIT
+
 from hornet import Database, Subst, database, predicate
 from hornet.clauses import Environment, resolve
 from hornet.combinators import Step
