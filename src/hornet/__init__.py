@@ -6,7 +6,7 @@ from __future__ import annotations
 from typing import Callable
 
 from . import clauses, combinators, modalities, states, symbols, tailcalls, terms
-from .clauses import Database, Subst, predicate
+from .clauses import Database, Environment, Subst, predicate
 from .terms import DCG, DCGs
 
 __all__ = (
@@ -16,6 +16,7 @@ __all__ = (
     'states',
     'symbols',
     'tailcalls',
+    'Environment',
     'terms',
     'predicate',
     'database',
@@ -30,7 +31,7 @@ def _bootstrap_database() -> Callable[[], Database]:
     from numbers import Number
 
     from . import symbols
-    from .clauses import Environment, resolve, unify
+    from .clauses import resolve, unify
     from .combinators import Step
     from .combinators import cut as _cut
     from .combinators import fail, if_then_else, then, unit
