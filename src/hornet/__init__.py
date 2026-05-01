@@ -42,7 +42,6 @@ def _bootstrap_database() -> Callable[[], Database]:
         L1,
         T0,
         T1,
-        T2,
         A,
         B,
         C,
@@ -466,19 +465,20 @@ def _bootstrap_database() -> Callable[[], Database]:
             univ(G1, L1),
             call(G1),
         ),
-        after(T1, T2).when(greater(T1, T2)),
-        before(T1, T2).when(smaller(T1, T2)),
-        holds_at(F, T).when(
-            happens_at(E, T0),
+        # Kowalski's Event Calculus:
+        before(T0, T1).when(smaller(T0, T1)),
+        after(T1, T0).when(greater(T1, T0)),
+        holds_at(F, T1).when(
             initiates(E, F),
-            ~after(T0, T),
-            ~clipped(T0, F, T),
+            happens_at(E, T0),
+            ~after(T0, T1),
+            ~clipped(T0, F, T1),
         ),
-        clipped(T1, F, T2).when(
-            happens_at(E, T),
+        clipped(T0, F, T1).when(
             terminates(E, F),
-            ~after(T1, T),
-            before(T, T2),
+            happens_at(E, T),
+            ~after(T0, T),
+            before(T, T1),
         ),
     )
 
