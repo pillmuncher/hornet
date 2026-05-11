@@ -194,7 +194,7 @@ class prunable[Ctx, Env]:
 
 
 def neg[Ctx, Env](goal: Goal[Ctx, Env]) -> Goal[Ctx, Env]:
-    return prunable((amb(seq(goal, cut, fail), unit),))
+    return prunable((seq(goal, cut, fail), unit))
 
 
 @dataclass(frozen=True, slots=True)
